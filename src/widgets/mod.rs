@@ -48,6 +48,8 @@ impl WidgetLayer {
 
     pub fn append(&self, widget: impl AsRef<Widget>, x: f64, y: f64) {
         let wrapper = gtk::Box::new(Orientation::Horizontal, 0);
+        wrapper.set_widget_name("widget-wrapper");
+
         let motion_controller = gtk::EventControllerMotion::new();
 
         motion_controller.connect_leave(clone!(

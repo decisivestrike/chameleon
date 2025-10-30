@@ -1,3 +1,5 @@
+mod hyprland;
+
 use grapes::{
     glib::object::Cast,
     gtk::gdk::{self, prelude::DisplayExt},

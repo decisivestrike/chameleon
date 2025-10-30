@@ -1,13 +1,12 @@
 mod core;
 mod widgets;
 
+use crate::widgets::WidgetLayer;
 use grapes::gtk::{
     self,
     gio::prelude::{ApplicationExt, ApplicationExtManual},
 };
 use gtk::glib::{self};
-
-use crate::widgets::WidgetLayer;
 
 fn build_ui(application: &gtk::Application) {
     for monitor in core::monitors().iter() {
@@ -49,11 +48,11 @@ fn main() -> glib::ExitCode {
                 background-color: rgba(0, 0, 0, 0.0);
             }
             
-            box {
+            #widget-layer #widget-wrapper {
                 margin: 0px;
                 padding: 0px;
                 border: none;
-                border-radius: 0px;
+                border-radius: 100px;
             }
 
             label {
