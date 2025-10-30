@@ -1,7 +1,7 @@
 use grapes::{
     gtk::{
         self, ApplicationWindow, EventControllerKey, Fixed, Orientation, Widget,
-        gdk::Key,
+        gdk::{self, Key},
         glib::clone,
         prelude::{GtkWindowExt, *},
     },
@@ -20,10 +20,12 @@ pub struct WidgetLayer {
     active_widget: Rc<RefCell<Option<Widget>>>,
     tracked_widget: Rc<RefCell<Option<Widget>>>,
     previous_mouse_positon: Rc<Cell<(f64, f64)>>,
+    monitor_width: i32,
+    monitor_height: i32,
 }
 
 impl WidgetLayer {
-    pub fn new(application: &gtk::Application) -> Self {
+    pub fn new(application: &gtk::Application, monitor: &gdk::Monitor) -> Self {
         let window = ApplicationWindow::new(application);
 
         let fixer = Fixed::new();
@@ -35,14 +37,16 @@ impl WidgetLayer {
             active_widget: Default::default(),
             tracked_widget: Default::default(),
             previous_mouse_positon: Default::default(),
+            monitor_width: monitor.geometry().width(),
+            monitor_height: monitor.geometry().height(),
         };
 
-        layer.setup();
+        layer.setup(monitor);
 
         layer
     }
 
-    pub fn append(&self, widget: &impl IsA<Widget>, x: f64, y: f64) {
+    pub fn append(&self, widget: impl AsRef<Widget>, x: f64, y: f64) {
         let wrapper = gtk::Box::new(Orientation::Horizontal, 0);
         let motion_controller = gtk::EventControllerMotion::new();
 
@@ -61,7 +65,7 @@ impl WidgetLayer {
         ));
 
         wrapper.add_controller(motion_controller);
-        wrapper.append(widget);
+        wrapper.append(widget.as_ref());
 
         self.fixer.put(&wrapper, x, y);
     }
@@ -71,25 +75,20 @@ impl WidgetLayer {
         self.window.present();
     }
 
-    fn setup(&self) {
-        // Screen W H
-        const WIDTH: i32 = 1920;
-        const HEIGHT: i32 = 1080;
-
+    fn setup(&self, monitor: &gdk::Monitor) {
         let window = &self.window;
 
         window.set_widget_name("widget-layer");
-        window.set_default_size(WIDTH, HEIGHT);
+        window.set_default_size(self.monitor_width, self.monitor_height);
 
         window.set_decorated(false);
         window.set_resizable(false);
 
-        window.set_hexpand(false);
-        window.set_vexpand(false);
-
         window.init_layer_shell();
         window.set_keyboard_mode(KeyboardMode::OnDemand);
         window.set_layer(Layer::Bottom);
+
+        window.set_monitor(Some(monitor));
 
         self.setup_motion_controller();
         self.setup_tracker();
@@ -128,8 +127,11 @@ impl WidgetLayer {
     fn setup_motion_controller(&self) {
         let motion_controller = gtk::EventControllerMotion::new();
 
+        let monitor_width = self.monitor_width;
+        let monitor_height = self.monitor_height;
+
         motion_controller.connect_motion(clone!(
-            #[strong(rename_to=prev)]
+            #[strong(rename_to=previous_mouse_positon)]
             self.previous_mouse_positon,
             #[strong(rename_to=tracked_widget)]
             self.tracked_widget,
@@ -139,13 +141,13 @@ impl WidgetLayer {
                 let tracked = tracked_widget.borrow();
 
                 if let Some(widget) = tracked.as_ref() {
-                    let (prev_x, prev_y) = prev.get();
+                    let (prev_x, prev_y) = previous_mouse_positon.get();
                     let (wx, wy) = fixer.child_position(widget);
 
                     let diff_x = x - prev_x;
                     let diff_y = y - prev_y;
 
-                    let max_x = (1920 - widget.width()) as f64;
+                    let max_x = (monitor_width - widget.width()) as f64;
                     let new_x_unchecked = wx + diff_x;
 
                     let new_x = if new_x_unchecked > max_x {
@@ -156,7 +158,7 @@ impl WidgetLayer {
                         new_x_unchecked
                     };
 
-                    let max_y = (1080 - widget.height()) as f64;
+                    let max_y = (monitor_height - widget.height()) as f64;
                     let new_y_unchecked = wy + diff_y;
 
                     let new_y = if new_y_unchecked > max_y {
@@ -171,7 +173,7 @@ impl WidgetLayer {
                     fixer.move_(widget, new_x, new_y);
                 }
 
-                prev.set((x, y));
+                previous_mouse_positon.set((x, y));
             }
         ));
 

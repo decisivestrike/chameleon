@@ -1,30 +1,36 @@
+mod core;
 mod widgets;
 
-use grapes::gtk;
+use grapes::gtk::{
+    self,
+    gio::prelude::{ApplicationExt, ApplicationExtManual},
+};
 use gtk::glib::{self};
-use gtk::prelude::*;
 
 use crate::widgets::WidgetLayer;
 
 fn build_ui(application: &gtk::Application) {
-    let widget_layer = WidgetLayer::new(application);
+    for monitor in core::monitors().iter() {
+        println!("{monitor:?}");
+        let widget_layer = WidgetLayer::new(application, monitor);
 
-    {
-        let l = gtk::Label::new(Some("Drag Me!"));
-        widget_layer.append(&l, 50.0, 50.0);
+        {
+            let l = gtk::Label::new(Some("Drag Me!"));
+            widget_layer.append(&l, 50.0, 50.0);
+        }
+
+        {
+            let l = gtk::Label::new(Some("Drag Me Too!"));
+            widget_layer.append(&l, 100.0, 100.0);
+        }
+
+        {
+            let l = gtk::Label::new(Some("Pretty good!"));
+            widget_layer.append(&l, 150.0, 150.0);
+        }
+
+        widget_layer.present();
     }
-
-    {
-        let l = gtk::Label::new(Some("Drag Me Too!"));
-        widget_layer.append(&l, 100.0, 100.0);
-    }
-
-    {
-        let l = gtk::Label::new(Some("Pretty good!"));
-        widget_layer.append(&l, 150.0, 150.0);
-    }
-
-    widget_layer.present();
 }
 
 fn main() -> glib::ExitCode {
@@ -56,8 +62,8 @@ fn main() -> glib::ExitCode {
                 font-size: 40px;
                 padding: 4px 10px;
                 text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
-                border: 2px dashed white;
-                border-radius: 10px;
+                border: 1px solid white;
+                border-radius: 20px;
             }
             "#,
         );
