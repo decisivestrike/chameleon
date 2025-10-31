@@ -8,6 +8,7 @@ use grapes::{
     layer_shell::{self, Edge},
 };
 use layer_shell::{KeyboardMode, Layer, LayerShell};
+use log::info;
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
@@ -20,8 +21,6 @@ pub struct WidgetLayer {
     active_widget: Rc<RefCell<Option<Widget>>>,
     tracked_widget: Rc<RefCell<Option<Widget>>>,
     previous_mouse_positon: Rc<Cell<(f64, f64)>>,
-    monitor_width: i32,
-    monitor_height: i32,
 }
 
 impl WidgetLayer {
@@ -37,8 +36,6 @@ impl WidgetLayer {
             active_widget: Default::default(),
             tracked_widget: Default::default(),
             previous_mouse_positon: Default::default(),
-            monitor_width: monitor.geometry().width(),
-            monitor_height: monitor.geometry().height(),
         };
 
         layer.setup(monitor);
@@ -81,7 +78,7 @@ impl WidgetLayer {
         let window = &self.window;
 
         window.set_widget_name("widget-layer");
-        window.set_default_size(self.monitor_width, self.monitor_height);
+        window.set_default_size(monitor.geometry().width(), monitor.geometry().height());
 
         window.set_decorated(false);
         window.set_resizable(false);
@@ -134,9 +131,6 @@ impl WidgetLayer {
     fn setup_motion_controller(&self) {
         let motion_controller = gtk::EventControllerMotion::new();
 
-        let monitor_width = self.monitor_width;
-        let monitor_height = self.monitor_height;
-
         motion_controller.connect_motion(clone!(
             #[strong(rename_to=previous_mouse_positon)]
             self.previous_mouse_positon,
@@ -154,30 +148,11 @@ impl WidgetLayer {
                     let diff_x = x - prev_x;
                     let diff_y = y - prev_y;
 
-                    let max_x = (monitor_width - widget.width()) as f64;
-                    let new_x_unchecked = wx + diff_x;
+                    let new_x = wx + diff_x;
+                    let new_y = wy + diff_y;
 
-                    let new_x = if new_x_unchecked > max_x {
-                        max_x
-                    } else if new_x_unchecked < 0.0 {
-                        0.0
-                    } else {
-                        new_x_unchecked
-                    };
-
-                    let max_y = (monitor_height - widget.height()) as f64;
-                    let new_y_unchecked = wy + diff_y;
-
-                    let new_y = if new_y_unchecked > max_y {
-                        max_y
-                    } else if new_y_unchecked < 0.0 {
-                        0.0
-                    } else {
-                        new_y_unchecked
-                    };
-
-                    println!("Move to {new_x_unchecked} {new_y_unchecked}");
-                    fixer.move_(widget, new_x_unchecked, new_y_unchecked);
+                    info!("Move {widget} to x:{new_x:.2}, y:{new_y:.2}");
+                    fixer.move_(widget, new_x, new_y);
                 }
 
                 previous_mouse_positon.set((x, y));
