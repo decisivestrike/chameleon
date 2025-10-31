@@ -33,6 +33,8 @@ fn build_ui(application: &gtk::Application) {
 }
 
 fn main() -> glib::ExitCode {
+    env_logger::init();
+
     let app = gtk::Application::builder()
         .application_id("decisivestrike.chameleon")
         .build();

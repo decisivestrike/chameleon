@@ -5,7 +5,7 @@ use grapes::{
         glib::clone,
         prelude::{GtkWindowExt, *},
     },
-    layer_shell,
+    layer_shell::{self, Edge},
 };
 use layer_shell::{KeyboardMode, Layer, LayerShell};
 use std::{
@@ -90,6 +90,11 @@ impl WidgetLayer {
         window.set_keyboard_mode(KeyboardMode::OnDemand);
         window.set_layer(Layer::Bottom);
 
+        window.set_anchor(Edge::Top, true);
+        window.set_anchor(Edge::Right, true);
+        window.set_anchor(Edge::Bottom, true);
+        window.set_anchor(Edge::Left, true);
+
         window.set_monitor(Some(monitor));
 
         self.setup_motion_controller();
@@ -171,8 +176,8 @@ impl WidgetLayer {
                         new_y_unchecked
                     };
 
-                    println!("Move to {new_x} {new_y}");
-                    fixer.move_(widget, new_x, new_y);
+                    println!("Move to {new_x_unchecked} {new_y_unchecked}");
+                    fixer.move_(widget, new_x_unchecked, new_y_unchecked);
                 }
 
                 previous_mouse_positon.set((x, y));

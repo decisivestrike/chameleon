@@ -14,3 +14,7 @@ pub fn monitors() -> Vec<gdk::Monitor> {
         .filter_map(|obj| obj.ok()?.downcast::<gdk::Monitor>().ok())
         .collect()
 }
+
+pub fn env_var(name: &str) -> String {
+    std::env::var(name).expect(&format!("Variable ${} not set", name))
+}
