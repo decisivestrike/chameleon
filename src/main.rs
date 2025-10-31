@@ -8,6 +8,10 @@ use grapes::gtk::{
 };
 use gtk::glib::{self};
 
+fn init_logger() {
+    env_logger::builder().format_timestamp(None).init();
+}
+
 fn build_ui(application: &gtk::Application) {
     for monitor in core::monitors().iter() {
         println!("{monitor:?}");
@@ -33,7 +37,7 @@ fn build_ui(application: &gtk::Application) {
 }
 
 fn main() -> glib::ExitCode {
-    env_logger::init();
+    init_logger();
 
     let app = gtk::Application::builder()
         .application_id("decisivestrike.chameleon")

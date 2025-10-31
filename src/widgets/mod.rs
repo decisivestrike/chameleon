@@ -8,7 +8,7 @@ use grapes::{
     layer_shell::{self, Edge},
 };
 use layer_shell::{KeyboardMode, Layer, LayerShell};
-use log::info;
+use log::{Level, info, log_enabled};
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
@@ -138,24 +138,28 @@ impl WidgetLayer {
             self.tracked_widget,
             #[strong(rename_to=fixer)]
             self.fixer,
-            move |_, x, y| {
+            move |_, mouse_x, mouse_y| {
                 let tracked = tracked_widget.borrow();
 
                 if let Some(widget) = tracked.as_ref() {
-                    let (prev_x, prev_y) = previous_mouse_positon.get();
-                    let (wx, wy) = fixer.child_position(widget);
+                    let (previous_mouse_x, previous_mouse_y) = previous_mouse_positon.get();
+                    let (widget_x, widget_y) = fixer.child_position(widget);
 
-                    let diff_x = x - prev_x;
-                    let diff_y = y - prev_y;
+                    let diff_x = mouse_x - previous_mouse_x;
+                    let diff_y = mouse_y - previous_mouse_y;
 
-                    let new_x = wx + diff_x;
-                    let new_y = wy + diff_y;
+                    let x = widget_x + diff_x;
+                    let y = widget_y + diff_y;
 
-                    info!("Move {widget} to x:{new_x:.2}, y:{new_y:.2}");
-                    fixer.move_(widget, new_x, new_y);
+                    if log_enabled!(Level::Info) {
+                        let name = widget.first_child().unwrap().widget_name();
+                        info!("Move {name} to x: {x:.2}, y: {y:.2}",);
+                    }
+
+                    fixer.move_(widget, x, y);
                 }
 
-                previous_mouse_positon.set((x, y));
+                previous_mouse_positon.set((mouse_x, mouse_y));
             }
         ));
 
