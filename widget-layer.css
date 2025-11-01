@@ -1,0 +1,13 @@
+#widget-layer {
+    margin: 0px;
+    padding: 0px;
+    border: none;
+    background-color: rgba(0, 0, 0, 0.0);
+}
+
+#widget-layer #widget-wrapper {
+    margin: 0px;
+    padding: 0px;
+    border: none;
+    border-radius: 100px;
+}

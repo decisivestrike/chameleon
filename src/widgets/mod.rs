@@ -152,8 +152,8 @@ impl WidgetLayer {
                     let y = widget_y + diff_y;
 
                     if log_enabled!(Level::Info) {
-                        let name = widget.first_child().unwrap().widget_name();
-                        info!("Move {name} to x: {x:.2}, y: {y:.2}",);
+                        let widget_name = widget.first_child().unwrap().widget_name();
+                        info!("Move {widget_name} to x: {x:.0}, y: {y:.0}",);
                     }
 
                     fixer.move_(widget, x, y);

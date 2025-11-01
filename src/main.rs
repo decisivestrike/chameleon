@@ -1,38 +1,56 @@
+mod bar;
 mod core;
 mod widgets;
 
-use crate::widgets::WidgetLayer;
+use crate::{bar::Bar, core::config::CONFIG, widgets::WidgetLayer};
 use grapes::gtk::{
     self,
+    gdk::prelude::MonitorExt,
     gio::prelude::{ApplicationExt, ApplicationExtManual},
 };
 use gtk::glib::{self};
+use log::info;
 
 fn init_logger() {
     env_logger::builder().format_timestamp(None).init();
 }
 
 fn build_ui(application: &gtk::Application) {
-    for monitor in core::monitors().iter() {
-        println!("{monitor:?}");
-        let widget_layer = WidgetLayer::new(application, monitor);
+    if let Some(widgets) = &CONFIG.widgets
+        && widgets.enabled
+    {
+        for monitor in core::monitors().iter() {
+            let widget_layer = WidgetLayer::new(application, monitor);
 
-        {
-            let l = gtk::Label::new(Some("Drag Me!"));
-            widget_layer.append(&l, 50.0, 50.0);
+            {
+                let l = gtk::Label::new(Some("Drag Me!"));
+                widget_layer.append(&l, 50.0, 50.0);
+            }
+
+            {
+                let l = gtk::Label::new(Some("Drag Me Too!"));
+                widget_layer.append(&l, 100.0, 100.0);
+            }
+
+            {
+                let l = gtk::Label::new(Some("Pretty good!"));
+                widget_layer.append(&l, 150.0, 150.0);
+            }
+
+            widget_layer.present();
+
+            info!("Widget layer presented on {}", monitor.connector().unwrap());
         }
+    }
 
-        {
-            let l = gtk::Label::new(Some("Drag Me Too!"));
-            widget_layer.append(&l, 100.0, 100.0);
+    if let Some(bar) = &CONFIG.bar
+        && bar.enabled
+    {
+        for monitor in core::monitors().iter() {
+            let bar = Bar::new(application, monitor, Some(30));
+
+            bar.present();
         }
-
-        {
-            let l = gtk::Label::new(Some("Pretty good!"));
-            widget_layer.append(&l, 150.0, 150.0);
-        }
-
-        widget_layer.present();
     }
 }
 
@@ -45,33 +63,7 @@ fn main() -> glib::ExitCode {
 
     app.connect_startup(|_| {
         let provider = gtk::CssProvider::new();
-        provider.load_from_string(
-            r#"
-            #widget-layer {
-                margin: 0px;
-                padding: 0px;
-                border: none;
-                background-color: rgba(0, 0, 0, 0.0);
-            }
-            
-            #widget-layer #widget-wrapper {
-                margin: 0px;
-                padding: 0px;
-                border: none;
-                border-radius: 100px;
-            }
-
-            label {
-                font-family: "JetBrainMono Nerd Font Mono";
-                color: whitesmoke;
-                font-size: 40px;
-                padding: 4px 10px;
-                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
-                border: 1px solid white;
-                border-radius: 20px;
-            }
-            "#,
-        );
+        provider.load_from_string(include_str!("../widget-layer.css"));
 
         gtk::style_context_add_provider_for_display(
             &gtk::gdk::Display::default().expect("Could not connect to a display."),

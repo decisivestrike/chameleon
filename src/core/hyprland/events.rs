@@ -1,5 +1,4 @@
-use std::{str::FromStr, time::Duration};
-
+use crate::core::hyprland::SOCK2_PATH;
 use anyhow::{anyhow, bail};
 use grapes::{
     service,
@@ -11,8 +10,7 @@ use grapes::{
     },
 };
 use log::{error, info, warn};
-
-use crate::core::hyprland::SOCK2_PATH;
+use std::{str::FromStr, time::Duration};
 
 /// (&str, HyprEvent variant, variant fields) -> HyprEvent
 macro_rules! event {
