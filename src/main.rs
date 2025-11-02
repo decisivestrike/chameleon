@@ -16,6 +16,24 @@ fn init_logger() {
 }
 
 fn build_ui(application: &gtk::Application) {
+    info!("Setup bar...");
+    if let Some(bar) = &CONFIG.bar
+        && bar.enabled
+    {
+        let (thickness, spacing) = if let Some(cfg) = &CONFIG.bar {
+            (cfg.thickness, cfg.spacing)
+        } else {
+            (None, 0)
+        };
+
+        for monitor in core::monitors().iter() {
+            let bar = Bar::new(application, monitor, thickness, spacing);
+
+            bar.present();
+        }
+    }
+
+    info!("Setup widgets...");
     if let Some(widgets) = &CONFIG.widgets
         && widgets.enabled
     {
@@ -43,15 +61,7 @@ fn build_ui(application: &gtk::Application) {
         }
     }
 
-    if let Some(bar) = &CONFIG.bar
-        && bar.enabled
-    {
-        for monitor in core::monitors().iter() {
-            let bar = Bar::new(application, monitor, Some(30));
-
-            bar.present();
-        }
-    }
+    info!("Ready!");
 }
 
 fn main() -> glib::ExitCode {

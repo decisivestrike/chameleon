@@ -8,6 +8,7 @@ lto = true
 
 [dependencies]
 anyhow = "1.0.100"
+chrono = "0.4.42"
 env_logger = "0.11.8"
 grapes = { path = "../grapes/grapes" }
 log = "0.4.28"

@@ -1,17 +1,12 @@
 /* Блюр настраивается через ваш композитор */
 
 * {
-    all: unset;
-    margin: 0px;
-    padding: 0px;
-    border: none;
-    border-radius: 0px;
     font-size: 15px;
     font-family: "GeistMono Nerd Font Propo";
     font-weight: 600;
 }
 
-window {
+#bar {
     border-top: 1px solid rgba(70, 71, 76, 0.3);
     background-color: rgba(18, 18, 25, 0.6);
 }

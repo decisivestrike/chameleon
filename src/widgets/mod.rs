@@ -9,6 +9,7 @@ use grapes::{
 };
 use layer_shell::{KeyboardMode, Layer, LayerShell};
 use log::{Level, info, log_enabled};
+use serde::Deserialize;
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
@@ -165,4 +166,10 @@ impl WidgetLayer {
 
         self.window.add_controller(motion_controller);
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WidgetsConfig {
+    #[serde(default)]
+    pub enabled: bool,
 }
