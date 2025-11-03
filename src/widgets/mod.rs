@@ -1,6 +1,7 @@
 use grapes::{
     gtk::{
-        self, ApplicationWindow, EventControllerKey, Fixed, Orientation, Widget,
+        self, ApplicationWindow, EventControllerKey, EventControllerMotion, Fixed, Orientation,
+        Widget,
         gdk::{self, Key},
         glib::clone,
         prelude::{GtkWindowExt, *},
@@ -31,7 +32,21 @@ impl WidgetLayer {
         let fixer = Fixed::new();
         window.set_child(Some(&fixer));
 
-        let layer = Self {
+        window.connect_realize(clone!(
+            #[strong]
+            fixer,
+            move |_| {
+                let mut child = fixer.first_child();
+                while let Some(widget) = child {
+                    let (x, y) = fixer.child_position(&widget);
+                    fixer.move_(&widget, x, y);
+
+                    child = widget.next_sibling();
+                }
+            }
+        ));
+
+        let widget_layer = Self {
             window,
             fixer,
             active_widget: Default::default(),
@@ -39,9 +54,9 @@ impl WidgetLayer {
             previous_mouse_positon: Default::default(),
         };
 
-        layer.setup(monitor);
+        widget_layer.setup(monitor);
 
-        layer
+        widget_layer
     }
 
     pub fn append(&self, widget: impl AsRef<Widget>, x: f64, y: f64) {
@@ -50,18 +65,30 @@ impl WidgetLayer {
 
         let motion_controller = gtk::EventControllerMotion::new();
 
-        motion_controller.connect_leave(clone!(
-            #[strong(rename_to=active_widget)]
-            self.active_widget,
-            move |_| *active_widget.borrow_mut() = None
-        ));
-
         motion_controller.connect_enter(clone!(
             #[strong(rename_to=active_widget)]
             self.active_widget,
             #[strong]
             wrapper,
-            move |_, _, _| *active_widget.borrow_mut() = Some(wrapper.clone().into())
+            move |_, _, _| {
+                let widget: Widget = wrapper.clone().into();
+
+                if log_enabled!(Level::Info) {
+                    let widget_name = widget.first_child().unwrap().widget_name();
+                    info!("Active widget: {widget_name}.",);
+                }
+
+                *active_widget.borrow_mut() = Some(widget);
+            }
+        ));
+
+        motion_controller.connect_leave(clone!(
+            #[strong(rename_to=active_widget)]
+            self.active_widget,
+            move |_| {
+                *active_widget.borrow_mut() = None;
+                info!("No active widget.");
+            }
         ));
 
         wrapper.add_controller(motion_controller);
@@ -130,16 +157,14 @@ impl WidgetLayer {
     }
 
     fn setup_motion_controller(&self) {
-        let motion_controller = gtk::EventControllerMotion::new();
-
-        motion_controller.connect_motion(clone!(
+        let motion_handler = clone!(
             #[strong(rename_to=previous_mouse_positon)]
             self.previous_mouse_positon,
             #[strong(rename_to=tracked_widget)]
             self.tracked_widget,
             #[strong(rename_to=fixer)]
             self.fixer,
-            move |_, mouse_x, mouse_y| {
+            move |_: &EventControllerMotion, mouse_x, mouse_y| {
                 let tracked = tracked_widget.borrow();
 
                 if let Some(widget) = tracked.as_ref() {
@@ -162,8 +187,10 @@ impl WidgetLayer {
 
                 previous_mouse_positon.set((mouse_x, mouse_y));
             }
-        ));
+        );
 
+        let motion_controller = EventControllerMotion::new();
+        motion_controller.connect_motion(motion_handler);
         self.window.add_controller(motion_controller);
     }
 }
