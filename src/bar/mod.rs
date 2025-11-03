@@ -1,6 +1,8 @@
 pub mod modules;
 
+use crate::bar::modules::clock::ClockConfig;
 use grapes::{
+    Component, WindowComponent,
     extensions::GrapesBoxExt,
     gtk::{
         self, ApplicationWindow, Orientation,
@@ -9,70 +11,96 @@ use grapes::{
     },
     layer_shell::{Edge, KeyboardMode, Layer, LayerShell},
 };
+use log::info;
 use serde::Deserialize;
-
-pub enum Position {
-    Top,
-    Right,
-    Bottom,
-    Left,
-}
-
-pub enum Placement {
-    Start,
-    Center,
-    End,
-}
 
 pub struct Bar {
     window: ApplicationWindow,
-    modules_start: gtk::Box,
-    modules_center: gtk::Box,
-    modules_end: gtk::Box,
+    left: gtk::Box,
+    center: gtk::Box,
+    right: gtk::Box,
 }
 
-impl Bar {
-    pub fn new(
-        application: &gtk::Application,
-        monitor: &gdk::Monitor,
-        thickness: Option<i32>,
-        spacing: i32,
-    ) -> Self {
+impl WindowComponent for Bar {
+    type Props = &'static BarConfig;
+
+    fn new(application: &gtk::Application, monitor: &gdk::Monitor, props: Self::Props) -> Self {
+        let BarConfig {
+            spacing,
+            thickness,
+            modules_left,
+            modules_center,
+            modules_right,
+            clock_config,
+            ..
+        } = props;
+
         let window = ApplicationWindow::new(application);
         let cb = gtk::CenterBox::new();
         window.set_child(Some(&cb));
 
-        let modules_start = gtk::Box::new(Orientation::Horizontal, spacing);
-        let modules_center = gtk::Box::new(Orientation::Horizontal, spacing);
-        let modules_end = gtk::Box::new(Orientation::Horizontal, spacing);
+        let left = gtk::Box::new(Orientation::Horizontal, *spacing);
+        let center = gtk::Box::new(Orientation::Horizontal, *spacing);
+        let right = gtk::Box::new(Orientation::Horizontal, *spacing);
 
-        cb.set_start_widget(Some(&modules_start));
-        cb.set_center_widget(Some(&modules_center));
-        cb.set_end_widget(Some(&modules_end));
+        cb.set_start_widget(Some(&left));
+        cb.set_center_widget(Some(&center));
+        cb.set_end_widget(Some(&right));
 
         let bar = Self {
             window,
-            modules_start,
-            modules_center,
-            modules_end,
+            left,
+            center,
+            right,
         };
 
-        bar.setup(monitor, thickness);
+        bar.setup(monitor, *thickness);
+
+        for maybe_module in modules_left.iter() {
+            let module = match maybe_module.as_str() {
+                "clock" => modules::Clock::new(clock_config),
+                _ => panic!("Undefined module: {maybe_module}"),
+            };
+
+            bar.add_module(module, Placement::Left);
+            info!("Added module to left bar group.");
+        }
+
+        for maybe_module in modules_center.iter() {
+            let module = match maybe_module.as_str() {
+                "clock" => modules::Clock::new(clock_config),
+                _ => panic!("Undefined module: {maybe_module}"),
+            };
+
+            bar.add_module(module, Placement::Center);
+            info!("Added module to center bar group.");
+        }
+
+        for maybe_module in modules_right.iter() {
+            let module = match maybe_module.as_str() {
+                "clock" => modules::Clock::new(clock_config),
+                _ => panic!("Undefined module: {maybe_module}"),
+            };
+
+            bar.add_module(module, Placement::Right);
+            info!("Added module to right bar group.");
+        }
 
         bar
     }
 
+    fn present(&self) {
+        self.window.present();
+    }
+}
+
+impl Bar {
     pub fn add_module(&self, module: impl AsRef<gtk::Widget>, placement: Placement) {
         match placement {
-            Placement::Start => self.modules_start.append_ref(module),
-            Placement::Center => self.modules_center.append_ref(module),
-            Placement::End => self.modules_end.append_ref(module),
+            Placement::Left => self.left.append_ref(module),
+            Placement::Center => self.center.append_ref(module),
+            Placement::Right => self.right.append_ref(module),
         }
-    }
-
-    /// This is almost an ordinary window, so it should be presented.
-    pub fn present(&self) {
-        self.window.present();
     }
 
     fn setup(&self, monitor: &gdk::Monitor, thickness: Option<i32>) {
@@ -106,19 +134,44 @@ impl Bar {
     }
 }
 
-#[derive(Debug, Deserialize)]
+pub enum Position {
+    Top,
+    Right,
+    Bottom,
+    Left,
+}
+
+pub enum Placement {
+    Left,
+    Center,
+    Right,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub enum BarLayer {
+    Background,
+    Bottom,
+    #[default]
+    Top,
+    Overlay,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(default)]
 pub struct BarConfig {
     #[serde(default)]
     pub enabled: bool,
     pub thickness: Option<i32>,
     #[serde(default)]
     pub spacing: i32,
-    #[serde(default)]
-    pub layer: String,
+    #[serde(default, rename = "layer")]
+    pub layer: BarLayer,
     #[serde(default)]
     pub modules_left: Vec<String>,
     #[serde(default)]
     pub modules_center: Vec<String>,
     #[serde(default)]
     pub modules_right: Vec<String>,
+    #[serde(default, rename = "clock")]
+    pub clock_config: ClockConfig,
 }

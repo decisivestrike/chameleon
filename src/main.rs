@@ -3,10 +3,13 @@ mod core;
 mod widgets;
 
 use crate::{bar::Bar, core::config::CONFIG, widgets::WidgetLayer};
-use grapes::gtk::{
-    self,
-    gdk::prelude::MonitorExt,
-    gio::prelude::{ApplicationExt, ApplicationExtManual},
+use grapes::{
+    WindowComponent,
+    gtk::{
+        self,
+        gdk::prelude::MonitorExt,
+        gio::prelude::{ApplicationExt, ApplicationExtManual},
+    },
 };
 use gtk::glib::{self};
 use log::info;
@@ -16,27 +19,19 @@ fn init_logger() {
 }
 
 fn build_ui(application: &gtk::Application) {
-    info!("Setup bar...");
-    if let Some(bar) = &CONFIG.bar
-        && bar.enabled
-    {
-        let (thickness, spacing) = if let Some(cfg) = &CONFIG.bar {
-            (cfg.thickness, cfg.spacing)
-        } else {
-            (None, 0)
-        };
+    if CONFIG.bar.enabled {
+        info!("Setup bar...");
 
         for monitor in core::monitors().iter() {
-            let bar = Bar::new(application, monitor, thickness, spacing);
+            let bar = Bar::new(application, monitor, &CONFIG.bar);
 
             bar.present();
         }
     }
 
-    info!("Setup widgets...");
-    if let Some(widgets) = &CONFIG.widgets
-        && widgets.enabled
-    {
+    if CONFIG.widgets.enabled {
+        info!("Setup widgets...");
+
         for monitor in core::monitors().iter() {
             let widget_layer = WidgetLayer::new(application, monitor);
 
@@ -73,7 +68,16 @@ fn main() -> glib::ExitCode {
 
     app.connect_startup(|_| {
         let provider = gtk::CssProvider::new();
-        provider.load_from_string(include_str!("../widget-layer.css"));
+        provider.load_from_path("widget-layer.css");
+
+        gtk::style_context_add_provider_for_display(
+            &gtk::gdk::Display::default().expect("Could not connect to a display."),
+            &provider,
+            gtk::STYLE_PROVIDER_PRIORITY_USER,
+        );
+
+        let provider = gtk::CssProvider::new();
+        provider.load_from_path("style.css");
 
         gtk::style_context_add_provider_for_display(
             &gtk::gdk::Display::default().expect("Could not connect to a display."),

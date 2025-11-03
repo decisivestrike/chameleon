@@ -6,8 +6,10 @@ pub static CONFIG: LazyLock<Config> = LazyLock::new(|| Config::read());
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub widgets: Option<WidgetsConfig>,
-    pub bar: Option<BarConfig>,
+    #[serde(default, rename = "widgets")]
+    pub widgets: WidgetsConfig,
+    #[serde(default, rename = "bar")]
+    pub bar: BarConfig,
 }
 
 impl Config {
@@ -19,9 +21,9 @@ impl Config {
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct Battery {
-    pub icons: Vec<String>,
-    pub name: String,
-    pub format: String,
-}
+// #[derive(Debug, Deserialize)]
+// pub struct Battery {
+//     pub icons: Vec<String>,
+//     pub name: String,
+//     pub format: String,
+// }

@@ -3,17 +3,15 @@ enabled = true
 
 [bar]
 enabled = true
-thickness = 10
-# position = "top"
-# layer = "top"
-# modules_left = ["workspaces"]
-# modules_center = []
-# modules_right = ["battery", "clock"]
+thickness = 30
+modules_left = ["clock"]
+modules_center = ["clock"]
+modules_right = ["clock"]
 
 # [bar.battery]
 # icons = ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
 # name = "BAT1"
 # format = "{icon} {charge}%"
 
-# [bar.clock]
-# format = "%a %e %b %H:%M"
+[bar.clock]
+format = "%a %e %b %H:%M"

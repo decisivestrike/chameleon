@@ -1,8 +1,6 @@
 mod events;
 mod workspace;
 
-pub use events::HyprlandService;
-
 use anyhow::Result;
 use grapes::tokio::{
     io::{AsyncReadExt, AsyncWriteExt},

@@ -5,7 +5,6 @@ use grapes::{
     tokio::{
         io::{AsyncBufReadExt, BufReader},
         net::UnixStream,
-        sync::broadcast::Sender,
         time::sleep,
     },
 };
@@ -73,8 +72,7 @@ impl FromStr for HyprEvent {
     }
 }
 
-#[service(HyprlandService)]
-async fn listen_events(sender: Sender<HyprEvent>) {
+service!(HyprlandService -> HyprEvent, async |tx| {
     let backoff = Duration::from_millis(200);
 
     loop {
@@ -113,7 +111,7 @@ async fn listen_events(sender: Sender<HyprEvent>) {
                 }
             };
 
-            if let Err(e) = sender.send(event) {
+            if let Err(e) = tx.send(event) {
                 warn!("broadcast closed (no receivers): {e}");
                 return;
             }
@@ -121,4 +119,4 @@ async fn listen_events(sender: Sender<HyprEvent>) {
 
         sleep(backoff).await;
     }
-}
+});
