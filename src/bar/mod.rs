@@ -26,13 +26,15 @@ impl WindowComponent for Bar {
 
     fn new(application: &gtk::Application, monitor: &gdk::Monitor, props: Self::Props) -> Self {
         let BarConfig {
+            enabled: _,
             spacing,
             thickness,
+            layer,
             modules_left,
             modules_center,
             modules_right,
             clock_config,
-            ..
+            position,
         } = props;
 
         let window = ApplicationWindow::new(application);
@@ -54,7 +56,7 @@ impl WindowComponent for Bar {
             right,
         };
 
-        bar.setup(monitor, *thickness);
+        bar.setup(monitor, *thickness, layer, &position);
 
         for maybe_module in modules_left.iter() {
             let module = match maybe_module.as_str() {
@@ -62,7 +64,7 @@ impl WindowComponent for Bar {
                 _ => panic!("Undefined module: {maybe_module}"),
             };
 
-            bar.add_module(module, Placement::Left);
+            bar.add_module(module, ModulePlacement::Left);
             info!("Added module to left bar group.");
         }
 
@@ -72,7 +74,7 @@ impl WindowComponent for Bar {
                 _ => panic!("Undefined module: {maybe_module}"),
             };
 
-            bar.add_module(module, Placement::Center);
+            bar.add_module(module, ModulePlacement::Center);
             info!("Added module to center bar group.");
         }
 
@@ -82,7 +84,7 @@ impl WindowComponent for Bar {
                 _ => panic!("Undefined module: {maybe_module}"),
             };
 
-            bar.add_module(module, Placement::Right);
+            bar.add_module(module, ModulePlacement::Right);
             info!("Added module to right bar group.");
         }
 
@@ -95,15 +97,21 @@ impl WindowComponent for Bar {
 }
 
 impl Bar {
-    pub fn add_module(&self, module: impl AsRef<gtk::Widget>, placement: Placement) {
+    pub fn add_module(&self, module: impl AsRef<gtk::Widget>, placement: ModulePlacement) {
         match placement {
-            Placement::Left => self.left.append_ref(module),
-            Placement::Center => self.center.append_ref(module),
-            Placement::Right => self.right.append_ref(module),
+            ModulePlacement::Left => self.left.append_ref(module),
+            ModulePlacement::Center => self.center.append_ref(module),
+            ModulePlacement::Right => self.right.append_ref(module),
         }
     }
 
-    fn setup(&self, monitor: &gdk::Monitor, thickness: Option<i32>) {
+    fn setup(
+        &self,
+        monitor: &gdk::Monitor,
+        thickness: Option<i32>,
+        layer: &BarLayer,
+        position: &BarPosition,
+    ) {
         let window = &self.window;
 
         window.init_layer_shell();
@@ -123,36 +131,73 @@ impl Bar {
             window.auto_exclusive_zone_enable();
         }
 
-        window.set_layer(Layer::Top);
+        window.set_layer(match layer {
+            BarLayer::Background => Layer::Background,
+            BarLayer::Bottom => Layer::Bottom,
+            BarLayer::Top => Layer::Top,
+            BarLayer::Overlay => Layer::Overlay,
+        });
 
-        window.set_anchor(Edge::Top, true);
-        window.set_anchor(Edge::Right, true);
-        // window.set_anchor(Edge::Bottom, true);
-        window.set_anchor(Edge::Left, true);
+        match position {
+            BarPosition::Top => {
+                window.set_anchor(Edge::Top, true);
+                window.set_anchor(Edge::Right, true);
+                window.set_anchor(Edge::Bottom, false);
+                window.set_anchor(Edge::Left, true);
+            }
+            BarPosition::Right => {
+                window.set_anchor(Edge::Top, true);
+                window.set_anchor(Edge::Right, true);
+                window.set_anchor(Edge::Bottom, true);
+                window.set_anchor(Edge::Left, false);
+            }
+            BarPosition::Bottom => {
+                window.set_anchor(Edge::Top, false);
+                window.set_anchor(Edge::Right, true);
+                window.set_anchor(Edge::Bottom, true);
+                window.set_anchor(Edge::Left, true);
+            }
+            BarPosition::Left => {
+                window.set_anchor(Edge::Top, true);
+                window.set_anchor(Edge::Right, false);
+                window.set_anchor(Edge::Bottom, true);
+                window.set_anchor(Edge::Left, true);
+            }
+        }
 
         window.set_monitor(Some(monitor));
     }
 }
 
-pub enum Position {
-    Top,
-    Right,
-    Bottom,
-    Left,
-}
-
-pub enum Placement {
+pub enum ModulePlacement {
     Left,
     Center,
     Right,
 }
 
 #[derive(Debug, Default, Deserialize)]
-pub enum BarLayer {
-    Background,
-    Bottom,
+pub enum BarPosition {
+    #[serde(rename = "top")]
     #[default]
     Top,
+    #[serde(rename = "right")]
+    Right,
+    #[serde(rename = "bottom")]
+    Bottom,
+    #[serde(rename = "left")]
+    Left,
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub enum BarLayer {
+    #[serde(rename = "background")]
+    Background,
+    #[serde(rename = "bottom")]
+    Bottom,
+    #[serde(rename = "top")]
+    #[default]
+    Top,
+    #[serde(rename = "overlay")]
     Overlay,
 }
 
@@ -161,10 +206,12 @@ pub enum BarLayer {
 pub struct BarConfig {
     #[serde(default)]
     pub enabled: bool,
+    #[serde(default)]
+    pub position: BarPosition,
     pub thickness: Option<i32>,
     #[serde(default)]
     pub spacing: i32,
-    #[serde(default, rename = "layer")]
+    #[serde(default)]
     pub layer: BarLayer,
     #[serde(default)]
     pub modules_left: Vec<String>,

@@ -3,9 +3,9 @@ enabled = true
 
 [bar]
 enabled = true
-thickness = 30
-modules_left = ["clock"]
-modules_center = ["clock"]
+position = "bottom"
+modules_left = []
+modules_center = []
 modules_right = ["clock"]
 
 # [bar.battery]

@@ -1,4 +1,5 @@
 use crate::{bar::BarConfig, widgets::WidgetsConfig};
+use log::error;
 use serde::Deserialize;
 use std::sync::LazyLock;
 
@@ -14,10 +15,21 @@ pub struct Config {
 
 impl Config {
     pub fn read() -> Self {
-        let toml_str = std::fs::read_to_string("chameleon.toml").unwrap();
-        let config: Config = toml::from_str(&toml_str).unwrap();
+        let toml_str = match std::fs::read_to_string("chameleon.toml") {
+            Ok(file) => file,
+            Err(e) => {
+                error!("Can't open config. {e}");
+                std::process::exit(-1);
+            }
+        };
 
-        config
+        match toml::from_str(&toml_str) {
+            Ok(config) => config,
+            Err(e) => {
+                error!("{e}");
+                std::process::exit(-1);
+            }
+        }
     }
 }
 
