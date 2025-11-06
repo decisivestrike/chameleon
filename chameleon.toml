@@ -1,17 +1,17 @@
 [widgets]
 enabled = true
 
-[bar]
+[taskbar]
 enabled = true
 position = "bottom"
 modules_left = []
 modules_center = []
 modules_right = ["clock"]
 
-# [bar.battery]
-# icons = ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
-# name = "BAT1"
-# format = "{icon} {charge}%"
+[taskbar.battery]
+icons = ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
+name = "BAT1"
+format = "{icon} {charge}%"
 
-[bar.clock]
+[taskbar.clock]
 format = "%a %e %b %H:%M"

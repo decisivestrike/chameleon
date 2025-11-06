@@ -16,6 +16,8 @@ pub struct Clock {
 }
 
 impl Component for Clock {
+    const NAME: &str = "clock";
+
     type Message = DateTime<Local>;
     type Props = &'static ClockConfig;
 

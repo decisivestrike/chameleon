@@ -1,6 +1,7 @@
 pub mod modules;
 
-use crate::bar::modules::clock::ClockConfig;
+use crate::bar::modules::{Battery, Clock, battery::BatteryConfig, clock::ClockConfig};
+use anyhow::{Result, anyhow};
 use grapes::{
     Component, WindowComponent,
     extensions::GrapesBoxExt,
@@ -11,39 +12,29 @@ use grapes::{
     },
     layer_shell::{Edge, KeyboardMode, Layer, LayerShell},
 };
-use log::info;
+use log::{info, warn};
 use serde::Deserialize;
+use std::fmt;
 
 pub struct Bar {
     window: ApplicationWindow,
     left: gtk::Box,
     center: gtk::Box,
     right: gtk::Box,
+    config: &'static BarConfig,
 }
 
 impl WindowComponent for Bar {
     type Props = &'static BarConfig;
 
-    fn new(application: &gtk::Application, monitor: &gdk::Monitor, props: Self::Props) -> Self {
-        let BarConfig {
-            enabled: _,
-            spacing,
-            thickness,
-            layer,
-            modules_left,
-            modules_center,
-            modules_right,
-            clock_config,
-            position,
-        } = props;
-
+    fn new(application: &gtk::Application, monitor: &gdk::Monitor, config: Self::Props) -> Self {
         let window = ApplicationWindow::new(application);
         let cb = gtk::CenterBox::new();
         window.set_child(Some(&cb));
 
-        let left = gtk::Box::new(Orientation::Horizontal, *spacing);
-        let center = gtk::Box::new(Orientation::Horizontal, *spacing);
-        let right = gtk::Box::new(Orientation::Horizontal, *spacing);
+        let left = gtk::Box::new(Orientation::Horizontal, config.spacing);
+        let center = gtk::Box::new(Orientation::Horizontal, config.spacing);
+        let right = gtk::Box::new(Orientation::Horizontal, config.spacing);
 
         cb.set_start_widget(Some(&left));
         cb.set_center_widget(Some(&center));
@@ -54,39 +45,28 @@ impl WindowComponent for Bar {
             left,
             center,
             right,
+            config,
         };
 
-        bar.setup(monitor, *thickness, layer, &position);
+        bar.setup(monitor);
 
-        for maybe_module in modules_left.iter() {
-            let module = match maybe_module.as_str() {
-                "clock" => modules::Clock::new(clock_config),
-                _ => panic!("Undefined module: {maybe_module}"),
-            };
+        let all_modules = [
+            (&config.modules_left, ModulePlacement::Left),
+            (&config.modules_center, ModulePlacement::Center),
+            (&config.modules_right, ModulePlacement::Right),
+        ];
 
-            bar.add_module(module, ModulePlacement::Left);
-            info!("Added module to left bar group.");
-        }
-
-        for maybe_module in modules_center.iter() {
-            let module = match maybe_module.as_str() {
-                "clock" => modules::Clock::new(clock_config),
-                _ => panic!("Undefined module: {maybe_module}"),
-            };
-
-            bar.add_module(module, ModulePlacement::Center);
-            info!("Added module to center bar group.");
-        }
-
-        for maybe_module in modules_right.iter() {
-            let module = match maybe_module.as_str() {
-                "clock" => modules::Clock::new(clock_config),
-                _ => panic!("Undefined module: {maybe_module}"),
-            };
-
-            bar.add_module(module, ModulePlacement::Right);
-            info!("Added module to right bar group.");
-        }
+        all_modules.into_iter().for_each(|(modules, placement)| {
+            for maybe_module in modules.iter() {
+                match Bar::parse_module(&maybe_module, config) {
+                    Ok(module) => {
+                        bar.add_module(&module, &placement);
+                        info!("Added {} to {placement} bar group.", module.name());
+                    }
+                    Err(e) => warn!("{e}"),
+                }
+            }
+        });
 
         bar
     }
@@ -97,7 +77,7 @@ impl WindowComponent for Bar {
 }
 
 impl Bar {
-    pub fn add_module(&self, module: impl AsRef<gtk::Widget>, placement: ModulePlacement) {
+    pub fn add_module(&self, module: impl AsRef<gtk::Widget>, placement: &ModulePlacement) {
         match placement {
             ModulePlacement::Left => self.left.append_ref(module),
             ModulePlacement::Center => self.center.append_ref(module),
@@ -105,13 +85,24 @@ impl Bar {
         }
     }
 
-    fn setup(
-        &self,
-        monitor: &gdk::Monitor,
-        thickness: Option<i32>,
-        layer: &BarLayer,
-        position: &BarPosition,
-    ) {
+    fn parse_module(module_name: &String, bar_config: &'static BarConfig) -> Result<BarModule> {
+        match module_name.as_str() {
+            "clock" => {
+                let clock = Clock::new(&bar_config.clock_config);
+                Ok(BarModule::Clock(clock))
+            }
+            "battery" => {
+                let battery = Battery::new(&bar_config.battery_config);
+                Ok(BarModule::Battery(battery))
+            }
+            undefined_module_name => {
+                let e = anyhow!("Undefined module: {undefined_module_name}");
+                Err(e)
+            }
+        }
+    }
+
+    fn setup(&self, monitor: &gdk::Monitor) {
         let window = &self.window;
 
         window.init_layer_shell();
@@ -124,19 +115,27 @@ impl Bar {
 
         window.set_keyboard_mode(KeyboardMode::OnDemand);
 
-        if let Some(thickness) = thickness {
+        if let Some(thickness) = self.config.thickness {
             window.set_default_height(thickness);
             window.set_exclusive_zone(thickness);
         } else {
             window.auto_exclusive_zone_enable();
         }
 
-        window.set_layer(match layer {
+        window.set_layer(match self.config.layer {
             BarLayer::Background => Layer::Background,
             BarLayer::Bottom => Layer::Bottom,
             BarLayer::Top => Layer::Top,
             BarLayer::Overlay => Layer::Overlay,
         });
+
+        self.set_position(&self.config.position);
+
+        window.set_monitor(Some(monitor));
+    }
+
+    fn set_position(&self, position: &BarPosition) {
+        let window = &self.window;
 
         match position {
             BarPosition::Top => {
@@ -164,15 +163,51 @@ impl Bar {
                 window.set_anchor(Edge::Left, true);
             }
         }
-
-        window.set_monitor(Some(monitor));
     }
 }
 
+pub enum BarModule {
+    Clock(Clock),
+    Battery(Battery),
+}
+
+impl BarModule {
+    pub fn name(&self) -> &str {
+        match self {
+            BarModule::Clock(clock) => clock.name(),
+            BarModule::Battery(battery) => battery.name(),
+        }
+    }
+}
+
+impl AsRef<gtk::Widget> for BarModule {
+    fn as_ref(&self) -> &gtk::Widget {
+        match self {
+            BarModule::Clock(clock) => clock.as_ref(),
+            BarModule::Battery(battery) => battery.as_ref(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum ModulePlacement {
     Left,
     Center,
     Right,
+}
+
+impl fmt::Display for ModulePlacement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                ModulePlacement::Left => "left",
+                ModulePlacement::Center => "center",
+                ModulePlacement::Right => "right",
+            }
+        )
+    }
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -221,4 +256,6 @@ pub struct BarConfig {
     pub modules_right: Vec<String>,
     #[serde(default, rename = "clock")]
     pub clock_config: ClockConfig,
+    #[serde(default, rename = "battery")]
+    pub battery_config: BatteryConfig,
 }
