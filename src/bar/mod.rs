@@ -1,7 +1,10 @@
+pub mod config;
 pub mod modules;
 
-use crate::bar::modules::{Battery, Clock, battery::BatteryConfig, clock::ClockConfig};
-use anyhow::{Result, anyhow};
+use crate::bar::{
+    config::{BarLayer, BarModule, BarPosition, ModulePlacement},
+    modules::{Battery, Clock},
+};
 use grapes::{
     Component, WindowComponent,
     extensions::GrapesBoxExt,
@@ -12,20 +15,18 @@ use grapes::{
     },
     layer_shell::{Edge, KeyboardMode, Layer, LayerShell},
 };
-use log::{info, warn};
-use serde::Deserialize;
-use std::fmt;
+use log::info;
 
 pub struct Bar {
     window: ApplicationWindow,
     left: gtk::Box,
     center: gtk::Box,
     right: gtk::Box,
-    config: &'static BarConfig,
+    config: &'static config::BarConfig,
 }
 
 impl WindowComponent for Bar {
-    type Props = &'static BarConfig;
+    type Props = &'static config::BarConfig;
 
     fn new(application: &gtk::Application, monitor: &gdk::Monitor, config: Self::Props) -> Self {
         let window = ApplicationWindow::new(application);
@@ -56,17 +57,22 @@ impl WindowComponent for Bar {
             (&config.modules_right, ModulePlacement::Right),
         ];
 
-        all_modules.into_iter().for_each(|(modules, placement)| {
-            for maybe_module in modules.iter() {
-                match Bar::parse_module(&maybe_module, config) {
-                    Ok(module) => {
-                        bar.add_module(&module, &placement);
-                        info!("Added {} to {placement} bar group.", module.name());
+        for (modules, placement) in all_modules {
+            for name in modules {
+                match name {
+                    BarModule::Clock => {
+                        let clock = Clock::new(&config.clock_config);
+                        bar.add_module(clock, &placement)
                     }
-                    Err(e) => warn!("{e}"),
-                }
+                    BarModule::Battery => {
+                        let battery = Battery::new(&config.battery_config);
+                        bar.add_module(battery, &placement)
+                    }
+                };
+
+                info!("Added {name} to {placement} bar group.");
             }
-        });
+        }
 
         bar
     }
@@ -82,23 +88,6 @@ impl Bar {
             ModulePlacement::Left => self.left.append_ref(module),
             ModulePlacement::Center => self.center.append_ref(module),
             ModulePlacement::Right => self.right.append_ref(module),
-        }
-    }
-
-    fn parse_module(module_name: &String, bar_config: &'static BarConfig) -> Result<BarModule> {
-        match module_name.as_str() {
-            "clock" => {
-                let clock = Clock::new(&bar_config.clock_config);
-                Ok(BarModule::Clock(clock))
-            }
-            "battery" => {
-                let battery = Battery::new(&bar_config.battery_config);
-                Ok(BarModule::Battery(battery))
-            }
-            undefined_module_name => {
-                let e = anyhow!("Undefined module: {undefined_module_name}");
-                Err(e)
-            }
         }
     }
 
@@ -164,98 +153,4 @@ impl Bar {
             }
         }
     }
-}
-
-pub enum BarModule {
-    Clock(Clock),
-    Battery(Battery),
-}
-
-impl BarModule {
-    pub fn name(&self) -> &str {
-        match self {
-            BarModule::Clock(clock) => clock.name(),
-            BarModule::Battery(battery) => battery.name(),
-        }
-    }
-}
-
-impl AsRef<gtk::Widget> for BarModule {
-    fn as_ref(&self) -> &gtk::Widget {
-        match self {
-            BarModule::Clock(clock) => clock.as_ref(),
-            BarModule::Battery(battery) => battery.as_ref(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum ModulePlacement {
-    Left,
-    Center,
-    Right,
-}
-
-impl fmt::Display for ModulePlacement {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                ModulePlacement::Left => "left",
-                ModulePlacement::Center => "center",
-                ModulePlacement::Right => "right",
-            }
-        )
-    }
-}
-
-#[derive(Debug, Default, Deserialize)]
-pub enum BarPosition {
-    #[serde(rename = "top")]
-    #[default]
-    Top,
-    #[serde(rename = "right")]
-    Right,
-    #[serde(rename = "bottom")]
-    Bottom,
-    #[serde(rename = "left")]
-    Left,
-}
-
-#[derive(Debug, Default, Deserialize)]
-pub enum BarLayer {
-    #[serde(rename = "background")]
-    Background,
-    #[serde(rename = "bottom")]
-    Bottom,
-    #[serde(rename = "top")]
-    #[default]
-    Top,
-    #[serde(rename = "overlay")]
-    Overlay,
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
-pub struct BarConfig {
-    #[serde(default)]
-    pub enabled: bool,
-    #[serde(default)]
-    pub position: BarPosition,
-    pub thickness: Option<i32>,
-    #[serde(default)]
-    pub spacing: i32,
-    #[serde(default)]
-    pub layer: BarLayer,
-    #[serde(default)]
-    pub modules_left: Vec<String>,
-    #[serde(default)]
-    pub modules_center: Vec<String>,
-    #[serde(default)]
-    pub modules_right: Vec<String>,
-    #[serde(default, rename = "clock")]
-    pub clock_config: ClockConfig,
-    #[serde(default, rename = "battery")]
-    pub battery_config: BatteryConfig,
 }

@@ -8,7 +8,7 @@ use grapes::{
 use serde::Deserialize;
 use std::time::Duration;
 
-#[derive(Clone, GtkCompatible)]
+#[derive(Clone, Debug, GtkCompatible)]
 pub struct Clock {
     #[root]
     label: gtk::Label,

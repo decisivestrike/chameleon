@@ -1,4 +1,4 @@
-use crate::{bar::BarConfig, widgets::WidgetsConfig};
+use crate::{bar::config::BarConfig, widgets::WidgetsConfig};
 use log::error;
 use serde::Deserialize;
 use std::sync::LazyLock;

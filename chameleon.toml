@@ -6,7 +6,7 @@ enabled = true
 position = "bottom"
 modules_left = []
 modules_center = []
-modules_right = ["clock"]
+modules_right = ["battery", "clock"]
 
 [taskbar.battery]
 icons = ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
