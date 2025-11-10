@@ -3,6 +3,7 @@ use std::fmt;
 use crate::bar::modules::{battery::BatteryConfig, clock::ClockConfig};
 use serde::Deserialize;
 
+/// All taskbar modules
 #[derive(Debug, Deserialize)]
 pub enum BarModule {
     #[serde(rename = "clock")]
@@ -24,6 +25,7 @@ impl fmt::Display for BarModule {
     }
 }
 
+/// Placement on taskbar
 #[derive(Debug)]
 pub enum ModulePlacement {
     Left,

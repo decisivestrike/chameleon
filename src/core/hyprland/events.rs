@@ -1,4 +1,4 @@
-use crate::core::hyprland::SOCK2_PATH;
+use crate::core::hyprland::TX_SOCK;
 use anyhow::{anyhow, bail};
 use grapes::{
     service,
@@ -76,13 +76,13 @@ service!(HyprlandService -> HyprEvent, async |tx| {
     let backoff = Duration::from_millis(200);
 
     loop {
-        let stream = match UnixStream::connect(&*SOCK2_PATH).await {
+        let stream = match UnixStream::connect(&*TX_SOCK).await {
             Ok(s) => {
-                info!("connected to {:?}", SOCK2_PATH);
+                info!("connected to {:?}", TX_SOCK);
                 s
             }
             Err(e) => {
-                error!("connect {:?} failed: {e}", SOCK2_PATH);
+                error!("connect {:?} failed: {e}", TX_SOCK);
                 sleep(backoff).await;
                 continue;
             }

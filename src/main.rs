@@ -2,23 +2,31 @@ mod bar;
 mod core;
 mod widgets;
 
-use crate::{bar::Bar, core::config::CONFIG, widgets::WidgetLayer};
+use crate::{
+    bar::Bar,
+    core::{cli::Args, config::CONFIG},
+    widgets::WidgetLayer,
+};
+use clap::Parser;
 use grapes::{
     WindowComponent,
+    glib::{self, ExitCode},
     gtk::{
         self,
         gdk::prelude::MonitorExt,
-        gio::prelude::{ApplicationExt, ApplicationExtManual},
+        gio::{
+            ApplicationFlags,
+            prelude::{ApplicationExt, ApplicationExtManual},
+        },
     },
 };
-use gtk::glib::{self};
 use log::info;
 
 fn init_logger() {
     env_logger::builder().format_timestamp(None).init();
 }
 
-fn build_ui(application: &gtk::Application) {
+fn on_activate(application: &gtk::Application) {
     if CONFIG.bar.enabled {
         info!("Setup bar...");
 
@@ -59,14 +67,8 @@ fn build_ui(application: &gtk::Application) {
     info!("Ready!");
 }
 
-fn main() -> glib::ExitCode {
-    init_logger();
-
-    let app = gtk::Application::builder()
-        .application_id("decisivestrike.chameleon")
-        .build();
-
-    app.connect_startup(|_| {
+fn load_css(style_path: &str) {
+    if CONFIG.widgets.enabled {
         let provider = gtk::CssProvider::new();
         provider.load_from_path("widget-layer.css");
 
@@ -75,18 +77,35 @@ fn main() -> glib::ExitCode {
             &provider,
             gtk::STYLE_PROVIDER_PRIORITY_USER,
         );
+    }
 
-        let provider = gtk::CssProvider::new();
-        provider.load_from_path("style.css");
+    let provider = gtk::CssProvider::new();
+    provider.load_from_path(style_path);
 
-        gtk::style_context_add_provider_for_display(
-            &gtk::gdk::Display::default().expect("Could not connect to a display."),
-            &provider,
-            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-        );
+    gtk::style_context_add_provider_for_display(
+        &gtk::gdk::Display::default().expect("Could not connect to a display."),
+        &provider,
+        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
+}
+
+fn main() -> glib::ExitCode {
+    let Args { config, style } = Args::parse();
+
+    init_logger();
+
+    let app = gtk::Application::builder()
+        .application_id("decisivestrike.chameleon")
+        .flags(ApplicationFlags::HANDLES_COMMAND_LINE)
+        .build();
+
+    app.connect_command_line(|app, _| {
+        app.activate();
+        ExitCode::SUCCESS
     });
 
-    app.connect_activate(|app| build_ui(app));
+    app.connect_startup(move |_| load_css(&style));
+    app.connect_activate(on_activate);
 
     app.run()
 }
