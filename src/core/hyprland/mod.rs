@@ -8,19 +8,24 @@ use grapes::tokio::{
 };
 use std::{env::var, sync::LazyLock};
 
-pub static XDG_RUNTIME_DIR: LazyLock<String> =
-    LazyLock::new(|| var("XDG_RUNTIME_DIR").expect("Hyprland doesnt work"));
-
-pub static HIS: LazyLock<String> = LazyLock::new(|| {
-    var("HYPRLAND_INSTANCE_SIGNATURE").expect("HYPRLAND_INSTANCE_SIGNATURE doesnt exist")
+pub static XDG_RUNTIME_DIR: LazyLock<String> = LazyLock::new(|| {
+    var("XDG_RUNTIME_DIR").expect("XDG_RUNTIME_DIR not set — not in a desktop session?")
 });
 
+/// Hyprland instance signature
+pub static HIS: LazyLock<String> = LazyLock::new(|| {
+    var("HYPRLAND_INSTANCE_SIGNATURE").expect("Not running inside a Hyprland session")
+});
+
+/// Socket for listening events
+///
+/// `$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock`
 pub static TX_SOCK: LazyLock<String> =
     LazyLock::new(|| format!("{}/hypr/{}/.socket2.sock", *XDG_RUNTIME_DIR, *HIS));
 
 /// Socket for sending commands
 ///
-/// `$XDG_RUNTIME_DIR/hypr/$HIS/.socket.sock`
+/// `$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket.sock`
 pub static RX_SOCK: LazyLock<String> =
     LazyLock::new(|| format!("{}/hypr/{}/.socket.sock", *XDG_RUNTIME_DIR, *HIS));
 
