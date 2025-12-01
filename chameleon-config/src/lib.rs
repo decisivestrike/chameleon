@@ -6,11 +6,9 @@ pub use widgets::Widgets;
 
 use log::error;
 use serde::Deserialize;
-use std::sync::LazyLock;
+use std::{fmt, path::Path, sync::OnceLock};
 
-const CONFIG_PATH: &str = "chameleon.toml"; // remove it
-
-pub static CONFIG: LazyLock<Config> = LazyLock::new(|| Config::read());
+pub static CONFIG: OnceLock<Config> = OnceLock::new();
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -21,21 +19,28 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn read() -> Self {
-        let toml_str = match std::fs::read_to_string(CONFIG_PATH) {
+    pub fn init<P>(path: P)
+    where
+        P: AsRef<Path> + fmt::Debug,
+    {
+        let toml_str = match std::fs::read_to_string(&path) {
             Ok(file) => file,
             Err(e) => {
-                error!("Can't open config. {e}");
+                error!("Failed to open config file at {path:?}. {e}");
                 std::process::exit(-1);
             }
         };
 
         match toml::from_str(&toml_str) {
-            Ok(config) => config,
+            Ok(config) => CONFIG.get_or_init(|| config),
             Err(e) => {
                 error!("{e}");
                 std::process::exit(-1);
             }
-        }
+        };
+    }
+
+    pub fn as_ref() -> &'static Self {
+        CONFIG.get_or_init(|| unreachable!())
     }
 }

@@ -4,5 +4,6 @@
     margin: 0px;
     padding: 0px;
     border: none;
-    background-color: rgba(0, 0, 0, 0.0);
+    color: transparent;
+    background-color: transparent;
 }

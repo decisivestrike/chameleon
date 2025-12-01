@@ -2,11 +2,14 @@ mod bar;
 mod core;
 mod widgets;
 
+use std::path::Path;
+
 use crate::{bar::Bar, core::cli::Args, widgets::WidgetLayer};
-use chameleon_configuration::CONFIG;
+use chameleon_config::Config;
 use clap::Parser;
 use grapes::{
-    WindowComponent,
+    Css, WindowComponent,
+    css::StylePriority,
     glib::{self, ExitCode},
     gtk::{
         self,
@@ -24,17 +27,17 @@ fn init_logger() {
 }
 
 fn on_activate(application: &gtk::Application) {
-    if CONFIG.bar.enabled {
+    if Config::as_ref().bar.enabled {
         info!("Setup bar...");
 
         for monitor in core::monitors().iter() {
-            let bar = Bar::new(application, monitor, &CONFIG.bar);
+            let bar = Bar::new(application, monitor, &Config::as_ref().bar);
 
             bar.present();
         }
     }
 
-    if CONFIG.widgets.enabled {
+    if Config::as_ref().widgets.enabled {
         info!("Setup widgets...");
 
         for monitor in core::monitors().iter() {
@@ -64,36 +67,24 @@ fn on_activate(application: &gtk::Application) {
     info!("Ready!");
 }
 
-fn load_css(style_path: &str) {
-    if CONFIG.widgets.enabled {
-        let provider = gtk::CssProvider::new();
-        provider.load_from_path("widget-layer.css");
+fn load_styles(style_path: impl AsRef<Path>) {
+    Css::load(style_path).apply(StylePriority::Application);
 
-        gtk::style_context_add_provider_for_display(
-            &gtk::gdk::Display::default()
-                .expect("Could not connect to a display."),
-            &provider,
-            gtk::STYLE_PROVIDER_PRIORITY_USER,
-        );
+    if Config::as_ref().widgets.enabled {
+        Css::from_str(include_str!("../../styles/widget-layer.css"))
+            .apply(StylePriority::User);
     }
-
-    let provider = gtk::CssProvider::new();
-    provider.load_from_path(style_path);
-
-    gtk::style_context_add_provider_for_display(
-        &gtk::gdk::Display::default().expect("Could not connect to a display."),
-        &provider,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
 }
 
 fn main() -> glib::ExitCode {
+    init_logger();
+
     let Args {
         config_path,
         style_path,
-    } = Args::parse();
+    } = argh::from_env();
 
-    init_logger();
+    Config::init(config_path);
 
     let app = gtk::Application::builder()
         .application_id("decisivestrike.chameleon")
@@ -105,7 +96,7 @@ fn main() -> glib::ExitCode {
         ExitCode::SUCCESS
     });
 
-    app.connect_startup(move |_| load_css(&style_path));
+    app.connect_startup(move |_| load_styles(&style_path));
     app.connect_activate(on_activate);
 
     app.run()

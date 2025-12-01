@@ -1,7 +1,7 @@
 pub mod modules;
 
 use crate::bar::modules::{Battery, Clock};
-use chameleon_configuration as config;
+use chameleon_config as config;
 use config::bar::{Layer as BarLayer, Module, ModulePlacement, Position};
 use grapes::{
     Component, WindowComponent,

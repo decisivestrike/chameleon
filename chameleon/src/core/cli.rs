@@ -1,11 +1,31 @@
-use clap::Parser;
+use std::{env::home_dir, path::PathBuf};
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
+fn default_config_path() -> PathBuf {
+    home_dir().unwrap().join(".config/chameleon/config.toml")
+}
+
+fn default_styles_path() -> PathBuf {
+    home_dir().unwrap().join(".config/chameleon/styles.css")
+}
+
+use argh::FromArgs;
+
+#[derive(FromArgs)]
+#[argh(description = "🦎 Highly customizable Wayland shell")]
 pub struct Args {
-    #[arg(short, long, default_value = "chameleon.toml")]
-    pub config_path: String,
+    #[argh(
+        option,
+        short = 'c',
+        default = "default_config_path()",
+        description = "config path"
+    )]
+    pub config_path: PathBuf,
 
-    #[arg(short, long, default_value = "style.css")]
-    pub style_path: String,
+    #[argh(
+        option,
+        short = 's',
+        default = "default_styles_path()",
+        description = "styles path"
+    )]
+    pub style_path: PathBuf,
 }

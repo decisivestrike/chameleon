@@ -14,4 +14,5 @@ clap = { version = "4.5.51", features = ["derive"] }
 env_logger = "0.11.8"
 grapes = { path = "../../grapes/grapes" }
 log = "0.4.28"
-chameleon-configuration = { path = "../chameleon-configuration" }
+chameleon-config = { path = "../chameleon-config" }
+argh = "0.1.13"

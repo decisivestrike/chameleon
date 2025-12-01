@@ -1,6 +1,6 @@
-use chameleon_configuration as conf;
+use chameleon_config as config;
 use chrono::{DateTime, Local};
-use conf::bar::modules::Clock as ClockConfig;
+use config::bar::modules::Clock as ClockConfig;
 use grapes::{
     Component, GtkCompatible,
     gtk::{self, prelude::WidgetExt},

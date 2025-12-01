@@ -8,7 +8,13 @@ use grapes::{
     },
 };
 use log::{error, info, warn};
-use std::{str::FromStr, time::Duration};
+use std::{
+    cmp::min,
+    fmt::{self, Debug},
+    path::Path,
+    str::FromStr,
+    time::Duration,
+};
 
 use crate::hyprland::TX_SOCK;
 
@@ -78,33 +84,45 @@ impl FromStr for HyprEvent {
     }
 }
 
-service!(HyprlandService -> HyprEvent, async |tx| {
-    let backoff = Duration::from_millis(200);
+async fn connect_with_backoff<P>(path: P) -> UnixStream
+where
+    P: AsRef<Path> + fmt::Display,
+{
+    let mut delay = Duration::from_millis(100);
 
     loop {
-        let stream = match UnixStream::connect(&*TX_SOCK).await {
-            Ok(s) => {
-                info!("connected to {:?}", TX_SOCK);
-                s
+        match UnixStream::connect(&path).await {
+            Ok(stream) => {
+                info!("Connected to {path}");
+                return stream;
             }
             Err(e) => {
-                error!("connect {:?} failed: {e}", TX_SOCK);
-                sleep(backoff).await;
-                continue;
-            }
-        };
+                error!("Connect to {path} failed: {e}");
+                sleep(delay).await;
 
+                delay = min(
+                    delay + Duration::from_millis(100),
+                    Duration::from_secs(1),
+                );
+            }
+        }
+    }
+}
+
+service!(HyprlandService -> HyprEvent, async |tx| {
+    loop {
+        let stream = connect_with_backoff(&*TX_SOCK).await;
         let mut lines = BufReader::new(stream).lines();
 
         loop {
             let line = match lines.next_line().await {
-                Ok(Some(l)) => l,
+                Ok(Some(line)) => line,
                 Ok(None) => {
-                    warn!("event stream EOF; reconnecting…");
+                    warn!("Event stream EOF; reconnecting...");
                     break;
                 }
                 Err(e) => {
-                    warn!("read line failed: {e}");
+                    warn!("Read line failed: {e}");
                     break;
                 }
             };
@@ -112,8 +130,8 @@ service!(HyprlandService -> HyprEvent, async |tx| {
             let event = match line.parse::<HyprEvent>() {
                 Ok(ev) => ev,
                 Err(e) => {
-                    warn!("parse HyprEvent failed: {e}; line={line}");
-                    continue; // пропускаем строку
+                    warn!("{e}");
+                    continue;
                 }
             };
 
@@ -122,7 +140,5 @@ service!(HyprlandService -> HyprEvent, async |tx| {
                 return;
             }
         }
-
-        sleep(backoff).await;
     }
 });
