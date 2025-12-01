@@ -33,6 +33,7 @@ impl WindowComponent for Bar {
     ) -> Self {
         let window = ApplicationWindow::new(application);
         let cb = gtk::CenterBox::new();
+
         window.set_child(Some(&cb));
 
         let left = gtk::Box::new(Orientation::Horizontal, config.spacing);
@@ -101,6 +102,7 @@ impl Bar {
         let window = &self.window;
 
         window.init_layer_shell();
+        window.set_namespace(Some("chameleon-taskbar"));
 
         window.set_widget_name("bar");
         window.set_default_width(monitor.geometry().width());

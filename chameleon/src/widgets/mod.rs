@@ -115,6 +115,7 @@ impl WidgetLayer {
         window.set_resizable(false);
 
         window.init_layer_shell();
+        window.set_namespace(Some("chameleon-widgets"));
         window.set_keyboard_mode(KeyboardMode::OnDemand);
         window.set_layer(Layer::Bottom);
 

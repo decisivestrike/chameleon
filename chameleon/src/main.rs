@@ -6,7 +6,6 @@ use std::path::Path;
 
 use crate::{bar::Bar, core::cli::Args, widgets::WidgetLayer};
 use chameleon_config::Config;
-use clap::Parser;
 use grapes::{
     Css, WindowComponent,
     css::StylePriority,
@@ -83,6 +82,8 @@ fn main() -> glib::ExitCode {
         config_path,
         style_path,
     } = argh::from_env();
+
+    // replace ~ on home
 
     Config::init(config_path);
 

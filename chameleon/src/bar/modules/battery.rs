@@ -1,4 +1,4 @@
-use chameleon_config::{self as config, Config};
+use chameleon_config::{self as config};
 use std::time::Duration;
 
 use grapes::{
@@ -13,6 +13,7 @@ const BAT: &str = "BAT1";
 pub struct Battery {
     #[root]
     label: gtk::Label,
+    icons: &'static Vec<String>,
 }
 
 impl Battery {
@@ -38,7 +39,10 @@ impl Component for Battery {
     fn new(config: Self::Props) -> Self {
         let label = gtk::Label::new(None);
 
-        let battery = Self { label };
+        let battery = Self {
+            label,
+            icons: &config.icons,
+        };
 
         battery.connect_service::<BatteryService>();
 
@@ -46,11 +50,10 @@ impl Component for Battery {
     }
 
     fn update(&self, charge: String) {
-        let icons = &Config::as_ref().bar.battery.icons;
-        let divider = 100.0 / icons.len() as f32;
+        let divider = 100.0 / self.icons.len() as f32;
 
         let i = (charge.parse::<f32>().unwrap() / divider).round() as usize - 1;
-        let label = format!("{} {}%", icons[i], charge);
+        let label = format!("{} {}%", self.icons[i], charge);
 
         self.label.set_label(&label);
     }
