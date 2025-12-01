@@ -1,25 +1,26 @@
-use std::fmt;
+pub mod modules;
+pub use modules::*;
 
-use crate::bar::modules::{battery::BatteryConfig, clock::ClockConfig};
 use serde::Deserialize;
+use std::fmt;
 
 /// All taskbar modules
 #[derive(Debug, Deserialize)]
-pub enum BarModule {
+pub enum Module {
     #[serde(rename = "clock")]
     Clock,
     #[serde(rename = "battery")]
     Battery,
 }
 
-impl fmt::Display for BarModule {
+impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                BarModule::Clock => "clock",
-                BarModule::Battery => "battery",
+                Module::Clock => "clock",
+                Module::Battery => "battery",
             }
         )
     }
@@ -48,7 +49,7 @@ impl fmt::Display for ModulePlacement {
 }
 
 #[derive(Debug, Default, Deserialize)]
-pub enum BarPosition {
+pub enum Position {
     #[serde(rename = "top")]
     #[default]
     Top,
@@ -61,7 +62,7 @@ pub enum BarPosition {
 }
 
 #[derive(Debug, Default, Deserialize)]
-pub enum BarLayer {
+pub enum Layer {
     #[serde(rename = "background")]
     Background,
     #[serde(rename = "bottom")]
@@ -75,24 +76,24 @@ pub enum BarLayer {
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
-pub struct BarConfig {
+pub struct Bar {
     #[serde(default)]
     pub enabled: bool,
     #[serde(default)]
-    pub position: BarPosition,
+    pub position: Position,
     pub thickness: Option<i32>,
     #[serde(default)]
     pub spacing: i32,
     #[serde(default)]
-    pub layer: BarLayer,
+    pub layer: Layer,
     #[serde(default)]
-    pub modules_left: Vec<BarModule>,
+    pub modules_left: Vec<Module>,
     #[serde(default)]
-    pub modules_center: Vec<BarModule>,
+    pub modules_center: Vec<Module>,
     #[serde(default)]
-    pub modules_right: Vec<BarModule>,
+    pub modules_right: Vec<Module>,
     #[serde(default, rename = "clock")]
-    pub clock_config: ClockConfig,
+    pub clock_config: Clock,
     #[serde(default, rename = "battery")]
-    pub battery_config: BatteryConfig,
+    pub battery_config: Battery,
 }

@@ -2,11 +2,8 @@ mod bar;
 mod core;
 mod widgets;
 
-use crate::{
-    bar::Bar,
-    core::{cli::Args, config::CONFIG},
-    widgets::WidgetLayer,
-};
+use crate::{bar::Bar, core::cli::Args, widgets::WidgetLayer};
+use chameleon_configuration::CONFIG;
 use clap::Parser;
 use grapes::{
     WindowComponent,
@@ -73,7 +70,8 @@ fn load_css(style_path: &str) {
         provider.load_from_path("widget-layer.css");
 
         gtk::style_context_add_provider_for_display(
-            &gtk::gdk::Display::default().expect("Could not connect to a display."),
+            &gtk::gdk::Display::default()
+                .expect("Could not connect to a display."),
             &provider,
             gtk::STYLE_PROVIDER_PRIORITY_USER,
         );
@@ -90,7 +88,10 @@ fn load_css(style_path: &str) {
 }
 
 fn main() -> glib::ExitCode {
-    let Args { config, style } = Args::parse();
+    let Args {
+        config_path,
+        style_path,
+    } = Args::parse();
 
     init_logger();
 
@@ -104,7 +105,7 @@ fn main() -> glib::ExitCode {
         ExitCode::SUCCESS
     });
 
-    app.connect_startup(move |_| load_css(&style));
+    app.connect_startup(move |_| load_css(&style_path));
     app.connect_activate(on_activate);
 
     app.run()

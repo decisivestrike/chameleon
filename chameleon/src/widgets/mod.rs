@@ -1,7 +1,7 @@
 use grapes::{
     gtk::{
-        self, ApplicationWindow, EventControllerKey, EventControllerMotion, Fixed, Orientation,
-        Widget,
+        self, ApplicationWindow, EventControllerKey, EventControllerMotion,
+        Fixed, Orientation, Widget,
         gdk::{self, Key},
         glib::clone,
         prelude::{GtkWindowExt, *},
@@ -10,7 +10,6 @@ use grapes::{
 };
 use layer_shell::{KeyboardMode, Layer, LayerShell};
 use log::{Level, info, log_enabled};
-use serde::Deserialize;
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
@@ -74,7 +73,8 @@ impl WidgetLayer {
                 let widget: Widget = wrapper.clone().into();
 
                 if log_enabled!(Level::Info) {
-                    let widget_name = widget.first_child().unwrap().widget_name();
+                    let widget_name =
+                        widget.first_child().unwrap().widget_name();
                     info!("Active widget: {widget_name}.",);
                 }
 
@@ -106,7 +106,10 @@ impl WidgetLayer {
         let window = &self.window;
 
         window.set_widget_name("widget-layer");
-        window.set_default_size(monitor.geometry().width(), monitor.geometry().height());
+        window.set_default_size(
+            monitor.geometry().width(),
+            monitor.geometry().height(),
+        );
 
         window.set_decorated(false);
         window.set_resizable(false);
@@ -168,7 +171,8 @@ impl WidgetLayer {
                 let tracked = tracked_widget.borrow();
 
                 if let Some(widget) = tracked.as_ref() {
-                    let (previous_mouse_x, previous_mouse_y) = previous_mouse_positon.get();
+                    let (previous_mouse_x, previous_mouse_y) =
+                        previous_mouse_positon.get();
                     let (widget_x, widget_y) = fixer.child_position(widget);
 
                     let diff_x = mouse_x - previous_mouse_x;
@@ -178,7 +182,8 @@ impl WidgetLayer {
                     let y = widget_y + diff_y;
 
                     if log_enabled!(Level::Info) {
-                        let widget_name = widget.first_child().unwrap().widget_name();
+                        let widget_name =
+                            widget.first_child().unwrap().widget_name();
                         info!("Move {widget_name} to x: {x:.0}, y: {y:.0}",);
                     }
 
@@ -193,11 +198,4 @@ impl WidgetLayer {
         motion_controller.connect_motion(motion_handler);
         self.window.add_controller(motion_controller);
     }
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
-pub struct WidgetsConfig {
-    #[serde(default)]
-    pub enabled: bool,
 }

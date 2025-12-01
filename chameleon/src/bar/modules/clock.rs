@@ -1,11 +1,12 @@
+use chameleon_configuration as conf;
 use chrono::{DateTime, Local};
+use conf::bar::modules::Clock as ClockConfig;
 use grapes::{
     Component, GtkCompatible,
     gtk::{self, prelude::WidgetExt},
     service,
     tokio::time::sleep,
 };
-use serde::Deserialize;
 use std::time::Duration;
 
 #[derive(Clone, Debug, GtkCompatible)]
@@ -48,16 +49,3 @@ service!(TimeService -> DateTime<Local>, async |tx| {
         sleep(duration).await;
     }
 });
-
-#[derive(Clone, Debug, Default, Deserialize)]
-#[serde(default)]
-pub struct ClockConfig {
-    #[serde(default = "ClockConfig::default_format")]
-    pub format: String,
-}
-
-impl ClockConfig {
-    fn default_format() -> String {
-        "%H:%M".to_string()
-    }
-}

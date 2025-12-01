@@ -4,8 +4,8 @@ use clap::Parser;
 #[command(version, about, long_about = None)]
 pub struct Args {
     #[arg(short, long, default_value = "chameleon.toml")]
-    pub config: String,
+    pub config_path: String,
 
     #[arg(short, long, default_value = "style.css")]
-    pub style: String,
+    pub style_path: String,
 }

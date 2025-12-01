@@ -1,10 +1,8 @@
-pub mod config;
 pub mod modules;
 
-use crate::bar::{
-    config::{BarLayer, BarModule, BarPosition, ModulePlacement},
-    modules::{Battery, Clock},
-};
+use crate::bar::modules::{Battery, Clock};
+use chameleon_configuration as config;
+use config::bar::{Layer as BarLayer, Module, ModulePlacement, Position};
 use grapes::{
     Component, WindowComponent,
     extensions::GrapesBoxExt,
@@ -22,13 +20,17 @@ pub struct Bar {
     left: gtk::Box,
     center: gtk::Box,
     right: gtk::Box,
-    config: &'static config::BarConfig,
+    config: &'static config::Bar,
 }
 
 impl WindowComponent for Bar {
-    type Props = &'static config::BarConfig;
+    type Props = &'static config::Bar;
 
-    fn new(application: &gtk::Application, monitor: &gdk::Monitor, config: Self::Props) -> Self {
+    fn new(
+        application: &gtk::Application,
+        monitor: &gdk::Monitor,
+        config: Self::Props,
+    ) -> Self {
         let window = ApplicationWindow::new(application);
         let cb = gtk::CenterBox::new();
         window.set_child(Some(&cb));
@@ -60,11 +62,11 @@ impl WindowComponent for Bar {
         for (modules, placement) in all_modules {
             for name in modules {
                 match name {
-                    BarModule::Clock => {
+                    Module::Clock => {
                         let clock = Clock::new(&config.clock_config);
                         bar.add_module(clock, &placement)
                     }
-                    BarModule::Battery => {
+                    Module::Battery => {
                         let battery = Battery::new(&config.battery_config);
                         bar.add_module(battery, &placement)
                     }
@@ -83,7 +85,11 @@ impl WindowComponent for Bar {
 }
 
 impl Bar {
-    pub fn add_module(&self, module: impl AsRef<gtk::Widget>, placement: &ModulePlacement) {
+    pub fn add_module(
+        &self,
+        module: impl AsRef<gtk::Widget>,
+        placement: &ModulePlacement,
+    ) {
         match placement {
             ModulePlacement::Left => self.left.append_ref(module),
             ModulePlacement::Center => self.center.append_ref(module),
@@ -123,29 +129,29 @@ impl Bar {
         window.set_monitor(Some(monitor));
     }
 
-    fn set_position(&self, position: &BarPosition) {
+    fn set_position(&self, position: &Position) {
         let window = &self.window;
 
         match position {
-            BarPosition::Top => {
+            Position::Top => {
                 window.set_anchor(Edge::Top, true);
                 window.set_anchor(Edge::Right, true);
                 window.set_anchor(Edge::Bottom, false);
                 window.set_anchor(Edge::Left, true);
             }
-            BarPosition::Right => {
+            Position::Right => {
                 window.set_anchor(Edge::Top, true);
                 window.set_anchor(Edge::Right, true);
                 window.set_anchor(Edge::Bottom, true);
                 window.set_anchor(Edge::Left, false);
             }
-            BarPosition::Bottom => {
+            Position::Bottom => {
                 window.set_anchor(Edge::Top, false);
                 window.set_anchor(Edge::Right, true);
                 window.set_anchor(Edge::Bottom, true);
                 window.set_anchor(Edge::Left, true);
             }
-            BarPosition::Left => {
+            Position::Left => {
                 window.set_anchor(Edge::Top, true);
                 window.set_anchor(Edge::Right, false);
                 window.set_anchor(Edge::Bottom, true);

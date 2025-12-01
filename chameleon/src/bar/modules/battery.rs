@@ -1,3 +1,4 @@
+use chameleon_configuration as config;
 use std::time::Duration;
 
 use grapes::{
@@ -5,7 +6,6 @@ use grapes::{
     tokio::{self, time::sleep},
 };
 use log::warn;
-use serde::Deserialize;
 
 const BAT: &str = "BAT1";
 
@@ -33,7 +33,7 @@ impl Component for Battery {
     const NAME: &str = "battery";
 
     type Message = String;
-    type Props = &'static BatteryConfig;
+    type Props = &'static config::bar::Battery;
 
     fn new(config: Self::Props) -> Self {
         let label = gtk::Label::new(None);
@@ -63,11 +63,3 @@ service!(BatteryService -> String, async |tx| {
         sleep(Duration::from_secs(60)).await;
     }
 });
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
-pub struct BatteryConfig {
-    pub icons: Vec<String>,
-    pub name: String,
-    pub format: String,
-}

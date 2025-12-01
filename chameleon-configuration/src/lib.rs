@@ -1,18 +1,23 @@
-use crate::{bar::config::BarConfig, widgets::WidgetsConfig};
+pub mod bar;
+pub use bar::Bar;
+
+pub mod widgets;
+pub use widgets::Widgets;
+
 use log::error;
 use serde::Deserialize;
 use std::sync::LazyLock;
 
-const CONFIG_PATH: &str = "chameleon.toml";
+const CONFIG_PATH: &str = "chameleon.toml"; // remove it
 
 pub static CONFIG: LazyLock<Config> = LazyLock::new(|| Config::read());
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
     #[serde(default, rename = "widgets")]
-    pub widgets: WidgetsConfig,
+    pub widgets: Widgets,
     #[serde(default, rename = "taskbar")]
-    pub bar: BarConfig,
+    pub bar: Bar,
 }
 
 impl Config {
