@@ -1,5 +1,4 @@
 pub mod cli;
-pub mod hyprland;
 
 use grapes::{
     glib::object::Cast,

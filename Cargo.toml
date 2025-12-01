@@ -1,3 +1,3 @@
 [workspace]
 resolver = "3"
-members = ["chameleon", "chameleon-configuration"]
+members = ["chameleon", "chameleon-configuration", "chameleon-ipc"]

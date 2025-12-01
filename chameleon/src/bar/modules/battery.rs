@@ -1,4 +1,4 @@
-use chameleon_configuration as config;
+use chameleon_configuration::{self as config, CONFIG};
 use std::time::Duration;
 
 use grapes::{
@@ -46,9 +46,13 @@ impl Component for Battery {
     }
 
     fn update(&self, charge: String) {
-        let label = &(charge + "%");
+        let icons = &CONFIG.bar.battery.icons;
+        let divider = 100.0 / icons.len() as f32;
 
-        self.label.set_label(label);
+        let i = (charge.parse::<f32>().unwrap() / divider).round() as usize - 1;
+        let label = format!("{} {}%", icons[i], charge);
+
+        self.label.set_label(&label);
     }
 }
 

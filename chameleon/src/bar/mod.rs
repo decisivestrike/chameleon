@@ -63,11 +63,11 @@ impl WindowComponent for Bar {
             for name in modules {
                 match name {
                     Module::Clock => {
-                        let clock = Clock::new(&config.clock_config);
+                        let clock = Clock::new(&config.clock);
                         bar.add_module(clock, &placement)
                     }
                     Module::Battery => {
-                        let battery = Battery::new(&config.battery_config);
+                        let battery = Battery::new(&config.battery);
                         bar.add_module(battery, &placement)
                     }
                 };

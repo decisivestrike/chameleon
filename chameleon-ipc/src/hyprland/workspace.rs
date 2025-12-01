@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde::Deserialize;
 
-use crate::core::hyprland::query;
+use crate::hyprland::query;
 
 #[allow(dead_code)]
 #[derive(Debug, Deserialize)]

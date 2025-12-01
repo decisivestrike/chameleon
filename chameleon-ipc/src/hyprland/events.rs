@@ -1,4 +1,3 @@
-use crate::core::hyprland::TX_SOCK;
 use anyhow::{anyhow, bail};
 use grapes::{
     service,
@@ -10,6 +9,8 @@ use grapes::{
 };
 use log::{error, info, warn};
 use std::{str::FromStr, time::Duration};
+
+use crate::hyprland::TX_SOCK;
 
 /// (&str, HyprEvent variant, variant fields) -> HyprEvent
 macro_rules! event {
@@ -59,12 +60,17 @@ impl FromStr for HyprEvent {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let (prefix, data) = s.split_once(">>").ok_or_else(|| anyhow!("invalid input"))?;
+        let (prefix, data) =
+            s.split_once(">>").ok_or_else(|| anyhow!("invalid input"))?;
 
         Ok(match prefix {
-            "activelayout" => event!(data, ActiveLayout, keyboard_name, layout_name),
+            "activelayout" => {
+                event!(data, ActiveLayout, keyboard_name, layout_name)
+            }
             "workspacev2" => event!(data, WorkspaceV2, id, name),
-            "focusedmonv2" => event!(data, FocusedMonV2, monitor_name, workspace_id),
+            "focusedmonv2" => {
+                event!(data, FocusedMonV2, monitor_name, workspace_id)
+            }
             "createworkspacev2" => event!(data, CreateWorkspaceV2, id, name),
             "destroyworkspacev2" => event!(data, DestroyWorkspaceV2, id, name),
             _ => bail!("Undefined hyprland event: '{}'", prefix),

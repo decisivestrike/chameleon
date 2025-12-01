@@ -160,9 +160,6 @@ dependencies = [
  "env_logger",
  "grapes",
  "log",
- "serde",
- "serde_json",
- "toml",
 ]
 
 [[package]]
@@ -172,6 +169,17 @@ dependencies = [
  "log",
  "serde",
  "toml",
+]
+
+[[package]]
+name = "chameleon-ipc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "grapes",
+ "log",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

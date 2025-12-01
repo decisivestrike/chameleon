@@ -93,7 +93,7 @@ pub struct Bar {
     #[serde(default)]
     pub modules_right: Vec<Module>,
     #[serde(default, rename = "clock")]
-    pub clock_config: Clock,
+    pub clock: Clock,
     #[serde(default, rename = "battery")]
-    pub battery_config: Battery,
+    pub battery: Battery,
 }
