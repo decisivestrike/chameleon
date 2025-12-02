@@ -2,8 +2,9 @@ use chameleon_config::{self as config};
 use std::time::Duration;
 
 use grapes::{
-    Component, GtkCompatible, gtk, service,
+    Component, Connectable, GtkCompatible, gtk, service,
     tokio::{self, time::sleep},
+    updateable::Updateable,
 };
 use log::warn;
 
@@ -30,10 +31,22 @@ impl Battery {
     }
 }
 
+impl Updateable for Battery {
+    type Message = String;
+
+    fn update(&self, charge: String) {
+        let divider = 100.0 / self.icons.len() as f32;
+
+        let i = (charge.parse::<f32>().unwrap() / divider).round() as usize - 1;
+        let label = format!("{} {}%", self.icons[i], charge);
+
+        self.label.set_label(&label);
+    }
+}
+
 impl Component for Battery {
     const NAME: &str = "battery";
 
-    type Message = String;
     type Props = &'static config::bar::Battery;
 
     fn new(config: Self::Props) -> Self {
@@ -47,15 +60,6 @@ impl Component for Battery {
         battery.connect_service::<BatteryService>();
 
         battery
-    }
-
-    fn update(&self, charge: String) {
-        let divider = 100.0 / self.icons.len() as f32;
-
-        let i = (charge.parse::<f32>().unwrap() / divider).round() as usize - 1;
-        let label = format!("{} {}%", self.icons[i], charge);
-
-        self.label.set_label(&label);
     }
 }
 

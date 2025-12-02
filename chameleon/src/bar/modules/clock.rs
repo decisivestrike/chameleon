@@ -2,10 +2,11 @@ use chameleon_config as config;
 use chrono::{DateTime, Local};
 use config::bar::modules::Clock as ClockConfig;
 use grapes::{
-    Component, GtkCompatible,
+    Component, Connectable, GtkCompatible,
     gtk::{self, prelude::WidgetExt},
     service,
     tokio::time::sleep,
+    updateable::Updateable,
 };
 use std::time::Duration;
 
@@ -16,10 +17,18 @@ pub struct Clock {
     format: &'static String,
 }
 
+impl Updateable for Clock {
+    type Message = DateTime<Local>;
+
+    fn update(&self, time: DateTime<Local>) {
+        let time_label = time.format(self.format).to_string();
+        self.label.set_label(&time_label);
+    }
+}
+
 impl Component for Clock {
     const NAME: &str = "clock";
 
-    type Message = DateTime<Local>;
     type Props = &'static ClockConfig;
 
     fn new(props: Self::Props) -> Self {
@@ -31,12 +40,6 @@ impl Component for Clock {
 
         clock.connect_service::<TimeService>();
         clock
-    }
-
-    fn update(&self, time: DateTime<Local>) {
-        let time_label = time.format(self.format).to_string();
-
-        self.label.set_label(&time_label);
     }
 }
 
