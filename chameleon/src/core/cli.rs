@@ -1,3 +1,4 @@
+use argh::FromArgs;
 use std::{env::home_dir, path::PathBuf};
 
 fn default_config_path() -> PathBuf {
@@ -7,8 +8,6 @@ fn default_config_path() -> PathBuf {
 fn default_styles_path() -> PathBuf {
     home_dir().unwrap().join(".config/chameleon/styles.css")
 }
-
-use argh::FromArgs;
 
 #[derive(FromArgs)]
 #[argh(description = "🦎 Highly customizable Wayland shell")]
