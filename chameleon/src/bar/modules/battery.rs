@@ -1,69 +1,61 @@
 use chameleon_config::{self as config};
-use std::time::Duration;
-
 use grapes::{
-    Component, Connectable, GtkCompatible, gtk, service,
+    Component, Connectable, GtkCompatible, Reactive, derived,
+    gtk::{Label, prelude::WidgetExt},
+    service, state,
     tokio::{self, time::sleep},
-    updateable::Updateable,
 };
 use log::warn;
+use std::time::Duration;
 
 const BAT: &str = "BAT1";
 
 #[derive(Clone, Debug, GtkCompatible)]
 pub struct Battery {
     #[root]
-    label: gtk::Label,
-    icons: &'static Vec<String>,
+    label: Label,
 }
 
 impl Battery {
-    async fn charge() -> Option<String> {
+    async fn charge() -> Option<u8> {
         let battery_path = format!("/sys/class/power_supply/{}/capacity", BAT);
 
         match tokio::fs::read_to_string(battery_path).await {
-            Ok(capacity) => Some(capacity.trim().to_string()),
+            Ok(charge) => Some(charge.parse().unwrap()),
             Err(e) => {
                 warn!("{e}");
                 None
             }
         }
     }
-}
 
-impl Updateable for Battery {
-    type Message = String;
+    fn format(charge: u8, icons: &Vec<String>) -> String {
+        let divider = 100.0 / icons.len() as f32;
+        let i = (charge as f32 / divider).round() as usize - 1;
 
-    fn update(&self, charge: String) {
-        let divider = 100.0 / self.icons.len() as f32;
-
-        let i = (charge.parse::<f32>().unwrap() / divider).round() as usize - 1;
-        let label = format!("{} {}%", self.icons[i], charge);
-
-        self.label.set_label(&label);
+        format!("{} {}%", icons[i], charge)
     }
 }
 
 impl Component for Battery {
     const NAME: &str = "battery";
-
     type Props = &'static config::bar::Battery;
 
     fn new(config: Self::Props) -> Self {
-        let label = gtk::Label::new(None);
+        let charge = state(0);
+        charge.connect_service::<BatteryService>();
 
-        let battery = Self {
-            label,
-            icons: &config.icons,
-        };
+        let formatted_charge =
+            derived(move || Battery::format(*charge.get(), &config.icons));
 
-        battery.connect_service::<BatteryService>();
+        let label = Label::statefull(&formatted_charge);
+        label.add_css_class("module");
 
-        battery
+        Self { label }
     }
 }
 
-service!(BatteryService -> String, async |tx| {
+service!(BatteryService -> u8, async |tx| {
     loop {
         let charge = Battery::charge().await;
 
