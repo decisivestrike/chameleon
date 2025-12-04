@@ -11,6 +11,8 @@ pub enum Module {
     Clock,
     #[serde(rename = "battery")]
     Battery,
+    #[serde(rename = "workspaces")]
+    Workspaces,
 }
 
 impl fmt::Display for Module {
@@ -21,6 +23,7 @@ impl fmt::Display for Module {
             match self {
                 Module::Clock => "clock",
                 Module::Battery => "battery",
+                Module::Workspaces => "workspaces",
             }
         )
     }
@@ -96,4 +99,6 @@ pub struct Bar {
     pub clock: Clock,
     #[serde(default, rename = "battery")]
     pub battery: Battery,
+    #[serde(default, rename = "workspaces")]
+    pub workspaces: Workspaces,
 }

@@ -1,6 +1,6 @@
 pub mod modules;
 
-use crate::bar::modules::{Battery, Clock};
+use crate::bar::modules::{Battery, Clock, Workspaces};
 use chameleon_config as config;
 use config::bar::{Layer as BarLayer, Module, ModulePlacement, Position};
 use grapes::{
@@ -65,11 +65,15 @@ impl WindowComponent for Bar {
                 match name {
                     Module::Clock => {
                         let clock = Clock::new(&config.clock);
-                        bar.add_module(clock, &placement)
+                        bar.add_module(clock, &placement);
                     }
                     Module::Battery => {
                         let battery = Battery::new(&config.battery);
-                        bar.add_module(battery, &placement)
+                        bar.add_module(battery, &placement);
+                    }
+                    Module::Workspaces => {
+                        let workspaces = Workspaces::new(&config.workspaces);
+                        bar.add_module(workspaces, &placement);
                     }
                 };
 

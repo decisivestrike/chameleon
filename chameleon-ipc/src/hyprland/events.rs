@@ -1,3 +1,4 @@
+use crate::hyprland::TX_SOCK;
 use anyhow::{anyhow, bail};
 use grapes::{
     service,
@@ -15,8 +16,6 @@ use std::{
     str::FromStr,
     time::Duration,
 };
-
-use crate::hyprland::TX_SOCK;
 
 /// (&str, HyprEvent variant, variant fields) -> HyprEvent
 macro_rules! event {
