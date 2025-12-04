@@ -83,6 +83,12 @@ impl FromStr for HyprEvent {
     }
 }
 
+impl fmt::Display for HyprEvent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 async fn connect_with_backoff<P>(path: P) -> UnixStream
 where
     P: AsRef<Path> + fmt::Display,

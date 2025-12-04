@@ -1,5 +1,6 @@
-mod events;
-mod workspace;
+pub mod events;
+pub mod workspace;
+pub use events::HyprEvent;
 
 use anyhow::Result;
 use grapes::tokio::{

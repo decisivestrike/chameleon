@@ -188,6 +188,7 @@ dependencies = [
  "anyhow",
  "argh",
  "chameleon-config",
+ "chameleon-ipc",
  "chrono",
  "env_logger",
  "grapes",
