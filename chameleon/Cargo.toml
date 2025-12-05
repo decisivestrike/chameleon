@@ -4,9 +4,6 @@ description = "🦎 Highly customizable Wayland shell."
 version = "0.1.0"
 edition = "2024"
 
-[profile.release]
-lto = true
-
 [dependencies]
 anyhow = "1.0.100"
 chrono = "0.4.42"

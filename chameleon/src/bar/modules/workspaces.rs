@@ -10,7 +10,6 @@ use grapes::{
         gdk::prelude::{DisplayExt, MonitorExt},
         prelude::{BoxExt, NativeExt, WidgetExt},
     },
-    service,
     tokio::sync::{Mutex, mpsc},
 };
 use std::sync::LazyLock;
@@ -132,7 +131,7 @@ impl Component for Workspaces {
     const NAME: &str = "workspaces";
     type Props = &'static WorkspacesConfig;
 
-    fn new(config: &WorkspacesConfig) -> Self {
+    fn new(_config: &WorkspacesConfig) -> Self {
         let (sender, mut receiver) = mpsc::channel(16);
 
         let root = gtk::Box::new(Orientation::Horizontal, 0);
