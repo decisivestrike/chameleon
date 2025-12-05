@@ -21,7 +21,12 @@ impl Battery {
         let battery_path = format!("/sys/class/power_supply/{}/capacity", BAT);
 
         match tokio::fs::read_to_string(battery_path).await {
-            Ok(charge) => Some(charge.parse().unwrap()),
+            Ok(raw_charge) => Some(
+                raw_charge
+                    .trim()
+                    .parse::<u8>()
+                    .expect(&format!("Can't parse '{}'", raw_charge)),
+            ),
             Err(e) => {
                 warn!("{e}");
                 None

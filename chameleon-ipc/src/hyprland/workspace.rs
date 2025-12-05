@@ -1,5 +1,6 @@
 use crate::hyprland::query;
 use anyhow::Result;
+use grapes::gtk::gdk::{Monitor, prelude::MonitorExt};
 use serde::Deserialize;
 
 #[allow(dead_code)]
@@ -26,5 +27,19 @@ impl Workspace {
         let json_str = query(b"j/activeworkspace\0").await?;
 
         Ok(serde_json::from_str(&json_str)?)
+    }
+
+    pub async fn all() -> Result<Vec<Workspace>> {
+        let json_str = query(b"j/workspaces\0").await?;
+
+        Ok(serde_json::from_str(&json_str)?)
+    }
+
+    pub async fn on_monitor(monitor: &Monitor) -> Result<Vec<Workspace>> {
+        Ok(Workspace::all()
+            .await?
+            .into_iter()
+            .filter(|w| w.monitor == monitor.connector().unwrap().to_string())
+            .collect())
     }
 }

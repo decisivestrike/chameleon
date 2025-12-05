@@ -1,5 +1,7 @@
 pub mod events;
 pub mod workspace;
+pub use workspace::*;
+
 pub use events::HyprEvent;
 
 use anyhow::Result;
