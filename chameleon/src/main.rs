@@ -1,10 +1,10 @@
 mod bar;
-mod core;
+mod cli;
 mod widgets;
 
 use std::path::Path;
 
-use crate::{bar::Bar, core::cli::Args, widgets::WidgetLayer};
+use crate::{bar::Bar, cli::Args, widgets::WidgetLayer};
 use chameleon_config::Config;
 use grapes::{
     Css, WindowComponent,
@@ -12,12 +12,13 @@ use grapes::{
     glib::{self, ExitCode},
     gtk::{
         self,
-        gdk::prelude::MonitorExt,
+        gdk::{Monitor, prelude::MonitorExt},
         gio::{
             ApplicationFlags,
             prelude::{ApplicationExt, ApplicationExtManual},
         },
     },
+    prelude::GrapesMonitorExt,
 };
 use log::info;
 
@@ -29,7 +30,7 @@ fn on_activate(application: &gtk::Application) {
     if Config::as_ref().bar.enabled {
         info!("Setup bar...");
 
-        for monitor in core::monitors().iter() {
+        for monitor in Monitor::all().iter() {
             let bar = Bar::new(application, monitor, &Config::as_ref().bar);
 
             bar.present();
@@ -39,7 +40,7 @@ fn on_activate(application: &gtk::Application) {
     if Config::as_ref().widgets.enabled {
         info!("Setup widgets...");
 
-        for monitor in core::monitors().iter() {
+        for monitor in Monitor::all().iter() {
             let widget_layer = WidgetLayer::new(application, monitor);
 
             {

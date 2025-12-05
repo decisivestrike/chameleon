@@ -3,20 +3,16 @@ use chameleon_ipc::hyprland::{
     self, HyprEvent, events::HyprlandService, workspace::Workspace,
 };
 use grapes::{
-    Component, GtkCompatible, RT, Service, Updateable,
-    glib::{self, object::Cast},
-    gtk::{
-        self, GestureClick, Label, Orientation,
-        gdk::prelude::{DisplayExt, MonitorExt},
-        prelude::{BoxExt, NativeExt, WidgetExt},
-    },
+    glib::clone,
+    gtk::{GestureClick, Label, Orientation, Widget},
+    prelude::*,
     tokio::sync::{Mutex, mpsc},
 };
 use std::sync::LazyLock;
 
 static INSTANSES: LazyLock<Mutex<Vec<(String, mpsc::Sender<WorkspaceEvent>)>>> =
     LazyLock::new(|| {
-        RT.spawn(async move { workspace_bgh().await });
+        RT.spawn(async move { event_handler().await });
         Default::default()
     });
 
@@ -32,8 +28,7 @@ async fn send_for_monitor(monitor_name: &String, event: WorkspaceEvent) {
     sender.send(event).await.unwrap();
 }
 
-// Don't subscribe on it
-async fn workspace_bgh() {
+async fn event_handler() {
     let mut rx = HyprlandService::subscribe();
 
     let active_workspace = Workspace::active().await.unwrap();
@@ -42,7 +37,10 @@ async fn workspace_bgh() {
 
     send_for_monitor(
         &active_monitor,
-        WorkspaceEvent::Active(active_workspace_id),
+        WorkspaceEvent::ChangeActive {
+            from: 0,
+            to: active_workspace_id,
+        },
     )
     .await;
 
@@ -59,11 +57,12 @@ async fn workspace_bgh() {
 
         match maybe_event.unwrap() {
             HyprEvent::WorkspaceV2 { id, name: _ } => {
-                send_for_monitor(&active_monitor, WorkspaceEvent::Active(id))
-                    .await;
                 send_for_monitor(
                     &active_monitor,
-                    WorkspaceEvent::Unactive(active_workspace_id),
+                    WorkspaceEvent::ChangeActive {
+                        from: active_workspace_id,
+                        to: id,
+                    },
                 )
                 .await;
 
@@ -75,12 +74,10 @@ async fn workspace_bgh() {
             } => {
                 send_for_monitor(
                     &monitor_name,
-                    WorkspaceEvent::Active(workspace_id),
-                )
-                .await;
-                send_for_monitor(
-                    &monitor_name,
-                    WorkspaceEvent::Unactive(active_workspace_id),
+                    WorkspaceEvent::ChangeActive {
+                        from: active_workspace_id,
+                        to: workspace_id,
+                    },
                 )
                 .await;
 
@@ -104,8 +101,7 @@ async fn workspace_bgh() {
 pub enum WorkspaceEvent {
     Create(i32),
     Destroy(i32),
-    Active(i32),
-    Unactive(i32),
+    ChangeActive { from: i32, to: i32 },
 }
 
 #[derive(Clone, Debug, GtkCompatible)]
@@ -119,10 +115,11 @@ impl Updateable for Workspaces {
 
     fn update(&self, event: WorkspaceEvent) {
         match event {
-            WorkspaceEvent::Create(id) => self.add_workspace(id),
+            WorkspaceEvent::Create(id) => self.add_workspace_button(id),
             WorkspaceEvent::Destroy(id) => self.remove_workspace(id),
-            WorkspaceEvent::Active(id) => self.set_active(id),
-            WorkspaceEvent::Unactive(id) => self.set_unactive(id),
+            WorkspaceEvent::ChangeActive { from, to } => {
+                self.change_active_workspace_button(from, to)
+            }
         }
     }
 }
@@ -135,45 +132,24 @@ impl Component for Workspaces {
         let (sender, mut receiver) = mpsc::channel(16);
 
         let root = gtk::Box::new(Orientation::Horizontal, 0);
-        let root_clone = root.clone();
+        root.set_widget_name("workspaces");
 
         let workspaces = Self { root };
+        workspaces.root.connect_realize(clone!(
+            #[strong]
+            workspaces,
+            move |_| workspaces.on_realize(&sender)
+        ));
 
-        {
-            let workspaces_clone = workspaces.clone();
-
-            root_clone.connect_realize(move |root| {
-                let surface = root.native().unwrap().surface().unwrap();
-                let monitor =
-                    root.display().monitor_at_surface(&surface).unwrap();
-
-                RT.block_on(async {
-                    for ws in
-                        hyprland::Workspace::on_monitor(&monitor).await.unwrap()
-                    {
-                        workspaces_clone.add_workspace(ws.id);
-                    }
-                });
-
-                let connector_name = monitor.connector().unwrap().to_string();
-
-                {
-                    let mut instances = INSTANSES.blocking_lock();
-                    let sender_clone = sender.clone();
-                    instances.push((connector_name, sender_clone));
-                }
-            });
-        }
-
-        {
-            let workspaces_clone = workspaces.clone();
-
-            glib::spawn_future_local(async move {
+        glib::spawn_future_local(clone!(
+            #[strong]
+            workspaces,
+            async move {
                 while let Some(data) = receiver.recv().await {
-                    workspaces_clone.update(data);
+                    workspaces.update(data);
                 }
-            });
-        }
+            }
+        ));
 
         workspaces
     }
@@ -182,7 +158,23 @@ impl Component for Workspaces {
 impl Workspaces {
     async fn change_active_workspace(id: i32) {
         let command = format!("dispatch workspace {}", id);
-        hyprland::command(command.as_bytes()).await.unwrap();
+        let _ = hyprland::command(command.as_bytes()).await;
+    }
+
+    fn on_realize(&self, sender: &mpsc::Sender<WorkspaceEvent>) {
+        let surface = self.root.native().unwrap().surface().unwrap();
+        let monitor = self.root.display().monitor_at_surface(&surface).unwrap();
+
+        RT.block_on(async {
+            for ws in hyprland::Workspace::on_monitor(&monitor).await.unwrap() {
+                self.add_workspace_button(ws.id);
+            }
+        });
+
+        let connector_name = monitor.connector().unwrap().to_string();
+
+        let mut instances = INSTANSES.blocking_lock();
+        instances.push((connector_name, sender.clone()));
     }
 
     fn create_button(id: i32) -> Label {
@@ -199,43 +191,35 @@ impl Workspaces {
         button
     }
 
-    fn set_active(&self, button_id: i32) {
-        let mut maybe_child = self.root.first_child();
+    fn find_button(&self, button_id: i32, f: impl FnOnce(Widget)) {
         let button_name = format!("button-{}", button_id);
 
-        while let Some(child) = maybe_child {
-            if child.widget_name() == button_name {
-                child.add_css_class("active");
-            }
-
-            maybe_child = child.next_sibling();
-        }
+        self.root
+            .children()
+            .find(|child| child.widget_name() == button_name)
+            .map(|child| f(child));
     }
 
-    fn set_unactive(&self, button_id: i32) {
-        let mut maybe_child = self.root.first_child();
-        let button_name = format!("button-{}", button_id);
-
-        while let Some(child) = maybe_child {
-            if child.widget_name() == button_name {
-                child.remove_css_class("active");
-            }
-
-            maybe_child = child.next_sibling();
-        }
+    fn change_active_workspace_button(&self, from: i32, to: i32) {
+        self.find_button(to, |child| child.add_css_class("active"));
+        self.find_button(from, |child| child.remove_css_class("active"));
     }
 
-    pub fn add_workspace(&self, id: i32) {
+    fn remove_workspace(&self, id: i32) {
+        self.find_button(id, |child| self.root.remove(&child));
+    }
+
+    pub fn add_workspace_button(&self, id: i32) {
         let button = Self::create_button(id);
         let mut maybe_child = self.root.first_child();
 
         while let Some(child) = maybe_child {
-            let child_id = child
-                .clone()
-                .downcast::<Label>()
+            let child_id: i32 = child
+                .widget_name()
+                .split_once('-')
                 .unwrap()
-                .label()
-                .parse::<i32>()
+                .1
+                .parse()
                 .unwrap();
 
             if child_id > id {
@@ -248,19 +232,5 @@ impl Workspaces {
         }
 
         self.root.append(&button)
-    }
-
-    fn remove_workspace(&self, id: i32) {
-        let mut maybe_child = self.root.first_child();
-        let button_name = format!("button-{}", id);
-
-        while let Some(child) = maybe_child {
-            if child.widget_name() == button_name {
-                self.root.remove(&child);
-                break;
-            }
-
-            maybe_child = child.next_sibling();
-        }
     }
 }
