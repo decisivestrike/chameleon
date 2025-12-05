@@ -12,7 +12,7 @@ use std::sync::LazyLock;
 
 static INSTANSES: LazyLock<Mutex<Vec<(String, mpsc::Sender<WorkspaceEvent>)>>> =
     LazyLock::new(|| {
-        RT.spawn(async move { event_handler().await });
+        RT.spawn(event_handler());
         Default::default()
     });
 
