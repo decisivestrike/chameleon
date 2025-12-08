@@ -1,9 +1,9 @@
 use chameleon_config::{self as config};
 use grapes::{
-    Component, Connectable, GtkCompatible, Reactive, broadcast, derived,
+    Cacheable, Component, Connectable, GtkCompatible, Reactive, derived,
     gtk::{Label, prelude::WidgetExt},
-    state,
-    tokio::{self, time::sleep},
+    persistent, state,
+    tokio::{self},
 };
 use log::warn;
 use std::time::Duration;
@@ -48,7 +48,9 @@ impl Component for Battery {
 
     fn new(config: Self::Props) -> Self {
         let charge = state(0);
-        charge.connect_service::<BatteryService>();
+        charge.connect_service_unmatched::<BatteryService>(|maybe_charge| {
+            maybe_charge.unwrap_or_default()
+        });
 
         let formatted_charge =
             derived(move || Battery::format(*charge.get(), &config.icons));
@@ -60,14 +62,4 @@ impl Component for Battery {
     }
 }
 
-broadcast!(BatteryService -> u8, async |tx| {
-    loop {
-        let charge = Battery::charge().await;
-
-        if let Some(charge) = charge {
-            tx.send(charge).unwrap();
-        }
-
-        sleep(Duration::from_secs(60)).await;
-    }
-});
+persistent!(BatteryService -> Option<u8>, Battery::charge, Duration::from_secs(60));
