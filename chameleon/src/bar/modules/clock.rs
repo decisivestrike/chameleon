@@ -2,9 +2,9 @@ use chameleon_config as config;
 use chrono::{DateTime, Local};
 use config::bar::modules::Clock as ClockConfig;
 use grapes::{
-    Component, Connectable, GtkCompatible, Reactive, derived,
+    Component, Connectable, GtkCompatible, Reactive, broadcast, derived,
     gtk::{self, Label, prelude::WidgetExt},
-    service, state,
+    state,
     tokio::time::sleep,
 };
 use std::time::Duration;
@@ -39,7 +39,7 @@ impl Component for Clock {
     }
 }
 
-service!(TimeService -> DateTime<Local>, async |tx| {
+broadcast!(TimeService -> DateTime<Local>, async |tx| {
     let duration = Duration::from_secs(1);
 
     loop {

@@ -1,8 +1,8 @@
 use chameleon_config::{self as config};
 use grapes::{
-    Component, Connectable, GtkCompatible, Reactive, derived,
+    Component, Connectable, GtkCompatible, Reactive, broadcast, derived,
     gtk::{Label, prelude::WidgetExt},
-    service, state,
+    state,
     tokio::{self, time::sleep},
 };
 use log::warn;
@@ -60,7 +60,7 @@ impl Component for Battery {
     }
 }
 
-service!(BatteryService -> u8, async |tx| {
+broadcast!(BatteryService -> u8, async |tx| {
     loop {
         let charge = Battery::charge().await;
 

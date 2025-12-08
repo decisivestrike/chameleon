@@ -1,7 +1,7 @@
 use crate::hyprland::TX_SOCK;
 use anyhow::{anyhow, bail};
 use grapes::{
-    service,
+    broadcast,
     tokio::{
         io::{AsyncBufReadExt, BufReader},
         net::UnixStream,
@@ -114,7 +114,7 @@ where
     }
 }
 
-service!(HyprlandService -> HyprEvent, async |tx| {
+broadcast!(HyprlandService -> HyprEvent, async |tx| {
     loop {
         let stream = connect_with_backoff(&*TX_SOCK).await;
         let mut lines = BufReader::new(stream).lines();

@@ -3,6 +3,7 @@ use chameleon_ipc::hyprland::{
     self, HyprEvent, events::HyprlandService, workspace::Workspace,
 };
 use grapes::{
+    Broadcast,
     glib::clone,
     gtk::{GestureClick, Label, Orientation, Widget},
     prelude::*,
