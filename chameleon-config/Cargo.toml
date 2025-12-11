@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+grapes = { path = "../../grapes/grapes" }
 log = "0.4.28"
 serde = { version = "1.0.228", features = ["derive"] }
 toml = "0.9.8"

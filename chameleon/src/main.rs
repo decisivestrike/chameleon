@@ -27,17 +27,19 @@ fn init_logger() {
 }
 
 fn on_activate(application: &gtk::Application) {
-    if Config::as_ref().bar.enabled {
+    let config = Config::read();
+
+    if config.bar.enabled {
         info!("Setup bar...");
 
         for monitor in Monitor::all().iter() {
-            let bar = Bar::new(application, monitor, &Config::as_ref().bar);
+            let bar = Bar::new(application, monitor, &config.bar);
 
             bar.present();
         }
     }
 
-    if Config::as_ref().widgets.enabled {
+    if config.widgets.enabled {
         info!("Setup widgets...");
 
         for monitor in Monitor::all().iter() {
@@ -70,7 +72,7 @@ fn on_activate(application: &gtk::Application) {
 fn load_styles(style_path: impl AsRef<Path>) {
     Css::load(style_path).apply(StylePriority::Application);
 
-    if Config::as_ref().widgets.enabled {
+    if Config::read().widgets.enabled {
         Css::from_str(include_str!("../../styles/widget-layer.css"))
             .apply(StylePriority::User);
     }
