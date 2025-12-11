@@ -40,7 +40,7 @@ impl Config {
         };
     }
 
-    pub fn as_ref() -> &'static Self {
+    pub fn read() -> &'static Self {
         CONFIG.get_or_init(|| unreachable!())
     }
 }

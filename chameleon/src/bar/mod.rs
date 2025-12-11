@@ -136,33 +136,17 @@ impl Bar {
     }
 
     fn set_position(&self, position: &Position) {
-        let window = &self.window;
+        let (top, right, bottom, left) = match position {
+            Position::Top => (true, true, false, true),
+            Position::Right => (true, true, true, false),
+            Position::Bottom => (false, true, true, true),
+            Position::Left => (true, false, true, true),
+        };
 
-        match position {
-            Position::Top => {
-                window.set_anchor(Edge::Top, true);
-                window.set_anchor(Edge::Right, true);
-                window.set_anchor(Edge::Bottom, false);
-                window.set_anchor(Edge::Left, true);
-            }
-            Position::Right => {
-                window.set_anchor(Edge::Top, true);
-                window.set_anchor(Edge::Right, true);
-                window.set_anchor(Edge::Bottom, true);
-                window.set_anchor(Edge::Left, false);
-            }
-            Position::Bottom => {
-                window.set_anchor(Edge::Top, false);
-                window.set_anchor(Edge::Right, true);
-                window.set_anchor(Edge::Bottom, true);
-                window.set_anchor(Edge::Left, true);
-            }
-            Position::Left => {
-                window.set_anchor(Edge::Top, true);
-                window.set_anchor(Edge::Right, false);
-                window.set_anchor(Edge::Bottom, true);
-                window.set_anchor(Edge::Left, true);
-            }
-        }
+        let window = &self.window;
+        window.set_anchor(Edge::Top, top);
+        window.set_anchor(Edge::Right, right);
+        window.set_anchor(Edge::Bottom, bottom);
+        window.set_anchor(Edge::Left, left);
     }
 }
