@@ -19,14 +19,19 @@ static INSTANSES: LazyLock<Mutex<Vec<(String, mpsc::Sender<WorkspaceEvent>)>>> =
 
 async fn send_for_monitor(monitor_name: &String, event: WorkspaceEvent) {
     let instances = INSTANSES.lock().await;
+    // log::debug!("send: len {}", instances.len());
 
-    let sender = &(*instances)
-        .iter()
-        .find(|i| i.0 == *monitor_name)
-        .unwrap()
-        .1;
+    if let Some(pair) =
+        &(*instances).iter().find(|pair| pair.0 == *monitor_name)
+    {
+        let sender = &pair.1;
 
-    sender.send(event).await.unwrap();
+        if let Err(e) = sender.send(event).await {
+            log::error!("{e}");
+        };
+    } else {
+        log::warn!("Cant find channel for '{}'", monitor_name);
+    }
 }
 
 async fn event_handler() {
@@ -48,13 +53,10 @@ async fn event_handler() {
     loop {
         let maybe_event = rx.recv().await;
 
-        match maybe_event {
-            Err(message) => {
-                log::error!("{}", message);
-                continue;
-            }
-            Ok(_) => (),
-        };
+        if let Err(message) = maybe_event {
+            log::error!("{}", message);
+            continue;
+        }
 
         match maybe_event.unwrap() {
             HyprEvent::WorkspaceV2 { id, name: _ } => {
@@ -112,38 +114,38 @@ pub struct Workspaces {
 }
 
 impl Workspaces {
-    pub fn new(config: Rc<WorkspacesConfig>, orientation: Orientation) -> Self {
+    pub fn new(
+        _config: Rc<WorkspacesConfig>,
+        orientation: Orientation,
+    ) -> Self {
+        log::info!("ws ctor");
         let (sender, mut receiver) = mpsc::channel(16);
 
         let root = gtk::Box::new(orientation, 0);
+        let workspaces = Self { root: root.clone() };
+
         root.set_widget_name("workspaces");
 
-        let workspaces = Self { root };
-
-        workspaces.root.connect_realize(clone!(
-            #[weak]
-            workspaces,
-            move |_| workspaces.on_realize(&sender)
-        ));
-
-        workspaces.root.connect_destroy(clone!(
-            #[weak]
-            workspaces,
-            move |_| workspaces.on_destroy()
-        ));
+        {
+            let ws_weak = clone::Downgrade::downgrade(&workspaces);
+            root.connect_realize(move |_| on_realize(&ws_weak, &sender));
+            root.connect_unrealize(on_unrealize);
+        }
 
         let ws_weak = clone::Downgrade::downgrade(&workspaces);
         glib::spawn_future_local(async move {
             loop {
-                if let Some(data) = receiver.recv().await {
-                    match clone::Upgrade::upgrade(&ws_weak) {
-                        Some(ws) => ws.update(data),
-                        None => break,
-                    }
+                if let Some(data) = receiver.recv().await
+                    && let Some(ws) = clone::Upgrade::upgrade(&ws_weak)
+                {
+                    ws.update(data);
+                } else {
+                    break;
                 }
             }
         });
 
+        log::info!("ws ctor END");
         workspaces
     }
 }
@@ -152,6 +154,8 @@ impl Updateable for Workspaces {
     type Message = WorkspaceEvent;
 
     fn update(&self, event: WorkspaceEvent) {
+        log::debug!("update");
+
         match event {
             WorkspaceEvent::Create(id) => self.add_workspace_button(id),
             WorkspaceEvent::Destroy(id) => self.remove_workspace(id),
@@ -166,37 +170,45 @@ impl Component for Workspaces {
     const NAME: &str = "workspaces";
 }
 
+fn on_realize(ws: &WorkspacesWeak, sender: &mpsc::Sender<WorkspaceEvent>) {
+    log::debug!("realize");
+    let workspaces = clone::Upgrade::upgrade(ws).unwrap();
+
+    let surface = workspaces.root.native().unwrap().surface().unwrap();
+    let monitor = workspaces
+        .root
+        .display()
+        .monitor_at_surface(&surface)
+        .unwrap();
+    let connector_name = monitor.connector().unwrap().to_string();
+
+    log::warn!("block");
+    RT.block_on(async {
+        for ws in hyprland::Workspace::on_monitor(&monitor).await.unwrap() {
+            workspaces.add_workspace_button(ws.id);
+        }
+    });
+    log::warn!("unlock");
+
+    let mut instances = INSTANSES.blocking_lock();
+    instances.push((connector_name, sender.clone()));
+}
+
+fn on_unrealize(root: &gtk::Box) {
+    log::debug!("UNrealize");
+
+    let surface = root.native().expect("can get native").surface().unwrap();
+    let monitor = root.display().monitor_at_surface(&surface).unwrap();
+    let connector_name = monitor.connector().unwrap().to_string();
+
+    let mut instances = INSTANSES.blocking_lock();
+    instances.retain(|(c, _)| *c != connector_name);
+}
+
 impl Workspaces {
     async fn change_active_workspace(id: i32) {
         let command = format!("dispatch workspace {}", id);
         let _ = hyprland::command(command.as_bytes()).await;
-    }
-
-    fn on_realize(&self, sender: &mpsc::Sender<WorkspaceEvent>) {
-        let surface = self.root.native().unwrap().surface().unwrap();
-        let monitor = self.root.display().monitor_at_surface(&surface).unwrap();
-
-        RT.block_on(async {
-            for ws in hyprland::Workspace::on_monitor(&monitor).await.unwrap() {
-                self.add_workspace_button(ws.id);
-            }
-        });
-
-        let connector_name = monitor.connector().unwrap().to_string();
-
-        let mut instances = INSTANSES.blocking_lock();
-        instances.push((connector_name, sender.clone()));
-    }
-
-    fn on_destroy(&self) {
-        log::debug!("destroy");
-
-        let surface = self.root.native().unwrap().surface().unwrap();
-        let monitor = self.root.display().monitor_at_surface(&surface).unwrap();
-        let connector_name = monitor.connector().unwrap().to_string();
-
-        let mut instances = INSTANSES.blocking_lock();
-        instances.retain(|(c, _)| *c == connector_name);
     }
 
     fn create_button(id: i32) -> Label {

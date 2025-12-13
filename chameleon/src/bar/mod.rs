@@ -148,7 +148,6 @@ impl Bar {
             workspaces,
         } = config.modules();
 
-        // FIXME: duplication of modules is possible
         for (modules, placement) in all_modules {
             for name in modules {
                 match name {

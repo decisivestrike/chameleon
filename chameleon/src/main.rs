@@ -118,6 +118,7 @@ fn load_styles(style_path: impl AsRef<Path>, config: Rc<Config>) {
 }
 
 fn main() -> glib::ExitCode {
+    // console_subscriber::init();
     init_logger();
 
     let Args {
