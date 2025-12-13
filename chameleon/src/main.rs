@@ -37,8 +37,12 @@ pub fn apply_config(application: &gtk::Application, config: Rc<Config>) {
     let bar_config = config.bar.clone();
 
     match bar_config.enabled {
-        // If it already exists, then we don't do anything.
-        true if BARS.with_borrow(|b| b.len() != 0) => (),
+        true if BARS.with_borrow(|b| b.len() != 0) => {
+            BARS.with_borrow_mut(|bars| {
+                bars.iter_mut()
+                    .for_each(|bar| bar.apply_config(config.bar.clone()))
+            });
+        }
         true => {
             info!("Setup bar...");
 
@@ -59,7 +63,6 @@ pub fn apply_config(application: &gtk::Application, config: Rc<Config>) {
     }
 
     match widgets_config.enabled {
-        // If it already exists, then we don't do anything.
         true if WIDGET_LAYER.with_borrow(|wl| wl.is_some()) => (),
         true => {
             info!("Setup widgets...");

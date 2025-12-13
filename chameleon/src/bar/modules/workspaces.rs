@@ -1,4 +1,4 @@
-use chameleon_config::bar::Workspaces as WorkspacesConfig;
+use chameleon_config::bar::{self, Workspaces as WorkspacesConfig};
 use chameleon_ipc::hyprland::{
     self, HyprEvent, events::HyprlandService, workspace::Workspace,
 };
@@ -10,6 +10,8 @@ use grapes::{
     tokio::sync::{Mutex, mpsc},
 };
 use std::{rc::Rc, sync::LazyLock};
+
+use crate::bar::AsBarModule;
 
 static INSTANSES: LazyLock<Mutex<Vec<(String, mpsc::Sender<WorkspaceEvent>)>>> =
     LazyLock::new(|| {
@@ -111,25 +113,8 @@ pub struct Workspaces {
     root: gtk::Box,
 }
 
-impl Updateable for Workspaces {
-    type Message = WorkspaceEvent;
-
-    fn update(&self, event: WorkspaceEvent) {
-        match event {
-            WorkspaceEvent::Create(id) => self.add_workspace_button(id),
-            WorkspaceEvent::Destroy(id) => self.remove_workspace(id),
-            WorkspaceEvent::ChangeActive { from, to } => {
-                self.change_active_workspace_button(from, to)
-            }
-        }
-    }
-}
-
-impl Component for Workspaces {
-    const NAME: &str = "workspaces";
-    type Props = Rc<WorkspacesConfig>;
-
-    fn new(_config: Self::Props) -> Self {
+impl Workspaces {
+    pub fn new(_config: Rc<WorkspacesConfig>) -> Self {
         let (sender, mut receiver) = mpsc::channel(16);
 
         let root = gtk::Box::new(Orientation::Horizontal, 0);
@@ -154,6 +139,24 @@ impl Component for Workspaces {
 
         workspaces
     }
+}
+
+impl Updateable for Workspaces {
+    type Message = WorkspaceEvent;
+
+    fn update(&self, event: WorkspaceEvent) {
+        match event {
+            WorkspaceEvent::Create(id) => self.add_workspace_button(id),
+            WorkspaceEvent::Destroy(id) => self.remove_workspace(id),
+            WorkspaceEvent::ChangeActive { from, to } => {
+                self.change_active_workspace_button(from, to)
+            }
+        }
+    }
+}
+
+impl Component for Workspaces {
+    const NAME: &str = "workspaces";
 }
 
 impl Workspaces {
@@ -233,5 +236,11 @@ impl Workspaces {
         }
 
         self.root.append(&button)
+    }
+}
+
+impl AsBarModule for Workspaces {
+    fn as_module(&self) -> bar::Module {
+        bar::Module::Workspaces
     }
 }

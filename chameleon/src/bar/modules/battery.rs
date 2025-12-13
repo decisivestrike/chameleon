@@ -1,4 +1,4 @@
-use chameleon_config::bar::Battery as BatteryConfig;
+use chameleon_config::bar::{self, Battery as BatteryConfig};
 use grapes::{
     Cacheable, Component, Connectable, GtkCompatible, Reactive, derived,
     gtk::{Label, prelude::WidgetExt},
@@ -7,6 +7,8 @@ use grapes::{
 };
 use log::warn;
 use std::{rc::Rc, time::Duration};
+
+use crate::bar::AsBarModule;
 
 const BAT: &str = "BAT1";
 
@@ -17,6 +19,21 @@ pub struct Battery {
 }
 
 impl Battery {
+    pub fn new(config: Rc<BatteryConfig>) -> Self {
+        let charge = state(0);
+        charge.connect_service_unmatched::<BatteryService>(|maybe_charge| {
+            maybe_charge.unwrap_or_default()
+        });
+
+        let formatted_charge =
+            derived(move || Battery::format(*charge.get(), &config.icons));
+
+        let label = Label::statefull(&formatted_charge);
+        label.add_css_class("module");
+
+        Self { label }
+    }
+
     async fn charge() -> Option<u8> {
         let battery_path = format!("/sys/class/power_supply/{}/capacity", BAT);
 
@@ -44,21 +61,11 @@ impl Battery {
 
 impl Component for Battery {
     const NAME: &str = "battery";
-    type Props = Rc<BatteryConfig>;
+}
 
-    fn new(config: Self::Props) -> Self {
-        let charge = state(0);
-        charge.connect_service_unmatched::<BatteryService>(|maybe_charge| {
-            maybe_charge.unwrap_or_default()
-        });
-
-        let formatted_charge =
-            derived(move || Battery::format(*charge.get(), &config.icons));
-
-        let label = Label::statefull(&formatted_charge);
-        label.add_css_class("module");
-
-        Self { label }
+impl AsBarModule for Battery {
+    fn as_module(&self) -> bar::Module {
+        bar::Module::Battery
     }
 }
 

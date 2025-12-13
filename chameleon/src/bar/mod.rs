@@ -4,7 +4,7 @@ use crate::bar::modules::{Battery, Clock, Workspaces};
 use chameleon_config::{self as config, bar::Modules};
 use config::bar::{Layer as BarLayer, Module, ModulePlacement, Position};
 use grapes::{
-    Component, WindowComponent,
+    WindowComponent,
     extensions::GrapesBoxExt,
     gtk::{
         self, ApplicationWindow, Orientation,
@@ -12,25 +12,41 @@ use grapes::{
         prelude::{GtkWindowExt, WidgetExt},
     },
     layer_shell::{Edge, KeyboardMode, Layer, LayerShell},
-    prelude::BoxExt,
+    prelude::{BoxExt, OrientableExt},
 };
 use log::info;
 use std::rc::Rc;
 
+pub trait AsBarModule {
+    fn as_module(&self) -> Module;
+}
+
+// #[derive(WindowComponent)]
 pub struct Bar {
+    // #[window]
     window: ApplicationWindow,
+    centerbox: gtk::CenterBox,
     left: gtk::Box,
     center: gtk::Box,
     right: gtk::Box,
+    monitor: gdk::Monitor,
 }
 
 impl WindowComponent for Bar {
-    type Props = Rc<config::Bar>;
+    fn present(&self) {
+        self.window.present();
+    }
 
-    fn new(
+    fn destroy(&self) {
+        self.window.destroy();
+    }
+}
+
+impl Bar {
+    pub fn new(
         application: &gtk::Application,
         monitor: &gdk::Monitor,
-        config: Self::Props,
+        config: Rc<config::Bar>,
     ) -> Self {
         let window = ApplicationWindow::new(application);
         let centerbox = gtk::CenterBox::new();
@@ -47,23 +63,19 @@ impl WindowComponent for Bar {
 
         let bar = Self {
             window,
+            centerbox,
             left,
             center,
             right,
+            monitor: monitor.clone(),
         };
 
-        bar.setup_window(monitor);
+        bar.setup_window();
         bar.apply_config(config);
 
         bar
     }
 
-    fn present(&self) {
-        self.window.present();
-    }
-}
-
-impl Bar {
     pub fn add_module(
         &self,
         module: impl AsRef<gtk::Widget>,
@@ -76,14 +88,45 @@ impl Bar {
         }
     }
 
-    fn apply_config(&self, config: Rc<config::Bar>) {
-        let window = &self.window;
+    pub fn set_orientation(&self, orientation: Orientation) {
+        self.centerbox.set_orientation(orientation);
+        self.left.set_orientation(orientation);
+        self.center.set_orientation(orientation);
+        self.right.set_orientation(orientation);
+    }
 
-        if let Some(thickness) = config.thickness {
-            window.set_default_height(thickness);
-            window.set_exclusive_zone(thickness);
-        } else {
-            window.auto_exclusive_zone_enable();
+    pub fn apply_config(&self, config: Rc<config::Bar>) {
+        let window = &self.window;
+        window.set_exclusive_zone(0);
+        self.set_position(&config.position);
+
+        match config.position {
+            Position::Top | Position::Bottom => {
+                self.set_orientation(Orientation::Horizontal);
+
+                if let Some(thickness) = config.thickness {
+                    window.set_default_height(thickness);
+                    window.set_exclusive_zone(thickness);
+                } else {
+                    window.set_default_height(-1);
+                    window.auto_exclusive_zone_enable();
+                }
+
+                window.set_default_width(self.monitor.geometry().width());
+            }
+            Position::Right | Position::Left => {
+                self.set_orientation(Orientation::Vertical);
+
+                if let Some(thickness) = config.thickness {
+                    window.set_default_width(thickness);
+                    window.set_exclusive_zone(thickness);
+                } else {
+                    window.set_default_width(-1);
+                    window.auto_exclusive_zone_enable();
+                }
+
+                window.set_default_height(self.monitor.geometry().height());
+            }
         }
 
         window.set_layer(match config.layer {
@@ -92,8 +135,6 @@ impl Bar {
             BarLayer::Top => Layer::Top,
             BarLayer::Overlay => Layer::Overlay,
         });
-
-        self.set_position(&config.position);
 
         self.left.set_spacing(config.spacing);
         self.center.set_spacing(config.spacing);
@@ -134,21 +175,20 @@ impl Bar {
         }
     }
 
-    fn setup_window(&self, monitor: &gdk::Monitor) {
+    fn setup_window(&self) {
         let window = &self.window;
 
         window.init_layer_shell();
         window.set_namespace(Some("chameleon-taskbar"));
 
         window.set_widget_name("bar");
-        window.set_default_width(monitor.geometry().width());
 
         window.set_decorated(false);
         window.set_resizable(false);
 
         window.set_keyboard_mode(KeyboardMode::OnDemand);
 
-        window.set_monitor(Some(monitor));
+        window.set_monitor(Some(&self.monitor));
     }
 
     fn set_position(&self, position: &Position) {
@@ -164,9 +204,5 @@ impl Bar {
         window.set_anchor(Edge::Right, right);
         window.set_anchor(Edge::Bottom, bottom);
         window.set_anchor(Edge::Left, left);
-    }
-
-    pub fn destroy(&self) {
-        self.window.destroy();
     }
 }

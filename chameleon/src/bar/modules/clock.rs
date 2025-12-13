@@ -1,4 +1,4 @@
-use chameleon_config as config;
+use chameleon_config::{self as config, bar};
 use chrono::{DateTime, Local};
 use config::bar::modules::Clock as ClockConfig;
 use grapes::{
@@ -9,6 +9,8 @@ use grapes::{
 };
 use std::{rc::Rc, time::Duration};
 
+use crate::bar::AsBarModule;
+
 #[derive(Clone, Debug, GtkCompatible)]
 pub struct Clock {
     #[root]
@@ -16,16 +18,7 @@ pub struct Clock {
 }
 
 impl Clock {
-    fn format(time: DateTime<Local>, format: &str) -> String {
-        time.format(format).to_string()
-    }
-}
-
-impl Component for Clock {
-    const NAME: &str = "clock";
-    type Props = Rc<ClockConfig>;
-
-    fn new(config: Self::Props) -> Self {
+    pub fn new(config: Rc<ClockConfig>) -> Self {
         let time = state(Local::now());
         time.connect_service::<TimeService>();
 
@@ -36,6 +29,20 @@ impl Component for Clock {
         label.add_css_class("module");
 
         Self { label }
+    }
+
+    fn format(time: DateTime<Local>, format: &str) -> String {
+        time.format(format).to_string()
+    }
+}
+
+impl Component for Clock {
+    const NAME: &str = "clock";
+}
+
+impl AsBarModule for Clock {
+    fn as_module(&self) -> bar::Module {
+        bar::Module::Clock
     }
 }
 
