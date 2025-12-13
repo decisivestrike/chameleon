@@ -18,52 +18,87 @@ use grapes::{
         },
     },
     prelude::GrapesMonitorExt,
+    tokio::sync::mpsc,
 };
 use log::info;
-use std::{path::Path, rc::Rc};
+use std::{cell::RefCell, path::Path, rc::Rc};
+
+thread_local! {
+    static BARS: RefCell<Vec<Bar>> = RefCell::new(vec![]);
+    static WIDGET_LAYER: RefCell<Option<WidgetLayer>> = RefCell::new(None);
+}
 
 fn init_logger() {
     env_logger::builder().format_timestamp(None).init();
 }
 
-fn on_activate(application: &gtk::Application, config: Rc<Config>) {
+pub fn apply_config(application: &gtk::Application, config: Rc<Config>) {
     let widgets_config = config.widgets.clone();
     let bar_config = config.bar.clone();
 
-    if bar_config.enabled {
-        info!("Setup bar...");
+    match bar_config.enabled {
+        // If it already exists, then we don't do anything.
+        true if BARS.with_borrow(|b| b.len() != 0) => (),
+        true => {
+            info!("Setup bar...");
 
-        for monitor in Monitor::all().iter() {
-            let bar = Bar::new(application, monitor, bar_config.clone());
-
-            bar.present();
+            for monitor in Monitor::all().iter() {
+                let bar = Bar::new(application, monitor, bar_config.clone());
+                bar.present();
+                BARS.with(|bars| bars.borrow_mut().push(bar));
+            }
         }
+        false => BARS.with_borrow_mut(|bars| {
+            if bars.len() != 0 {
+                bars.retain(|bar| {
+                    bar.destroy();
+                    false
+                })
+            }
+        }),
     }
 
-    if widgets_config.enabled {
-        info!("Setup widgets...");
+    match widgets_config.enabled {
+        // If it already exists, then we don't do anything.
+        true if WIDGET_LAYER.with_borrow(|wl| wl.is_some()) => (),
+        true => {
+            info!("Setup widgets...");
 
-        for monitor in Monitor::all().iter() {
-            let widget_layer = WidgetLayer::new(application, monitor);
+            for monitor in Monitor::all().iter() {
+                let widget_layer = WidgetLayer::new(application, monitor);
 
-            {
-                let l = gtk::Label::new(Some("Drag Me!"));
-                widget_layer.append(&l, 50.0, 50.0);
+                {
+                    let l = gtk::Label::new(Some("Drag Me!"));
+                    widget_layer.append(&l, 50.0, 50.0);
+                }
+
+                {
+                    let l = gtk::Label::new(Some("Drag Me Too!"));
+                    widget_layer.append(&l, 100.0, 100.0);
+                }
+
+                {
+                    let l = gtk::Label::new(Some("Pretty good!"));
+                    widget_layer.append(&l, 150.0, 150.0);
+                }
+
+                widget_layer.present();
+
+                WIDGET_LAYER.with_borrow_mut(|wl| *wl = Some(widget_layer));
+
+                info!(
+                    "Widget layer presented on {}",
+                    monitor.connector().unwrap()
+                );
             }
-
-            {
-                let l = gtk::Label::new(Some("Drag Me Too!"));
-                widget_layer.append(&l, 100.0, 100.0);
-            }
-
-            {
-                let l = gtk::Label::new(Some("Pretty good!"));
-                widget_layer.append(&l, 150.0, 150.0);
-            }
-
-            widget_layer.present();
-
-            info!("Widget layer presented on {}", monitor.connector().unwrap());
+        }
+        false => {
+            WIDGET_LAYER.with_borrow_mut(|layer| {
+                if let Some(widget_layer) = layer.as_mut() {
+                    widget_layer.destroy();
+                    *layer = None;
+                }
+            });
         }
     }
 
@@ -113,11 +148,27 @@ fn main() -> glib::ExitCode {
     app.connect_activate(clone!(
         #[strong]
         config,
-        move |app| on_activate(app, config.clone())
+        move |app| apply_config(app, config.clone())
     ));
 
     if watch {
-        RT.spawn(hot_reload::watcher(config_path, style_path));
+        let (tx, mut rx) = mpsc::channel::<()>(16);
+        RT.spawn(hot_reload::watcher(tx, config_path, style_path));
+
+        glib::spawn_future_local(clone!(
+            #[strong]
+            app,
+            async move {
+                loop {
+                    if let Some(_) = rx.recv().await
+                        && let Ok(config) = Config::update()
+                    {
+                        let config = Rc::new(config);
+                        apply_config(&app, config);
+                    }
+                }
+            }
+        ));
     }
 
     app.run()

@@ -199,4 +199,8 @@ impl WidgetLayer {
         motion_controller.connect_motion(motion_handler);
         self.window.add_controller(motion_controller);
     }
+
+    pub fn destroy(&self) {
+        self.window.destroy();
+    }
 }

@@ -165,4 +165,8 @@ impl Bar {
         window.set_anchor(Edge::Bottom, bottom);
         window.set_anchor(Edge::Left, left);
     }
+
+    pub fn destroy(&self) {
+        self.window.destroy();
+    }
 }

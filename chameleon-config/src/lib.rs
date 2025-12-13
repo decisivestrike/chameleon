@@ -40,7 +40,7 @@ impl Config {
         }
     }
 
-    fn update() -> Result<Self> {
+    pub fn update() -> Result<Self> {
         let path = CONFIG_PATH.get().unwrap();
 
         let toml_str = match std::fs::read_to_string(&path) {

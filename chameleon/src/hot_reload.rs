@@ -3,12 +3,17 @@ use grapes::{
     Css,
     css::StylePriority,
     glib::{self, clone},
+    tokio::sync::mpsc::Sender,
 };
 use inotify::{Inotify, WatchMask};
 use log::info;
 use std::{path::PathBuf, sync::Arc};
 
-pub async fn watcher(config_path: PathBuf, styles_path: PathBuf) {
+pub async fn watcher(
+    tx: Sender<()>,
+    config_path: PathBuf,
+    styles_path: PathBuf,
+) {
     let inotify =
         Inotify::init().expect("Error while initializing inotify instance");
 
@@ -32,7 +37,10 @@ pub async fn watcher(config_path: PathBuf, styles_path: PathBuf) {
             && let Ok(event) = maybe_event
         {
             match event.wd {
-                wd if wd == config_wd => info!("fake config update"),
+                wd if wd == config_wd => {
+                    tx.send(()).await.unwrap();
+                    info!("Config reloaded");
+                }
                 wd if wd == styles_wd => {
                     glib::idle_add(clone!(
                         #[strong]
@@ -44,7 +52,6 @@ pub async fn watcher(config_path: PathBuf, styles_path: PathBuf) {
                             glib::ControlFlow::Break
                         }
                     ));
-
                     info!("Styles reloaded");
                 }
                 _ => (),
