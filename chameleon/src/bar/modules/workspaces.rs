@@ -132,14 +132,10 @@ impl Workspaces {
 
         let ws_weak = clone::Downgrade::downgrade(&workspaces);
         glib::spawn_future_local(async move {
-            loop {
-                if let Some(data) = receiver.recv().await
-                    && let Some(ws) = clone::Upgrade::upgrade(&ws_weak)
-                {
-                    ws.update(data);
-                } else {
-                    break;
-                }
+            while let Some(data) = receiver.recv().await
+                && let Some(ws) = clone::Upgrade::upgrade(&ws_weak)
+            {
+                ws.update(data);
             }
         });
 
