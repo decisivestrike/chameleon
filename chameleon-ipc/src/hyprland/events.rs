@@ -135,7 +135,7 @@ broadcast!(HyprlandService -> HyprEvent, async |tx| {
             let event = match line.parse::<HyprEvent>() {
                 Ok(ev) => ev,
                 Err(e) => {
-                    warn!("{e}");
+                    // warn!("{e}");
                     continue;
                 }
             };

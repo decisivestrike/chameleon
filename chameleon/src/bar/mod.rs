@@ -12,14 +12,10 @@ use grapes::{
         prelude::{GtkWindowExt, WidgetExt},
     },
     layer_shell::{Edge, KeyboardMode, Layer, LayerShell},
-    prelude::{BoxExt, OrientableExt},
+    prelude::OrientableExt,
 };
 use log::info;
 use std::rc::Rc;
-
-pub trait AsBarModule {
-    fn as_module(&self) -> Module;
-}
 
 // #[derive(WindowComponent)]
 pub struct Bar {
@@ -57,11 +53,7 @@ impl Bar {
         let center = gtk::Box::new(Orientation::Horizontal, 0);
         let right = gtk::Box::new(Orientation::Horizontal, 0);
 
-        centerbox.set_start_widget(Some(&left));
-        centerbox.set_center_widget(Some(&center));
-        centerbox.set_end_widget(Some(&right));
-
-        let bar = Self {
+        let mut bar = Self {
             window,
             centerbox,
             left,
@@ -88,57 +80,61 @@ impl Bar {
         }
     }
 
-    pub fn set_orientation(&self, orientation: Orientation) {
+    pub fn recreate_boxes(&mut self, orientation: Orientation, spacing: i32) {
+        self.left = gtk::Box::new(orientation, spacing);
+        self.center = gtk::Box::new(orientation, spacing);
+        self.right = gtk::Box::new(orientation, spacing);
+
         self.centerbox.set_orientation(orientation);
-        self.left.set_orientation(orientation);
-        self.center.set_orientation(orientation);
-        self.right.set_orientation(orientation);
+        self.centerbox.set_start_widget(Some(&self.left));
+        self.centerbox.set_center_widget(Some(&self.center));
+        self.centerbox.set_end_widget(Some(&self.right));
     }
 
-    pub fn apply_config(&self, config: Rc<config::Bar>) {
-        let window = &self.window;
-        window.set_exclusive_zone(0);
+    pub fn apply_config(&mut self, config: Rc<config::Bar>) {
         self.set_position(&config.position);
 
-        match config.position {
+        let orientation = match config.position {
             Position::Top | Position::Bottom => {
-                self.set_orientation(Orientation::Horizontal);
+                self.recreate_boxes(Orientation::Horizontal, config.spacing);
 
                 if let Some(thickness) = config.thickness {
-                    window.set_default_height(thickness);
-                    window.set_exclusive_zone(thickness);
+                    self.window.set_default_height(thickness);
+                    self.window.set_exclusive_zone(thickness);
                 } else {
-                    window.set_default_height(-1);
-                    window.auto_exclusive_zone_enable();
+                    self.window.set_default_height(-1);
+                    self.window.auto_exclusive_zone_enable();
                 }
 
-                window.set_default_width(self.monitor.geometry().width());
+                self.window
+                    .set_default_width(self.monitor.geometry().width());
+
+                Orientation::Horizontal
             }
             Position::Right | Position::Left => {
-                self.set_orientation(Orientation::Vertical);
+                self.recreate_boxes(Orientation::Vertical, config.spacing);
 
                 if let Some(thickness) = config.thickness {
-                    window.set_default_width(thickness);
-                    window.set_exclusive_zone(thickness);
+                    self.window.set_default_width(thickness);
+                    self.window.set_exclusive_zone(thickness);
                 } else {
-                    window.set_default_width(-1);
-                    window.auto_exclusive_zone_enable();
+                    self.window.set_default_width(-1);
+                    self.window.auto_exclusive_zone_enable();
                 }
 
-                window.set_default_height(self.monitor.geometry().height());
-            }
-        }
+                self.window
+                    .set_default_height(self.monitor.geometry().height());
 
-        window.set_layer(match config.layer {
+                Orientation::Vertical
+            }
+        };
+
+        self.window.set_layer(match config.layer {
             BarLayer::Background => Layer::Background,
             BarLayer::Bottom => Layer::Bottom,
             BarLayer::Top => Layer::Top,
             BarLayer::Overlay => Layer::Overlay,
         });
-
-        self.left.set_spacing(config.spacing);
-        self.center.set_spacing(config.spacing);
-        self.right.set_spacing(config.spacing);
 
         let all_modules = [
             (&config.modules_left, ModulePlacement::Left),
@@ -165,7 +161,8 @@ impl Bar {
                         self.add_module(battery, &placement);
                     }
                     Module::Workspaces => {
-                        let workspaces = Workspaces::new(workspaces.clone());
+                        let workspaces =
+                            Workspaces::new(workspaces.clone(), orientation);
                         self.add_module(workspaces, &placement);
                     }
                 };

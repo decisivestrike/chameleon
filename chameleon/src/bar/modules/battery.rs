@@ -1,4 +1,4 @@
-use chameleon_config::bar::{self, Battery as BatteryConfig};
+use chameleon_config::bar::Battery as BatteryConfig;
 use grapes::{
     Cacheable, Component, Connectable, GtkCompatible, Reactive, derived,
     gtk::{Label, prelude::WidgetExt},
@@ -7,8 +7,6 @@ use grapes::{
 };
 use log::warn;
 use std::{rc::Rc, time::Duration};
-
-use crate::bar::AsBarModule;
 
 const BAT: &str = "BAT1";
 
@@ -30,6 +28,7 @@ impl Battery {
 
         let label = Label::statefull(&formatted_charge);
         label.add_css_class("module");
+        label.set_widget_name(Self::NAME);
 
         Self { label }
     }
@@ -61,12 +60,6 @@ impl Battery {
 
 impl Component for Battery {
     const NAME: &str = "battery";
-}
-
-impl AsBarModule for Battery {
-    fn as_module(&self) -> bar::Module {
-        bar::Module::Battery
-    }
 }
 
 persistent!(BatteryService -> Option<u8>, Battery::charge, Duration::from_secs(60));

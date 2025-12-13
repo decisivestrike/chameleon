@@ -1,17 +1,15 @@
-use chameleon_config::bar::{self, Workspaces as WorkspacesConfig};
+use chameleon_config::bar::Workspaces as WorkspacesConfig;
 use chameleon_ipc::hyprland::{
     self, HyprEvent, events::HyprlandService, workspace::Workspace,
 };
 use grapes::{
     Broadcast,
-    glib::clone,
+    glib::{Downgrade, clone},
     gtk::{GestureClick, Label, Orientation, Widget},
     prelude::*,
     tokio::sync::{Mutex, mpsc},
 };
 use std::{rc::Rc, sync::LazyLock};
-
-use crate::bar::AsBarModule;
 
 static INSTANSES: LazyLock<Mutex<Vec<(String, mpsc::Sender<WorkspaceEvent>)>>> =
     LazyLock::new(|| {
@@ -107,35 +105,44 @@ pub enum WorkspaceEvent {
     ChangeActive { from: i32, to: i32 },
 }
 
-#[derive(Clone, Debug, GtkCompatible)]
+#[derive(Clone, Debug, GtkCompatible, Downgrade)]
 pub struct Workspaces {
     #[root]
     root: gtk::Box,
 }
 
 impl Workspaces {
-    pub fn new(_config: Rc<WorkspacesConfig>) -> Self {
+    pub fn new(config: Rc<WorkspacesConfig>, orientation: Orientation) -> Self {
         let (sender, mut receiver) = mpsc::channel(16);
 
-        let root = gtk::Box::new(Orientation::Horizontal, 0);
+        let root = gtk::Box::new(orientation, 0);
         root.set_widget_name("workspaces");
 
         let workspaces = Self { root };
+
         workspaces.root.connect_realize(clone!(
-            #[strong]
+            #[weak]
             workspaces,
             move |_| workspaces.on_realize(&sender)
         ));
 
-        glib::spawn_future_local(clone!(
-            #[strong]
+        workspaces.root.connect_destroy(clone!(
+            #[weak]
             workspaces,
-            async move {
-                while let Some(data) = receiver.recv().await {
-                    workspaces.update(data);
+            move |_| workspaces.on_destroy()
+        ));
+
+        let ws_weak = clone::Downgrade::downgrade(&workspaces);
+        glib::spawn_future_local(async move {
+            loop {
+                if let Some(data) = receiver.recv().await {
+                    match clone::Upgrade::upgrade(&ws_weak) {
+                        Some(ws) => ws.update(data),
+                        None => break,
+                    }
                 }
             }
-        ));
+        });
 
         workspaces
     }
@@ -179,6 +186,17 @@ impl Workspaces {
 
         let mut instances = INSTANSES.blocking_lock();
         instances.push((connector_name, sender.clone()));
+    }
+
+    fn on_destroy(&self) {
+        log::debug!("destroy");
+
+        let surface = self.root.native().unwrap().surface().unwrap();
+        let monitor = self.root.display().monitor_at_surface(&surface).unwrap();
+        let connector_name = monitor.connector().unwrap().to_string();
+
+        let mut instances = INSTANSES.blocking_lock();
+        instances.retain(|(c, _)| *c == connector_name);
     }
 
     fn create_button(id: i32) -> Label {
@@ -236,11 +254,5 @@ impl Workspaces {
         }
 
         self.root.append(&button)
-    }
-}
-
-impl AsBarModule for Workspaces {
-    fn as_module(&self) -> bar::Module {
-        bar::Module::Workspaces
     }
 }
