@@ -33,17 +33,17 @@ impl WindowComponent for Bar {
         config: Self::Props,
     ) -> Self {
         let window = ApplicationWindow::new(application);
-        let cb = gtk::CenterBox::new();
+        let centerbox = gtk::CenterBox::new();
 
-        window.set_child(Some(&cb));
+        window.set_child(Some(&centerbox));
 
         let left = gtk::Box::new(Orientation::Horizontal, 0);
         let center = gtk::Box::new(Orientation::Horizontal, 0);
         let right = gtk::Box::new(Orientation::Horizontal, 0);
 
-        cb.set_start_widget(Some(&left));
-        cb.set_center_widget(Some(&center));
-        cb.set_end_widget(Some(&right));
+        centerbox.set_start_widget(Some(&left));
+        centerbox.set_center_widget(Some(&center));
+        centerbox.set_end_widget(Some(&right));
 
         let bar = Self {
             window,
@@ -111,6 +111,7 @@ impl Bar {
             workspaces,
         } = config.modules();
 
+        // FIXME: duplication of modules is possible
         for (modules, placement) in all_modules {
             for name in modules {
                 match name {

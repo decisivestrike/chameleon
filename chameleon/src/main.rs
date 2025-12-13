@@ -1,13 +1,12 @@
 mod bar;
 mod cli;
+mod hot_reload;
 mod widgets;
-
-use std::{path::Path, rc::Rc};
 
 use crate::{bar::Bar, cli::Args, widgets::WidgetLayer};
 use chameleon_config::Config;
 use grapes::{
-    Css, WindowComponent,
+    Css, RT, WindowComponent,
     css::StylePriority,
     glib::{self, ExitCode, clone},
     gtk::{
@@ -21,6 +20,7 @@ use grapes::{
     prelude::GrapesMonitorExt,
 };
 use log::info;
+use std::{path::Path, rc::Rc};
 
 fn init_logger() {
     env_logger::builder().format_timestamp(None).init();
@@ -85,11 +85,12 @@ fn main() -> glib::ExitCode {
     let Args {
         config_path,
         style_path,
+        watch,
     } = argh::from_env();
 
     // TODO: replace ~ on home
 
-    let config = Rc::new(Config::init(config_path));
+    let config = Rc::new(Config::init(&config_path));
 
     let app = gtk::Application::builder()
         .application_id("decisivestrike.chameleon")
@@ -104,6 +105,8 @@ fn main() -> glib::ExitCode {
     app.connect_startup(clone!(
         #[strong]
         config,
+        #[strong]
+        style_path,
         move |_| load_styles(&style_path, config.clone())
     ));
 
@@ -112,6 +115,10 @@ fn main() -> glib::ExitCode {
         config,
         move |app| on_activate(app, config.clone())
     ));
+
+    if watch {
+        RT.spawn(hot_reload::watcher(config_path, style_path));
+    }
 
     app.run()
 }

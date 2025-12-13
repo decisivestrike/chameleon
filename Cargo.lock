@@ -191,7 +191,9 @@ dependencies = [
  "chameleon-ipc",
  "chrono",
  "env_logger",
+ "futures-util",
  "grapes",
+ "inotify",
  "log",
 ]
 
