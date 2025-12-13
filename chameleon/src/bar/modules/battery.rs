@@ -1,4 +1,4 @@
-use chameleon_config::{self as config};
+use chameleon_config::bar::Battery as BatteryConfig;
 use grapes::{
     Cacheable, Component, Connectable, GtkCompatible, Reactive, derived,
     gtk::{Label, prelude::WidgetExt},
@@ -6,7 +6,7 @@ use grapes::{
     tokio::{self},
 };
 use log::warn;
-use std::time::Duration;
+use std::{rc::Rc, time::Duration};
 
 const BAT: &str = "BAT1";
 
@@ -44,7 +44,7 @@ impl Battery {
 
 impl Component for Battery {
     const NAME: &str = "battery";
-    type Props = &'static config::bar::Battery;
+    type Props = Rc<BatteryConfig>;
 
     fn new(config: Self::Props) -> Self {
         let charge = state(0);

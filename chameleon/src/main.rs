@@ -2,14 +2,14 @@ mod bar;
 mod cli;
 mod widgets;
 
-use std::path::Path;
+use std::{path::Path, rc::Rc};
 
 use crate::{bar::Bar, cli::Args, widgets::WidgetLayer};
 use chameleon_config::Config;
 use grapes::{
     Css, WindowComponent,
     css::StylePriority,
-    glib::{self, ExitCode},
+    glib::{self, ExitCode, clone},
     gtk::{
         self,
         gdk::{Monitor, prelude::MonitorExt},
@@ -26,20 +26,21 @@ fn init_logger() {
     env_logger::builder().format_timestamp(None).init();
 }
 
-fn on_activate(application: &gtk::Application) {
-    let config = Config::read();
+fn on_activate(application: &gtk::Application, config: Rc<Config>) {
+    let widgets_config = config.widgets.clone();
+    let bar_config = config.bar.clone();
 
-    if config.bar.enabled {
+    if bar_config.enabled {
         info!("Setup bar...");
 
         for monitor in Monitor::all().iter() {
-            let bar = Bar::new(application, monitor, &config.bar);
+            let bar = Bar::new(application, monitor, bar_config.clone());
 
             bar.present();
         }
     }
 
-    if config.widgets.enabled {
+    if widgets_config.enabled {
         info!("Setup widgets...");
 
         for monitor in Monitor::all().iter() {
@@ -69,10 +70,10 @@ fn on_activate(application: &gtk::Application) {
     info!("Ready!");
 }
 
-fn load_styles(style_path: impl AsRef<Path>) {
+fn load_styles(style_path: impl AsRef<Path>, config: Rc<Config>) {
     Css::load(style_path).apply(StylePriority::Application);
 
-    if Config::read().widgets.enabled {
+    if config.widgets.enabled {
         Css::from_str(include_str!("../../styles/widget-layer.css"))
             .apply(StylePriority::User);
     }
@@ -86,9 +87,9 @@ fn main() -> glib::ExitCode {
         style_path,
     } = argh::from_env();
 
-    // replace ~ on home
+    // TODO: replace ~ on home
 
-    Config::init(config_path);
+    let config = Rc::new(Config::init(config_path));
 
     let app = gtk::Application::builder()
         .application_id("decisivestrike.chameleon")
@@ -100,8 +101,17 @@ fn main() -> glib::ExitCode {
         ExitCode::SUCCESS
     });
 
-    app.connect_startup(move |_| load_styles(&style_path));
-    app.connect_activate(on_activate);
+    app.connect_startup(clone!(
+        #[strong]
+        config,
+        move |_| load_styles(&style_path, config.clone())
+    ));
+
+    app.connect_activate(clone!(
+        #[strong]
+        config,
+        move |app| on_activate(app, config.clone())
+    ));
 
     app.run()
 }

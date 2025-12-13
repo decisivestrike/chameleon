@@ -7,7 +7,7 @@ use grapes::{
     state,
     tokio::time::sleep,
 };
-use std::time::Duration;
+use std::{rc::Rc, time::Duration};
 
 #[derive(Clone, Debug, GtkCompatible)]
 pub struct Clock {
@@ -23,7 +23,7 @@ impl Clock {
 
 impl Component for Clock {
     const NAME: &str = "clock";
-    type Props = &'static ClockConfig;
+    type Props = Rc<ClockConfig>;
 
     fn new(config: Self::Props) -> Self {
         let time = state(Local::now());

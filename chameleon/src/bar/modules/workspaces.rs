@@ -9,7 +9,7 @@ use grapes::{
     prelude::*,
     tokio::sync::{Mutex, mpsc},
 };
-use std::sync::LazyLock;
+use std::{rc::Rc, sync::LazyLock};
 
 static INSTANSES: LazyLock<Mutex<Vec<(String, mpsc::Sender<WorkspaceEvent>)>>> =
     LazyLock::new(|| {
@@ -127,9 +127,9 @@ impl Updateable for Workspaces {
 
 impl Component for Workspaces {
     const NAME: &str = "workspaces";
-    type Props = &'static WorkspacesConfig;
+    type Props = Rc<WorkspacesConfig>;
 
-    fn new(_config: &WorkspacesConfig) -> Self {
+    fn new(_config: Self::Props) -> Self {
         let (sender, mut receiver) = mpsc::channel(16);
 
         let root = gtk::Box::new(Orientation::Horizontal, 0);

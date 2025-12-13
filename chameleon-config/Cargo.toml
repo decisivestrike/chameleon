@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.100"
 grapes = { path = "../../grapes/grapes" }
+inotify = "0.11.0"
 log = "0.4.28"
-serde = { version = "1.0.228", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive", "rc"] }
 toml = "0.9.8"

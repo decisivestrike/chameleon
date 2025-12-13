@@ -5,45 +5,42 @@ pub mod widgets;
 pub use widgets::Widgets;
 
 use anyhow::{Result, bail};
-use grapes::tokio::sync::broadcast::{self, Receiver, Sender};
 use log::error;
 use serde::Deserialize;
 use std::{
     fmt,
     path::{Path, PathBuf},
-    sync::{Arc, LazyLock, OnceLock},
+    rc::Rc,
+    sync::OnceLock,
 };
 
 static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
-static TX: LazyLock<Sender<Arc<Config>>> =
-    LazyLock::new(|| broadcast::channel(64).0);
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
     #[serde(default, rename = "widgets")]
-    pub widgets: Widgets,
+    pub widgets: Rc<Widgets>,
     #[serde(default, rename = "taskbar")] // Statusbar panel
-    pub bar: Bar,
+    pub bar: Rc<Bar>,
 }
 
 impl Config {
-    pub fn init<P>(path: P)
+    pub fn init<P>(path: P) -> Self
     where
         P: AsRef<Path> + fmt::Debug,
     {
         CONFIG_PATH.get_or_init(|| path.as_ref().to_path_buf());
 
-        if let Err(e) = Self::update() {
-            error!("{e}");
-            std::process::exit(-1);
+        match Self::update() {
+            Ok(config) => config,
+            Err(e) => {
+                error!("{e}");
+                std::process::exit(-1);
+            }
         }
     }
 
-    pub fn subscribe() -> Receiver<Arc<Config>> {
-        TX.subscribe()
-    }
-
-    fn update() -> Result<()> {
+    fn update() -> Result<Self> {
         let path = CONFIG_PATH.get().unwrap();
 
         let toml_str = match std::fs::read_to_string(&path) {
@@ -54,11 +51,7 @@ impl Config {
         };
 
         match toml::from_str(&toml_str) {
-            Ok(config) => {
-                TX.send(Arc::new(config)).unwrap();
-                Ok(())
-            }
-
+            Ok(config) => Ok(config),
             Err(e) => bail!("{e}"),
         }
     }

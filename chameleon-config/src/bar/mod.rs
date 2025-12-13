@@ -2,7 +2,7 @@ pub mod modules;
 pub use modules::*;
 
 use serde::Deserialize;
-use std::fmt;
+use std::{fmt, rc::Rc};
 
 /// All taskbar modules
 #[derive(Debug, Deserialize)]
@@ -96,9 +96,26 @@ pub struct Bar {
     #[serde(default)]
     pub modules_right: Vec<Module>,
     #[serde(default, rename = "clock")]
-    pub clock: Clock,
+    pub clock: Rc<Clock>,
     #[serde(default, rename = "battery")]
-    pub battery: Battery,
+    pub battery: Rc<Battery>,
     #[serde(default, rename = "workspaces")]
-    pub workspaces: Workspaces,
+    pub workspaces: Rc<Workspaces>,
+}
+
+impl Bar {
+    pub fn modules(&self) -> Modules {
+        Modules {
+            clock: self.clock.clone(),
+            battery: self.battery.clone(),
+            workspaces: self.workspaces.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Modules {
+    pub clock: Rc<Clock>,
+    pub battery: Rc<Battery>,
+    pub workspaces: Rc<Workspaces>,
 }
