@@ -19,7 +19,6 @@ static INSTANSES: LazyLock<Mutex<Vec<(String, mpsc::Sender<WorkspaceEvent>)>>> =
 
 async fn send_for_monitor(monitor_name: &String, event: WorkspaceEvent) {
     let instances = INSTANSES.lock().await;
-    // log::debug!("send: len {}", instances.len());
 
     if let Some(pair) =
         &(*instances).iter().find(|pair| pair.0 == *monitor_name)
@@ -118,7 +117,6 @@ impl Workspaces {
         _config: Rc<WorkspacesConfig>,
         orientation: Orientation,
     ) -> Self {
-        log::info!("ws ctor");
         let (sender, mut receiver) = mpsc::channel(16);
 
         let root = gtk::Box::new(orientation, 0);
@@ -145,7 +143,6 @@ impl Workspaces {
             }
         });
 
-        log::info!("ws ctor END");
         workspaces
     }
 }
@@ -154,8 +151,6 @@ impl Updateable for Workspaces {
     type Message = WorkspaceEvent;
 
     fn update(&self, event: WorkspaceEvent) {
-        log::debug!("update");
-
         match event {
             WorkspaceEvent::Create(id) => self.add_workspace_button(id),
             WorkspaceEvent::Destroy(id) => self.remove_workspace(id),
@@ -171,7 +166,6 @@ impl Component for Workspaces {
 }
 
 fn on_realize(ws: &WorkspacesWeak, sender: &mpsc::Sender<WorkspaceEvent>) {
-    log::debug!("realize");
     let workspaces = clone::Upgrade::upgrade(ws).unwrap();
 
     let surface = workspaces.root.native().unwrap().surface().unwrap();
@@ -182,21 +176,17 @@ fn on_realize(ws: &WorkspacesWeak, sender: &mpsc::Sender<WorkspaceEvent>) {
         .unwrap();
     let connector_name = monitor.connector().unwrap().to_string();
 
-    log::warn!("block");
     RT.block_on(async {
         for ws in hyprland::Workspace::on_monitor(&monitor).await.unwrap() {
             workspaces.add_workspace_button(ws.id);
         }
     });
-    log::warn!("unlock");
 
     let mut instances = INSTANSES.blocking_lock();
     instances.push((connector_name, sender.clone()));
 }
 
 fn on_unrealize(root: &gtk::Box) {
-    log::debug!("UNrealize");
-
     let surface = root.native().expect("can get native").surface().unwrap();
     let monitor = root.display().monitor_at_surface(&surface).unwrap();
     let connector_name = monitor.connector().unwrap().to_string();
