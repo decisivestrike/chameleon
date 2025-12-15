@@ -46,6 +46,7 @@ async fn event_handler() {
     let mut active_workspace_id = active_workspace.id;
     let mut active_monitor = active_workspace.monitor;
 
+    // TODO: on every reload
     send_for_monitor(
         &active_monitor,
         WorkspaceEvent::ChangeActive {
@@ -58,12 +59,15 @@ async fn event_handler() {
     loop {
         let maybe_event = rx.recv().await;
 
-        if let Err(message) = maybe_event {
-            log::error!("{}", message);
-            continue;
-        }
+        let event = match maybe_event {
+            Ok(event) => event,
+            Err(e) => {
+                log::error!("{e}");
+                continue;
+            }
+        };
 
-        match maybe_event.unwrap() {
+        match event {
             HyprEvent::WorkspaceV2 { id, name: _ } => {
                 send_for_monitor(
                     &active_monitor,
@@ -80,6 +84,7 @@ async fn event_handler() {
                 monitor_name,
                 workspace_id,
             } => {
+                // Тут должны быть разные мониторы
                 send_for_monitor(
                     &monitor_name,
                     WorkspaceEvent::ChangeActive {
@@ -105,6 +110,30 @@ async fn event_handler() {
     }
 }
 
+struct WorkspacesManager {
+    active_workspace: Workspace,
+}
+
+impl WorkspacesManager {
+    /// Send event for
+    async fn send_event(&self, monitor: &gdk::Monitor, event: WorkspaceEvent) {
+        let instances = INSTANSES.lock().await;
+        let monitor_name = monitor.connector().unwrap();
+
+        if let Some(pair) =
+            &(*instances).iter().find(|pair| pair.0 == *monitor_name)
+        {
+            let sender = &pair.1;
+
+            if let Err(e) = sender.send(event).await {
+                log::error!("{e}");
+            };
+        } else {
+            log::warn!("Cant find channel for '{}'", monitor_name);
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum WorkspaceEvent {
     Create(i32),
@@ -116,6 +145,7 @@ pub enum WorkspaceEvent {
 pub struct Workspaces {
     #[root]
     root: gtk::Box,
+    // active_workspace
 }
 
 impl Workspaces {
@@ -185,27 +215,7 @@ impl Workspaces {
         let mut instances = INSTANSES.blocking_lock();
         instances.retain(|(c, _)| *c != connector_name);
     }
-}
 
-impl Updateable for Workspaces {
-    type Message = WorkspaceEvent;
-
-    fn update(&self, event: WorkspaceEvent) {
-        match event {
-            WorkspaceEvent::Create(id) => self.add_workspace_button(id),
-            WorkspaceEvent::Destroy(id) => self.remove_workspace(id),
-            WorkspaceEvent::ChangeActive { from, to } => {
-                self.change_active_workspace_button(from, to)
-            }
-        }
-    }
-}
-
-impl Component for Workspaces {
-    const NAME: &str = "workspaces";
-}
-
-impl Workspaces {
     async fn change_active_workspace(id: i32) {
         let command = format!("dispatch workspace {}", id);
         let _ = hyprland::command(command.as_bytes()).await;
@@ -245,9 +255,8 @@ impl Workspaces {
 
     pub fn add_workspace_button(&self, id: i32) {
         let button = Self::create_button(id);
-        let mut maybe_child = self.root.first_child();
 
-        while let Some(child) = maybe_child {
+        for child in self.root.children() {
             let child_id: i32 = child
                 .widget_name()
                 .split_once('-')
@@ -261,10 +270,26 @@ impl Workspaces {
                 self.root.insert_child_after(&button, prev.as_ref());
                 return;
             }
-
-            maybe_child = child.next_sibling();
         }
 
         self.root.append(&button)
     }
+}
+
+impl Updateable for Workspaces {
+    type Message = WorkspaceEvent;
+
+    fn update(&self, event: WorkspaceEvent) {
+        match event {
+            WorkspaceEvent::Create(id) => self.add_workspace_button(id),
+            WorkspaceEvent::Destroy(id) => self.remove_workspace(id),
+            WorkspaceEvent::ChangeActive { from, to } => {
+                self.change_active_workspace_button(from, to)
+            }
+        }
+    }
+}
+
+impl Component for Workspaces {
+    const NAME: &str = "workspaces";
 }
