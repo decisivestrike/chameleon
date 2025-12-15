@@ -4,10 +4,16 @@ use chameleon_ipc::hyprland::{
 };
 use grapes::{
     Broadcast,
-    glib::{Downgrade, clone},
+    glib::{
+        Downgrade,
+        clone::{self, Downgrade, Upgrade},
+    },
     gtk::{GestureClick, Label, Orientation, Widget},
     prelude::*,
-    tokio::sync::{Mutex, mpsc},
+    tokio::sync::{
+        Mutex,
+        mpsc::{self, Receiver, Sender},
+    },
 };
 use std::{rc::Rc, sync::LazyLock};
 
@@ -117,29 +123,67 @@ impl Workspaces {
         _config: Rc<WorkspacesConfig>,
         orientation: Orientation,
     ) -> Self {
-        let (sender, mut receiver) = mpsc::channel(16);
+        let (sender, receiver) = mpsc::channel(16);
 
         let root = gtk::Box::new(orientation, 0);
-        let workspaces = Self { root: root.clone() };
-
         root.set_widget_name("workspaces");
 
-        {
-            let ws_weak = clone::Downgrade::downgrade(&workspaces);
-            root.connect_realize(move |_| on_realize(&ws_weak, &sender));
-            root.connect_unrealize(on_unrealize);
-        }
+        let workspaces = Self { root: root.clone() };
 
-        let ws_weak = clone::Downgrade::downgrade(&workspaces);
+        workspaces.connect_handlers(sender);
+        workspaces.spawn_listener_local(receiver);
+
+        workspaces
+    }
+
+    fn connect_handlers(&self, sender: Sender<WorkspaceEvent>) {
+        let root = &self.root;
+        root.connect_unrealize(Self::on_unrealize);
+
+        let ws_weak = self.downgrade();
+        root.connect_realize(move |_| Self::on_realize(&ws_weak, &sender));
+    }
+
+    fn spawn_listener_local(&self, mut receiver: Receiver<WorkspaceEvent>) {
+        let ws_weak = self.downgrade();
+
         glib::spawn_future_local(async move {
             while let Some(data) = receiver.recv().await
-                && let Some(ws) = clone::Upgrade::upgrade(&ws_weak)
+                && let Some(ws) = &ws_weak.upgrade()
             {
                 ws.update(data);
             }
         });
+    }
 
-        workspaces
+    fn on_realize(ws: &WorkspacesWeak, sender: &mpsc::Sender<WorkspaceEvent>) {
+        let workspaces = clone::Upgrade::upgrade(ws).unwrap();
+
+        let surface = workspaces.root.native().unwrap().surface().unwrap();
+        let monitor = workspaces
+            .root
+            .display()
+            .monitor_at_surface(&surface)
+            .unwrap();
+        let connector_name = monitor.connector().unwrap().to_string();
+
+        RT.block_on(async {
+            for ws in hyprland::Workspace::on_monitor(&monitor).await.unwrap() {
+                workspaces.add_workspace_button(ws.id);
+            }
+        });
+
+        let mut instances = INSTANSES.blocking_lock();
+        instances.push((connector_name, sender.clone()));
+    }
+
+    fn on_unrealize(root: &gtk::Box) {
+        let surface = root.native().expect("can get native").surface().unwrap();
+        let monitor = root.display().monitor_at_surface(&surface).unwrap();
+        let connector_name = monitor.connector().unwrap().to_string();
+
+        let mut instances = INSTANSES.blocking_lock();
+        instances.retain(|(c, _)| *c != connector_name);
     }
 }
 
@@ -159,36 +203,6 @@ impl Updateable for Workspaces {
 
 impl Component for Workspaces {
     const NAME: &str = "workspaces";
-}
-
-fn on_realize(ws: &WorkspacesWeak, sender: &mpsc::Sender<WorkspaceEvent>) {
-    let workspaces = clone::Upgrade::upgrade(ws).unwrap();
-
-    let surface = workspaces.root.native().unwrap().surface().unwrap();
-    let monitor = workspaces
-        .root
-        .display()
-        .monitor_at_surface(&surface)
-        .unwrap();
-    let connector_name = monitor.connector().unwrap().to_string();
-
-    RT.block_on(async {
-        for ws in hyprland::Workspace::on_monitor(&monitor).await.unwrap() {
-            workspaces.add_workspace_button(ws.id);
-        }
-    });
-
-    let mut instances = INSTANSES.blocking_lock();
-    instances.push((connector_name, sender.clone()));
-}
-
-fn on_unrealize(root: &gtk::Box) {
-    let surface = root.native().expect("can get native").surface().unwrap();
-    let monitor = root.display().monitor_at_surface(&surface).unwrap();
-    let connector_name = monitor.connector().unwrap().to_string();
-
-    let mut instances = INSTANSES.blocking_lock();
-    instances.retain(|(c, _)| *c != connector_name);
 }
 
 impl Workspaces {
