@@ -230,13 +230,13 @@ impl Workspaces {
         });
 
         button.add_controller(event_controller);
-        button.set_widget_name(&format!("button-{}", id));
+        button.set_widget_name(&id.to_string());
 
         button
     }
 
     fn find_button(&self, button_id: i32, f: impl FnOnce(Widget)) {
-        let button_name = format!("button-{}", button_id);
+        let button_name = button_id.to_string();
 
         self.root
             .children()
@@ -257,13 +257,7 @@ impl Workspaces {
         let button = Self::create_button(id);
 
         for child in self.root.children() {
-            let child_id: i32 = child
-                .widget_name()
-                .split_once('-')
-                .unwrap()
-                .1
-                .parse()
-                .unwrap();
+            let child_id: i32 = child.widget_name().parse().unwrap();
 
             if child_id > id {
                 let prev = child.prev_sibling();
