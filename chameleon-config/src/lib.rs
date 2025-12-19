@@ -31,7 +31,7 @@ impl Config {
     {
         CONFIG_PATH.get_or_init(|| path.as_ref().to_path_buf());
 
-        match Self::update() {
+        match Self::read() {
             Ok(config) => config,
             Err(e) => {
                 error!("{e}");
@@ -40,7 +40,7 @@ impl Config {
         }
     }
 
-    pub fn update() -> Result<Self> {
+    pub fn read() -> Result<Self> {
         let path = CONFIG_PATH.get().unwrap();
 
         let toml_str = match std::fs::read_to_string(&path) {

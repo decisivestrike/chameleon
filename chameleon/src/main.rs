@@ -3,10 +3,10 @@ mod cli;
 mod hot_reload;
 mod widgets;
 
-use crate::{bar::Bar, cli::Args, widgets::WidgetLayer};
+use crate::{bar::Bar, cli::Args, hot_reload::Watcher, widgets::WidgetLayer};
 use chameleon_config::Config;
 use grapes::{
-    Css, RT, WindowComponent,
+    Css, WindowComponent,
     css::StylePriority,
     glib::{self, ExitCode, clone},
     gtk::{
@@ -18,7 +18,6 @@ use grapes::{
         },
     },
     prelude::GrapesMonitorExt,
-    tokio::sync::mpsc,
 };
 use log::info;
 use std::{cell::RefCell, path::Path, rc::Rc};
@@ -156,23 +155,8 @@ fn main() -> glib::ExitCode {
     ));
 
     if watch {
-        let (tx, mut rx) = mpsc::channel::<()>(16);
-        RT.spawn(hot_reload::watcher(tx, config_path, style_path));
-
-        glib::spawn_future_local(clone!(
-            #[strong]
-            app,
-            async move {
-                loop {
-                    if let Some(_) = rx.recv().await
-                        && let Ok(config) = Config::update()
-                    {
-                        let config = Rc::new(config);
-                        apply_config(&app, config);
-                    }
-                }
-            }
-        ));
+        let watcher = Watcher::new(&app, config_path, style_path);
+        watcher.run();
     }
 
     app.run()
