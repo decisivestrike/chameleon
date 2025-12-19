@@ -6,7 +6,7 @@ use grapes::{
     Broadcast,
     glib::{
         Downgrade,
-        clone::{self, Downgrade, Upgrade},
+        clone::{Downgrade, Upgrade},
     },
     gtk::{GestureClick, Label, Orientation, Widget},
     prelude::*,
@@ -187,7 +187,7 @@ impl Workspaces {
     }
 
     fn on_realize(ws: &WorkspacesWeak, sender: &mpsc::Sender<WorkspaceEvent>) {
-        let workspaces = clone::Upgrade::upgrade(ws).unwrap();
+        let workspaces = ws.upgrade().unwrap();
 
         let surface = workspaces.root.native().unwrap().surface().unwrap();
         let monitor = workspaces
