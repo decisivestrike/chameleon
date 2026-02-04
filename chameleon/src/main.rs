@@ -17,7 +17,7 @@ use grapes::{
             prelude::{ApplicationExt, ApplicationExtManual},
         },
     },
-    prelude::GrapesMonitorExt,
+    prelude::monitor::GrapesMonitorExt,
 };
 use log::info;
 use std::{cell::RefCell, path::Path, rc::Rc};

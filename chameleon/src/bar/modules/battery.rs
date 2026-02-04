@@ -1,9 +1,10 @@
 use chameleon_config::bar::Battery as BatteryConfig;
 use grapes::{
-    Cacheable, Component, Connectable, GtkCompatible, Reactive, derived,
+    Component, GtkCompatible, Reactive, derived,
     gtk::{Label, prelude::WidgetExt},
-    persistent, state,
-    tokio::{self},
+    subscriber,
+    task::task,
+    tokio::{self, time::sleep},
 };
 use log::warn;
 use std::{rc::Rc, time::Duration};
@@ -16,15 +17,28 @@ pub struct Battery {
     label: Label,
 }
 
+impl Drop for Battery {
+    fn drop(&mut self) {
+        log::info!("Battery dropped")
+    }
+}
+
 impl Battery {
     pub fn new(config: Rc<BatteryConfig>) -> Self {
-        let charge = state(0);
-        charge.connect_service_unmatched::<BatteryService>(|maybe_charge| {
-            maybe_charge.unwrap_or_default()
-        });
+        let maybe_charge = subscriber(&task(async |sender| {
+            let duration = Duration::from_secs(60);
 
-        let formatted_charge =
-            derived(move || Battery::format(*charge.get(), &config.icons));
+            loop {
+                let charge = Battery::charge().await;
+                sender.send(charge).unwrap();
+                sleep(duration).await;
+            }
+        }));
+
+        let formatted_charge = derived(move || {
+            let charge = maybe_charge.get().unwrap_or(0);
+            Battery::format(charge, &config.icons)
+        });
 
         let label = Label::statefull(&formatted_charge);
         label.add_css_class("module");
@@ -61,5 +75,3 @@ impl Battery {
 impl Component for Battery {
     const NAME: &str = "battery";
 }
-
-persistent!(BatteryService -> Option<u8>, Battery::charge, Duration::from_secs(60));

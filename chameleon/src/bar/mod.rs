@@ -5,14 +5,13 @@ use chameleon_config::{self as config, bar::Modules};
 use config::bar::{Layer as BarLayer, Module, ModulePlacement, Position};
 use grapes::{
     WindowComponent,
-    extensions::GrapesBoxExt,
     gtk::{
         self, ApplicationWindow, Orientation,
         gdk::{self, prelude::MonitorExt},
         prelude::{GtkWindowExt, WidgetExt},
     },
     layer_shell::{Edge, KeyboardMode, Layer, LayerShell},
-    prelude::OrientableExt,
+    prelude::{OrientableExt, containers::GrapesBoxExt},
 };
 use log::info;
 use std::rc::Rc;

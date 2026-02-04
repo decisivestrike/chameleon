@@ -1,7 +1,7 @@
 use crate::hyprland::TX_SOCK;
 use anyhow::{anyhow, bail};
 use grapes::{
-    broadcast,
+    task::{Task, task},
     tokio::{
         io::{AsyncBufReadExt, BufReader},
         net::UnixStream,
@@ -31,7 +31,7 @@ macro_rules! event {
 }
 
 /// Contains all Hyprland events
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum HyprEvent {
     ActiveLayout {
         keyboard_name: String,
@@ -59,6 +59,8 @@ pub enum HyprEvent {
         id: i32,
         name: String,
     },
+    #[default]
+    None,
 }
 
 impl FromStr for HyprEvent {
@@ -114,7 +116,8 @@ where
     }
 }
 
-broadcast!(HyprlandService -> HyprEvent, async |tx| {
+thread_local! {
+pub static EVENTS: Task<HyprEvent> = task(async |sender| {
     loop {
         let stream = connect_with_backoff(&*TX_SOCK).await;
         let mut lines = BufReader::new(stream).lines();
@@ -140,10 +143,11 @@ broadcast!(HyprlandService -> HyprEvent, async |tx| {
                 }
             };
 
-            if let Err(e) = tx.send(event) {
+            if let Err(e) = sender.send(event) {
                 warn!("broadcast closed (no receivers): {e}");
                 return;
             }
         }
     }
 });
+}

@@ -2,9 +2,10 @@ use chameleon_config::{self as config};
 use chrono::{DateTime, Local};
 use config::bar::modules::Clock as ClockConfig;
 use grapes::{
-    Component, Connectable, GtkCompatible, Reactive, broadcast, derived,
+    Component, GtkCompatible, Reactive, derived,
     gtk::{self, Label, prelude::WidgetExt},
-    state,
+    subscriber,
+    task::task,
     tokio::time::sleep,
 };
 use std::{rc::Rc, time::Duration};
@@ -17,8 +18,19 @@ pub struct Clock {
 
 impl Clock {
     pub fn new(config: Rc<ClockConfig>) -> Self {
-        let time = state(Local::now());
-        time.connect_service::<TimeService>();
+        let time = subscriber(&task(async |sender| {
+            let duration = Duration::from_secs(1);
+
+            loop {
+                let time = Local::now();
+
+                if let Err(e) = sender.send(time) {
+                    log::error!("{e}");
+                };
+
+                sleep(duration).await;
+            }
+        }));
 
         let formatter_time =
             derived(move || Clock::format(*time.get(), &config.format));
@@ -38,13 +50,3 @@ impl Clock {
 impl Component for Clock {
     const NAME: &str = "clock";
 }
-
-broadcast!(TimeService -> DateTime<Local>, async |tx| {
-    let duration = Duration::from_secs(1);
-
-    loop {
-        let time = Local::now();
-        tx.send(time).unwrap();
-        sleep(duration).await;
-    }
-});

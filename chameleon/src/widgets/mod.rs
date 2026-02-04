@@ -58,6 +58,7 @@ impl WidgetLayer {
         widget_layer
     }
 
+    /// Add widget to a layer
     pub fn append(&self, widget: impl AsRef<Widget>, x: f64, y: f64) {
         let wrapper = gtk::Box::new(Orientation::Horizontal, 0);
         wrapper.set_widget_name("widget-wrapper");

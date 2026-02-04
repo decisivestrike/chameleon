@@ -1,15 +1,14 @@
 use chameleon_config::bar::Workspaces as WorkspacesConfig;
 use chameleon_ipc::hyprland::{
-    self, HyprEvent, events::HyprlandService, workspace::Workspace,
+    self, HyprEvent, events::EVENTS, workspace::Workspace,
 };
 use grapes::{
-    Broadcast,
     glib::{
         Downgrade,
         clone::{Downgrade, Upgrade},
     },
     gtk::{GestureClick, Label, Orientation, Widget},
-    prelude::*,
+    prelude::{containers::GrapesBoxExt, *},
     tokio::sync::{
         Mutex,
         mpsc::{self, Receiver, Sender},
@@ -40,7 +39,7 @@ async fn send_for_monitor(monitor_name: &String, event: WorkspaceEvent) {
 }
 
 async fn event_handler() {
-    let mut rx = HyprlandService::subscribe();
+    let mut receiver = EVENTS.with(|e| e.subscribe());
 
     let active_workspace = Workspace::active().await.unwrap();
     let mut active_workspace_id = active_workspace.id;
@@ -57,7 +56,7 @@ async fn event_handler() {
     .await;
 
     loop {
-        let maybe_event = rx.recv().await;
+        let maybe_event = receiver.recv().await;
 
         let event = match maybe_event {
             Ok(event) => event,
