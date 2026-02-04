@@ -108,7 +108,7 @@ pub fn apply_config(application: &gtk::Application, config: Rc<Config>) {
 }
 
 fn load_styles(style_path: impl AsRef<Path>, config: Rc<Config>) {
-    Css::load(style_path).apply(StylePriority::Application);
+    Css::load(style_path).apply(StylePriority::User);
 
     if config.widgets.enabled {
         Css::from_str(include_str!("../../styles/widget-layer.css"))

@@ -65,7 +65,7 @@ impl Watcher {
             #[strong]
             styles_path,
             move || {
-                Css::load(&*styles_path).apply(StylePriority::Application);
+                Css::load(&*styles_path).apply(StylePriority::User);
 
                 glib::ControlFlow::Break
             }
