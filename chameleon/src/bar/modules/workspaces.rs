@@ -140,7 +140,7 @@ pub enum WorkspaceEvent {
     ChangeActive { from: i32, to: i32 },
 }
 
-#[derive(Clone, Debug, GtkCompatible, Downgrade)]
+#[derive(Clone, Debug, Component, Downgrade)]
 pub struct Workspaces {
     #[root]
     root: gtk::Box,
@@ -269,7 +269,7 @@ impl Workspaces {
     }
 }
 
-impl Updateable for Workspaces {
+impl UpdateableComponent for Workspaces {
     type Message = WorkspaceEvent;
 
     fn update(&self, event: WorkspaceEvent) {
@@ -281,8 +281,4 @@ impl Updateable for Workspaces {
             }
         }
     }
-}
-
-impl Component for Workspaces {
-    const NAME: &str = "workspaces";
 }

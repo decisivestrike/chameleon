@@ -1,7 +1,7 @@
 use crate::hyprland::TX_SOCK;
 use anyhow::{anyhow, bail};
 use grapes::{
-    task::{Task, task},
+    task::Task,
     tokio::{
         io::{AsyncBufReadExt, BufReader},
         net::UnixStream,
@@ -117,7 +117,7 @@ where
 }
 
 thread_local! {
-pub static EVENTS: Task<HyprEvent> = task(async |sender| {
+pub static EVENTS: Task<HyprEvent> = grapes::task(async |sender| {
     loop {
         let stream = connect_with_backoff(&*TX_SOCK).await;
         let mut lines = BufReader::new(stream).lines();

@@ -1,9 +1,8 @@
 use chameleon_config::bar::Battery as BatteryConfig;
 use grapes::{
-    Component, GtkCompatible, Reactive, derived,
+    Component, Reactive, derived,
     gtk::{Label, prelude::WidgetExt},
-    subscriber,
-    task::task,
+    subscriber, task,
     tokio::{self, time::sleep},
 };
 use log::warn;
@@ -11,7 +10,7 @@ use std::{rc::Rc, time::Duration};
 
 const BAT: &str = "BAT1";
 
-#[derive(Clone, Debug, GtkCompatible)]
+#[derive(Clone, Debug, Component)]
 pub struct Battery {
     #[root]
     label: Label,
@@ -42,7 +41,7 @@ impl Battery {
 
         let label = Label::statefull(&formatted_charge);
         label.add_css_class("module");
-        label.set_widget_name(Self::NAME);
+        label.set_widget_name("battery");
 
         Self { label }
     }
@@ -70,8 +69,4 @@ impl Battery {
 
         format!("{} {}%", icons[i], charge)
     }
-}
-
-impl Component for Battery {
-    const NAME: &str = "battery";
 }
