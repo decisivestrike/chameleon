@@ -1,4 +1,3 @@
-use crate::apply_config;
 use chameleon_config::Config;
 use futures_util::StreamExt;
 use grapes::{
@@ -11,6 +10,8 @@ use grapes::{
 use inotify::{Inotify, WatchMask};
 use log::info;
 use std::{path::PathBuf, rc::Rc, sync::Arc};
+
+use crate::app::Chameleon;
 
 pub struct Watcher {
     app: gtk::Application,
@@ -48,7 +49,7 @@ impl Watcher {
                     match Config::read() {
                         Ok(config) => {
                             let config = Rc::new(config);
-                            apply_config(&app, config);
+                            Chameleon::apply_config(&app, config);
                         }
                         Err(e) => {
                             log::error!("{e}");
@@ -73,7 +74,7 @@ impl Watcher {
         info!("Styles reloaded");
     }
 
-    /// Just send empty message
+    /// Just sends empty message
     async fn on_config_change(sender: &Sender<()>) {
         sender.send(()).await.unwrap();
         info!("Config reloaded");
