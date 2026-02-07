@@ -1,5 +1,5 @@
-pub mod bar;
-pub use bar::Bar;
+pub mod panel;
+pub use panel::Panel;
 
 pub mod widgets;
 pub use widgets::Widgets;
@@ -20,8 +20,8 @@ static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
 pub struct Config {
     #[serde(default, rename = "widgets")]
     pub widgets: Rc<Widgets>,
-    #[serde(default, rename = "taskbar")] // Statusbar panel
-    pub bar: Rc<Bar>,
+    #[serde(default, rename = "panel")] // Statusbar panel
+    pub panel: Rc<Panel>,
 }
 
 impl Config {

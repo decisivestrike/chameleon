@@ -1,6 +1,6 @@
 use crate::{cli::Args, hot_reload::Watcher};
 use chameleon_config::Config;
-use chameleon_panel::Bar;
+use chameleon_panel::Panel;
 use chameleon_widgets::WidgetLayer;
 use grapes::{
     Css, WindowComponent,
@@ -17,7 +17,7 @@ use log::info;
 use std::{cell::RefCell, path::Path, rc::Rc};
 
 thread_local! {
-    static BARS: RefCell<Vec<Bar>> = RefCell::new(vec![]);
+    static BARS: RefCell<Vec<Panel>> = RefCell::new(vec![]);
     static WIDGET_LAYER: RefCell<Option<WidgetLayer>> = RefCell::new(None);
 }
 
@@ -73,13 +73,13 @@ impl Chameleon {
 
     pub fn apply_config(application: &gtk::Application, config: Rc<Config>) {
         let widgets_config = config.widgets.clone();
-        let bar_config = config.bar.clone();
+        let bar_config = config.panel.clone();
 
         match bar_config.enabled {
             true if BARS.with_borrow(|b| b.len() != 0) => {
                 BARS.with_borrow_mut(|bars| {
                     bars.iter_mut()
-                        .for_each(|bar| bar.apply_config(config.bar.clone()))
+                        .for_each(|bar| bar.apply_config(config.panel.clone()))
                 });
             }
             true => {
@@ -87,7 +87,7 @@ impl Chameleon {
 
                 for monitor in Monitor::all().iter() {
                     let bar =
-                        Bar::new(application, monitor, bar_config.clone());
+                        Panel::new(application, monitor, bar_config.clone());
                     bar.present();
                     BARS.with(|bars| bars.borrow_mut().push(bar));
                 }

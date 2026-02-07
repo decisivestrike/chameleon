@@ -1,4 +1,4 @@
-use chameleon_config::bar::Workspaces as WorkspacesConfig;
+use chameleon_config::panel::Workspaces as WorkspacesConfig;
 use chameleon_ipc::hyprland::{
     self, HyprEvent, events::EVENTS, workspace::Workspace,
 };

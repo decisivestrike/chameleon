@@ -79,7 +79,7 @@ pub enum Layer {
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
-pub struct Bar {
+pub struct Panel {
     #[serde(default)]
     pub enabled: bool,
     #[serde(default)]
@@ -103,7 +103,7 @@ pub struct Bar {
     pub workspaces: Rc<Workspaces>,
 }
 
-impl Bar {
+impl Panel {
     pub fn modules(&self) -> Modules {
         Modules {
             clock: self.clock.clone(),

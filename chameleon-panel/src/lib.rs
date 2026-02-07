@@ -1,8 +1,8 @@
 pub mod modules;
 
 use crate::modules::{Battery, Clock, Workspaces};
-use chameleon_config::{self as config, bar::Modules};
-use config::bar::{Layer as BarLayer, Module, ModulePlacement, Position};
+use chameleon_config::{self as config, panel::Modules};
+use config::panel::{Layer as PanelLayer, Module, ModulePlacement, Position};
 use grapes::{
     WindowComponent,
     gtk::{
@@ -17,7 +17,7 @@ use log::info;
 use std::rc::Rc;
 
 // #[derive(WindowComponent)]
-pub struct Bar {
+pub struct Panel {
     // #[window]
     window: ApplicationWindow,
     centerbox: gtk::CenterBox,
@@ -27,7 +27,7 @@ pub struct Bar {
     monitor: gdk::Monitor,
 }
 
-impl WindowComponent for Bar {
+impl WindowComponent for Panel {
     fn present(&self) {
         self.window.present();
     }
@@ -37,11 +37,11 @@ impl WindowComponent for Bar {
     }
 }
 
-impl Bar {
+impl Panel {
     pub fn new(
         application: &gtk::Application,
         monitor: &gdk::Monitor,
-        config: Rc<config::Bar>,
+        config: Rc<config::Panel>,
     ) -> Self {
         let window = ApplicationWindow::new(application);
         let centerbox = gtk::CenterBox::new();
@@ -90,7 +90,7 @@ impl Bar {
         self.centerbox.set_end_widget(Some(&self.right));
     }
 
-    pub fn apply_config(&mut self, config: Rc<config::Bar>) {
+    pub fn apply_config(&mut self, config: Rc<config::Panel>) {
         self.set_position(&config.position);
 
         let orientation = match config.position {
@@ -129,10 +129,10 @@ impl Bar {
         };
 
         self.window.set_layer(match config.layer {
-            BarLayer::Background => Layer::Background,
-            BarLayer::Bottom => Layer::Bottom,
-            BarLayer::Top => Layer::Top,
-            BarLayer::Overlay => Layer::Overlay,
+            PanelLayer::Background => Layer::Background,
+            PanelLayer::Bottom => Layer::Bottom,
+            PanelLayer::Top => Layer::Top,
+            PanelLayer::Overlay => Layer::Overlay,
         });
 
         let all_modules = [
