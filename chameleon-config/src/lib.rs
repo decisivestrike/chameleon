@@ -17,6 +17,7 @@ use std::{
 static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     #[serde(default, rename = "widgets")]
     pub widgets: Rc<Widgets>,
