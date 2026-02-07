@@ -62,7 +62,7 @@ impl Panel {
         };
 
         bar.setup_window();
-        bar.apply_config(config);
+        bar.configure(config);
 
         bar
     }
@@ -90,7 +90,7 @@ impl Panel {
         self.centerbox.set_end_widget(Some(&self.right));
     }
 
-    pub fn apply_config(&mut self, config: Rc<config::Panel>) {
+    pub fn configure(&mut self, config: Rc<config::Panel>) {
         self.set_position(&config.position);
 
         let orientation = match config.position {

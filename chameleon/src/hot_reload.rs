@@ -11,7 +11,7 @@ use inotify::{Inotify, WatchMask};
 use log::info;
 use std::{path::PathBuf, rc::Rc, sync::Arc};
 
-use crate::app::Chameleon;
+use crate::instance_manager::INSTANCE_MANAGER;
 
 pub struct Watcher {
     app: gtk::Application,
@@ -49,7 +49,10 @@ impl Watcher {
                     match Config::read() {
                         Ok(config) => {
                             let config = Rc::new(config);
-                            Chameleon::apply_config(&app, config);
+                            INSTANCE_MANAGER
+                                .lock()
+                                .await
+                                .configure_modules(&app, &config);
                         }
                         Err(e) => {
                             log::error!("{e}");

@@ -18,7 +18,7 @@ use std::{
 };
 
 #[derive(Clone)]
-pub struct WidgetLayer {
+pub struct WidgetsLayer {
     window: ApplicationWindow,
     fixer: Fixed,
     active_widget: Rc<RefCell<Option<Widget>>>,
@@ -26,7 +26,7 @@ pub struct WidgetLayer {
     previous_mouse_positon: Rc<Cell<(f64, f64)>>,
 }
 
-impl WidgetLayer {
+impl WidgetsLayer {
     pub fn new(application: &gtk::Application, monitor: &gdk::Monitor) -> Self {
         let window = ApplicationWindow::new(application);
 
