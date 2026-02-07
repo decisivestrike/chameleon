@@ -1,10 +1,10 @@
-mod bar;
 mod cli;
 mod hot_reload;
-mod widgets;
 
-use crate::{bar::Bar, cli::Args, hot_reload::Watcher, widgets::WidgetLayer};
+use crate::{cli::Args, hot_reload::Watcher};
 use chameleon_config::Config;
+use chameleon_panel::Bar;
+use chameleon_widgets::WidgetLayer;
 use grapes::{
     Css, WindowComponent,
     css::StylePriority,

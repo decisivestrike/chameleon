@@ -6,13 +6,16 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.100"
-chrono = "0.4.42"
+
 env_logger = "0.11.8"
-grapes = { path = "../../grapes/grapes" }
 log = "0.4.28"
-chameleon-config = { path = "../chameleon-config" }
-chameleon-ipc = { path = "../chameleon-ipc" }
 argh = "0.1.13"
 inotify = "0.11.0"
 futures-util = "0.3.31"
 console-subscriber = "0.5.0"
+
+grapes = { path = "../../grapes/grapes" }
+chameleon-config = { path = "../chameleon-config" }
+chameleon-ipc = { path = "../chameleon-ipc" }
+chameleon-panel = { path = "../chameleon-panel" }
+chameleon-widgets = { path = "../chameleon-widgets" }

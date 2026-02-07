@@ -1,0 +1,12 @@
+[package]
+name = "chameleon-panel"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chrono = "0.4.42"
+log = "0.4.28"
+
+grapes = { path = "../../grapes/grapes" }
+chameleon-config = { path = "../chameleon-config" }
+chameleon-ipc = { path = "../chameleon-ipc" }

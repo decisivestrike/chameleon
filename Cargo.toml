@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["chameleon", "chameleon-config", "chameleon-ipc"]
+members = ["chameleon", "chameleon-config", "chameleon-ipc", "chameleon-panel", "chameleon-widgets"]
 
 [profile.release]
 lto = true
