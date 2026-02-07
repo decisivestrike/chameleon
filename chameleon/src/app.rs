@@ -47,10 +47,8 @@ impl Chameleon {
 
         app.connect_startup(clone!(
             #[strong]
-            config,
-            #[strong]
             style_path,
-            move |_| Self::load_styles(&style_path, config.as_ref())
+            move |_| Self::load_styles(&style_path)
         ));
 
         app.connect_activate(clone!(
@@ -148,12 +146,7 @@ impl Chameleon {
         info!("Ready!");
     }
 
-    fn load_styles(style_path: impl AsRef<Path>, config: &Config) {
+    fn load_styles(style_path: impl AsRef<Path>) {
         Css::load(style_path).apply(StylePriority::User);
-
-        if config.widgets.enabled {
-            Css::from_str(include_str!("../../styles/widget-layer.css"))
-                .apply(StylePriority::User);
-        }
     }
 }

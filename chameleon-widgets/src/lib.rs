@@ -1,4 +1,6 @@
 use grapes::{
+    Css,
+    css::StylePriority,
     gtk::{
         self, ApplicationWindow, EventControllerKey, EventControllerMotion,
         Fixed, Orientation, Widget,
@@ -54,6 +56,9 @@ impl WidgetLayer {
         };
 
         widget_layer.setup(monitor);
+
+        Css::from_str(include_str!("../styles/widget-layer.css"))
+            .apply(StylePriority::User);
 
         widget_layer
     }
