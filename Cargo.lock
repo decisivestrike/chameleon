@@ -314,6 +314,7 @@ dependencies = [
  "chameleon-config",
  "chameleon-ipc",
  "chrono",
+ "dashmap",
  "grapes",
  "log",
 ]

@@ -10,3 +10,4 @@ log = "0.4.28"
 grapes = { path = "../../grapes/grapes" }
 chameleon-config = { path = "../chameleon-config" }
 chameleon-ipc = { path = "../chameleon-ipc" }
+dashmap = "6.1.0"

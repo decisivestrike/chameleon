@@ -2,6 +2,7 @@ use chameleon_config::panel::WorkspacesConfig;
 use chameleon_ipc::hyprland::{
     self, HyprEvent, events::EVENTS, workspace::Workspace,
 };
+use dashmap::DashMap;
 use grapes::{
     glib::{
         Downgrade,
@@ -9,26 +10,29 @@ use grapes::{
     },
     gtk::{GestureClick, Label, Orientation, Widget},
     prelude::{containers::GrapesBoxExt, *},
-    tokio::sync::{
-        Mutex,
-        mpsc::{self, Receiver, Sender},
+    tokio::{
+        sync::{
+            RwLock,
+            mpsc::{self, Receiver, Sender},
+        },
+        task::JoinHandle,
     },
 };
-use std::{rc::Rc, sync::LazyLock};
+use std::{
+    rc::Rc,
+    sync::{Arc, LazyLock},
+};
 
-static INSTANSES: LazyLock<Mutex<Vec<(String, mpsc::Sender<WorkspaceEvent>)>>> =
+static INSTANSES: LazyLock<DashMap<String, mpsc::Sender<WorkspaceEvent>>> =
     LazyLock::new(|| {
         RT.spawn(event_handler());
         Default::default()
     });
 
-async fn send_for_monitor(monitor_name: &String, event: WorkspaceEvent) {
-    let instances = INSTANSES.lock().await;
-
-    if let Some(pair) =
-        &(*instances).iter().find(|pair| pair.0 == *monitor_name)
+async fn send_to_monitor(monitor_name: &String, event: WorkspaceEvent) {
+    if let Some(pair) = INSTANSES.iter().find(|pair| pair.key() == monitor_name)
     {
-        let sender = &pair.1;
+        let sender = pair.value();
 
         if let Err(e) = sender.send(event).await {
             log::error!("{e}");
@@ -39,14 +43,14 @@ async fn send_for_monitor(monitor_name: &String, event: WorkspaceEvent) {
 }
 
 async fn event_handler() {
-    let mut receiver = EVENTS.with(|e| e.subscribe());
+    let mut receiver = EVENTS.subscribe();
 
     let active_workspace = Workspace::active().await.unwrap();
     let mut active_workspace_id = active_workspace.id;
     let mut active_monitor = active_workspace.monitor;
 
     // TODO: on every reload
-    send_for_monitor(
+    send_to_monitor(
         &active_monitor,
         WorkspaceEvent::ChangeActive {
             from: 0,
@@ -68,7 +72,7 @@ async fn event_handler() {
 
         match event {
             HyprEvent::WorkspaceV2 { id, name: _ } => {
-                send_for_monitor(
+                send_to_monitor(
                     &active_monitor,
                     WorkspaceEvent::ChangeActive {
                         from: active_workspace_id,
@@ -84,7 +88,7 @@ async fn event_handler() {
                 workspace_id,
             } => {
                 // Тут должны быть разные мониторы
-                send_for_monitor(
+                send_to_monitor(
                     &monitor_name,
                     WorkspaceEvent::ChangeActive {
                         from: active_workspace_id,
@@ -97,11 +101,11 @@ async fn event_handler() {
                 active_monitor = monitor_name;
             }
             HyprEvent::CreateWorkspaceV2 { id, name: _ } => {
-                send_for_monitor(&active_monitor, WorkspaceEvent::Create(id))
+                send_to_monitor(&active_monitor, WorkspaceEvent::Create(id))
                     .await;
             }
             HyprEvent::DestroyWorkspaceV2 { id, name: _ } => {
-                send_for_monitor(&active_monitor, WorkspaceEvent::Destroy(id))
+                send_to_monitor(&active_monitor, WorkspaceEvent::Destroy(id))
                     .await;
             }
             _ => (),
@@ -109,20 +113,23 @@ async fn event_handler() {
     }
 }
 
-struct WorkspacesManager {
-    active_workspace: Workspace,
+#[derive(Clone, Debug, Downgrade)]
+pub struct WorkspacesModel {
+    instances: Arc<DashMap<String, mpsc::Sender<WorkspaceEvent>>>,
+    active_workspace: Arc<RwLock<Workspace>>,
+    join_handle: Arc<JoinHandle<()>>,
 }
 
-impl WorkspacesManager {
+impl WorkspacesModel {
     /// Send event for
     async fn send_event(&self, monitor: &gdk::Monitor, event: WorkspaceEvent) {
-        let instances = INSTANSES.lock().await;
-        let monitor_name = monitor.connector().unwrap();
+        let monitor_name = monitor.connector().unwrap().to_string();
 
-        if let Some(pair) =
-            &(*instances).iter().find(|pair| pair.0 == *monitor_name)
-        {
-            let sender = &pair.1;
+        let maybe_pair =
+            INSTANSES.iter().find(|pair| pair.key() == &monitor_name);
+
+        if let Some(pair) = maybe_pair {
+            let sender = pair.value();
 
             if let Err(e) = sender.send(event).await {
                 log::error!("{e}");
@@ -202,8 +209,7 @@ impl Workspaces {
             }
         });
 
-        let mut instances = INSTANSES.blocking_lock();
-        instances.push((connector_name, sender.clone()));
+        INSTANSES.insert(connector_name, sender.clone());
     }
 
     fn on_unrealize(root: &gtk::Box) {
@@ -211,8 +217,7 @@ impl Workspaces {
         let monitor = root.display().monitor_at_surface(&surface).unwrap();
         let connector_name = monitor.connector().unwrap().to_string();
 
-        let mut instances = INSTANSES.blocking_lock();
-        instances.retain(|(c, _)| *c != connector_name);
+        INSTANSES.retain(|c, _| *c != connector_name);
     }
 
     async fn change_active_workspace(id: i32) {
