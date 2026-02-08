@@ -1,8 +1,8 @@
 pub mod panel;
-pub use panel::Panel;
+pub use panel::PanelConfig;
 
 pub mod widgets;
-pub use widgets::Widgets;
+pub use widgets::WidgetsConfig;
 
 use anyhow::{Result, bail};
 use log::error;
@@ -20,9 +20,9 @@ static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
 #[serde(deny_unknown_fields)]
 pub struct Config {
     #[serde(default, rename = "widgets")]
-    pub widgets: Rc<Widgets>,
+    pub widgets: Rc<WidgetsConfig>,
     #[serde(default, rename = "panel")] // Statusbar panel
-    pub panel: Rc<Panel>,
+    pub panel: Rc<PanelConfig>,
 }
 
 impl Config {

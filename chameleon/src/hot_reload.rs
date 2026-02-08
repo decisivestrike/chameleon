@@ -13,6 +13,7 @@ use std::{path::PathBuf, rc::Rc, sync::Arc};
 
 use crate::instance_manager::INSTANCE_MANAGER;
 
+/// Смотрит за конфигами и загружает их при изменениях
 pub struct Watcher {
     app: gtk::Application,
     config_path: PathBuf,
@@ -49,10 +50,7 @@ impl Watcher {
                     match Config::read() {
                         Ok(config) => {
                             let config = Rc::new(config);
-                            INSTANCE_MANAGER
-                                .lock()
-                                .await
-                                .configure_modules(&app, &config);
+                            INSTANCE_MANAGER.configure_modules(&app, &config);
                         }
                         Err(e) => {
                             log::error!("{e}");

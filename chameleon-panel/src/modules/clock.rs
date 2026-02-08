@@ -1,6 +1,6 @@
 use chameleon_config::{self as config};
 use chrono::{DateTime, Local};
-use config::panel::modules::Clock as ClockConfig;
+use config::panel::modules::ClockConfig;
 use grapes::{
     Component, Reactive, derived,
     gtk::{self, Label, prelude::WidgetExt},
@@ -26,7 +26,7 @@ impl Clock {
                 let time = Local::now();
 
                 if let Err(e) = sender.send(time) {
-                    log::error!("{e}");
+                    log::info!("Its ok if channel closed: {e}");
                 };
 
                 sleep(duration).await;

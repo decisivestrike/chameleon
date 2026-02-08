@@ -1,4 +1,4 @@
-use chameleon_config::panel::Battery as BatteryConfig;
+use chameleon_config::panel::BatteryConfig;
 use grapes::{
     Component, Reactive, derived,
     gtk::{Label, prelude::WidgetExt},

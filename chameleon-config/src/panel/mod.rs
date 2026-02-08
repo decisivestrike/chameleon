@@ -79,7 +79,7 @@ pub enum Layer {
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
-pub struct Panel {
+pub struct PanelConfig {
     #[serde(default)]
     pub enabled: bool,
     #[serde(default)]
@@ -96,14 +96,14 @@ pub struct Panel {
     #[serde(default)]
     pub modules_right: Vec<Module>,
     #[serde(default, rename = "clock")]
-    pub clock: Rc<Clock>,
+    pub clock: Rc<ClockConfig>,
     #[serde(default, rename = "battery")]
-    pub battery: Rc<Battery>,
+    pub battery: Rc<BatteryConfig>,
     #[serde(default, rename = "workspaces")]
-    pub workspaces: Rc<Workspaces>,
+    pub workspaces: Rc<WorkspacesConfig>,
 }
 
-impl Panel {
+impl PanelConfig {
     pub fn modules(&self) -> Modules {
         Modules {
             clock: self.clock.clone(),
@@ -115,7 +115,7 @@ impl Panel {
 
 #[derive(Debug, Clone)]
 pub struct Modules {
-    pub clock: Rc<Clock>,
-    pub battery: Rc<Battery>,
-    pub workspaces: Rc<Workspaces>,
+    pub clock: Rc<ClockConfig>,
+    pub battery: Rc<BatteryConfig>,
+    pub workspaces: Rc<WorkspacesConfig>,
 }

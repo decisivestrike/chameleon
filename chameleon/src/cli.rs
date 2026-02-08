@@ -26,7 +26,7 @@ pub struct Args {
         default = "default_styles_path()",
         description = "styles path"
     )]
-    pub style_path: PathBuf,
+    pub styles_path: PathBuf,
 
     #[argh(switch, short = 'w', description = "watch mode")]
     pub watch: bool,

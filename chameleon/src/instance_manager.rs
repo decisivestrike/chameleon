@@ -1,90 +1,94 @@
 use chameleon_config::Config;
-use chameleon_config::Panel as PanelConfig;
-use chameleon_config::Widgets as WidgetsConfig;
+use chameleon_config::PanelConfig;
+use chameleon_config::WidgetsConfig;
 use chameleon_panel::Panel;
 use chameleon_widgets::WidgetsLayer;
-use grapes::tokio::sync::Mutex;
+use dashmap::DashMap;
 use grapes::{
     WindowComponent,
     gtk::{self, gdk::Monitor},
     prelude::{MonitorExt, monitor::GrapesMonitorExt},
 };
-use log::info;
 use std::rc::Rc;
-use std::{
-    collections::{HashMap, HashSet},
-    sync::LazyLock,
-};
+use std::sync::LazyLock;
 
-pub static INSTANCE_MANAGER: LazyLock<Mutex<InstanceManager>> =
-    LazyLock::new(|| Mutex::new(InstanceManager::new()));
+/// Global instance manager
+pub static INSTANCE_MANAGER: LazyLock<InstanceManager> =
+    LazyLock::new(|| Default::default());
 
 /// String here is a monitor connector name
 #[derive(Default)]
 pub struct InstanceManager {
-    widgets_layers: HashMap<String, WidgetsLayer>,
-    panels: HashMap<String, Panel>,
-    monitor_connectors: HashSet<String>,
+    widgets_layers: DashMap<String, WidgetsLayer>,
+    panels: DashMap<String, Panel>,
 }
 
 impl InstanceManager {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
     pub fn configure_modules(
-        &mut self,
+        &self,
         application: &gtk::Application,
         config: &Rc<Config>,
     ) {
         self.configure_panels(application, &config.panel);
         self.configure_widgets_layers(application, &config.widgets);
 
-        info!("Modules configured!");
+        log::info!("Modules configured!");
     }
 
+    /// Просто удаляем все панельки. Если они включены, то снова создаем
     fn configure_panels(
-        &mut self,
+        &self,
         application: &gtk::Application,
         panel_config: &Rc<PanelConfig>,
     ) {
-        match panel_config.enabled {
-            true if !self.panels.is_empty() => self
-                .panels
-                .values_mut()
-                .for_each(|panel| panel.configure(panel_config.clone())),
-            true => {
-                log::info!("Setup bar...");
+        if !self.panels.is_empty() {
+            self.panels.retain(|_, panel| {
+                panel.destroy();
+                false
+            })
+        }
 
-                for monitor in Monitor::all().iter() {
-                    let panel =
-                        Panel::new(application, monitor, panel_config.clone());
+        if panel_config.enabled {
+            log::info!("Setup panels...");
 
-                    panel.present();
+            for monitor in Monitor::all().iter() {
+                let panel =
+                    Panel::new(application, monitor, panel_config.clone());
+                panel.present();
 
-                    let connector_name =
-                        monitor.connector().unwrap().to_string();
-
-                    self.panels.insert(connector_name, panel);
-                }
-            }
-            false => {
-                if !self.panels.is_empty() {
-                    self.panels.retain(|_, panel| {
-                        panel.destroy();
-                        false
-                    })
-                }
+                let connector_name = monitor.connector().unwrap().to_string();
+                self.panels.insert(connector_name, panel);
             }
         }
     }
 
     fn configure_widgets_layers(
         &self,
-        _application: &gtk::Application,
-        _widgets_config: &Rc<WidgetsConfig>,
+        application: &gtk::Application,
+        widgets_config: &Rc<WidgetsConfig>,
     ) {
-        log::info!("Widgets layer temporary unavailable")
+        if !self.widgets_layers.is_empty() {
+            self.widgets_layers.retain(|_, wl| {
+                wl.destroy();
+                false
+            })
+        }
+
+        if widgets_config.enabled {
+            log::info!("Setup widgets...");
+
+            for monitor in Monitor::all().iter() {
+                let widgets_layer = WidgetsLayer::new(
+                    application,
+                    monitor,
+                    widgets_config.clone(),
+                );
+                widgets_layer.present();
+
+                let connector_name = monitor.connector().unwrap().to_string();
+                self.widgets_layers.insert(connector_name, widgets_layer);
+            }
+        }
     }
 }
 

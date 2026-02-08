@@ -2,7 +2,6 @@ use crate::{
     cli::Args, hot_reload::Watcher, instance_manager::INSTANCE_MANAGER,
 };
 use chameleon_config::Config;
-
 use grapes::{
     Css,
     css::StylePriority,
@@ -11,8 +10,9 @@ use grapes::{
     gtk::{self},
     prelude::{ApplicationExt, ApplicationExtManual},
 };
+use std::rc::Rc;
 
-use std::{path::Path, rc::Rc};
+const APPLICATION_ID: &str = "decisivestrike.chameleon";
 
 pub struct Chameleon {
     app: gtk::Application,
@@ -22,12 +22,12 @@ impl Chameleon {
     pub fn new(args: Args) -> Self {
         let Args {
             config_path,
-            style_path,
+            styles_path: style_path,
             watch,
         } = args;
 
         let app = gtk::Application::builder()
-            .application_id("decisivestrike.chameleon")
+            .application_id(APPLICATION_ID)
             .flags(ApplicationFlags::HANDLES_COMMAND_LINE)
             .build();
 
@@ -39,16 +39,14 @@ impl Chameleon {
         app.connect_startup(clone!(
             #[strong]
             style_path,
-            move |_| Self::load_styles(&style_path)
+            move |_| Css::load(&style_path).apply(StylePriority::User)
         ));
 
         let config = Rc::new(Config::init(&config_path));
         app.connect_activate(clone!(
             #[strong]
             config,
-            move |app| INSTANCE_MANAGER
-                .blocking_lock()
-                .configure_modules(app, &config)
+            move |app| INSTANCE_MANAGER.configure_modules(app, &config)
         ));
 
         if watch {
@@ -61,9 +59,5 @@ impl Chameleon {
 
     pub fn run(&self) -> ExitCode {
         self.app.run()
-    }
-
-    fn load_styles(style_path: impl AsRef<Path>) {
-        Css::load(style_path).apply(StylePriority::User);
     }
 }

@@ -1,7 +1,7 @@
 pub mod modules;
 
 use crate::modules::{Battery, Clock, Workspaces};
-use chameleon_config::{self as config, panel::Modules};
+use chameleon_config::{self as config, PanelConfig, panel::Modules};
 use config::panel::{Layer as PanelLayer, Module, ModulePlacement, Position};
 use grapes::{
     WindowComponent,
@@ -16,9 +16,9 @@ use grapes::{
 use log::info;
 use std::rc::Rc;
 
-// #[derive(WindowComponent)]
+#[derive(WindowComponent)]
 pub struct Panel {
-    // #[window]
+    #[root]
     window: ApplicationWindow,
     centerbox: gtk::CenterBox,
     left: gtk::Box,
@@ -27,21 +27,11 @@ pub struct Panel {
     monitor: gdk::Monitor,
 }
 
-impl WindowComponent for Panel {
-    fn present(&self) {
-        self.window.present();
-    }
-
-    fn destroy(&self) {
-        self.window.destroy();
-    }
-}
-
 impl Panel {
     pub fn new(
         application: &gtk::Application,
         monitor: &gdk::Monitor,
-        config: Rc<config::Panel>,
+        config: Rc<PanelConfig>,
     ) -> Self {
         let window = ApplicationWindow::new(application);
         let centerbox = gtk::CenterBox::new();
@@ -90,7 +80,7 @@ impl Panel {
         self.centerbox.set_end_widget(Some(&self.right));
     }
 
-    pub fn configure(&mut self, config: Rc<config::Panel>) {
+    pub fn configure(&mut self, config: Rc<config::PanelConfig>) {
         self.set_position(&config.position);
 
         let orientation = match config.position {

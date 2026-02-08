@@ -1,5 +1,6 @@
+use chameleon_config::WidgetsConfig;
 use grapes::{
-    Css,
+    Css, WindowComponent,
     css::StylePriority,
     gtk::{
         self, ApplicationWindow, EventControllerKey, EventControllerMotion,
@@ -17,8 +18,9 @@ use std::{
     rc::Rc,
 };
 
-#[derive(Clone)]
+#[derive(Clone, WindowComponent)]
 pub struct WidgetsLayer {
+    #[root]
     window: ApplicationWindow,
     fixer: Fixed,
     active_widget: Rc<RefCell<Option<Widget>>>,
@@ -27,7 +29,11 @@ pub struct WidgetsLayer {
 }
 
 impl WidgetsLayer {
-    pub fn new(application: &gtk::Application, monitor: &gdk::Monitor) -> Self {
+    pub fn new(
+        application: &gtk::Application,
+        monitor: &gdk::Monitor,
+        config: Rc<WidgetsConfig>,
+    ) -> Self {
         let window = ApplicationWindow::new(application);
 
         let fixer = Fixed::new();
@@ -101,11 +107,6 @@ impl WidgetsLayer {
         wrapper.append(widget.as_ref());
 
         self.fixer.put(&wrapper, x, y);
-    }
-
-    /// This is almost an ordinary window, so it should be presented.
-    pub fn present(&self) {
-        self.window.present();
     }
 
     fn setup(&self, monitor: &gdk::Monitor) {
@@ -204,9 +205,5 @@ impl WidgetsLayer {
         let motion_controller = EventControllerMotion::new();
         motion_controller.connect_motion(motion_handler);
         self.window.add_controller(motion_controller);
-    }
-
-    pub fn destroy(&self) {
-        self.window.destroy();
     }
 }

@@ -7,3 +7,4 @@ edition = "2024"
 log = "0.4.28"
 
 grapes = { path = "../../grapes/grapes" }
+chameleon-config = { path = "../chameleon-config" }

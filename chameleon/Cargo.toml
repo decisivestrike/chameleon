@@ -19,3 +19,4 @@ chameleon-config = { path = "../chameleon-config" }
 chameleon-ipc = { path = "../chameleon-ipc" }
 chameleon-panel = { path = "../chameleon-panel" }
 chameleon-widgets = { path = "../chameleon-widgets" }
+dashmap = "6.1.0"
