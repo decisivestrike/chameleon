@@ -11,3 +11,4 @@ grapes = { path = "../../grapes/grapes" }
 chameleon-config = { path = "../chameleon-config" }
 chameleon-ipc = { path = "../chameleon-ipc" }
 dashmap = "6.1.0"
+uuid = { version = "1.20.0", features = ['v4'] }

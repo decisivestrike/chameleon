@@ -1,6 +1,4 @@
-use chameleon_config::Config;
-use chameleon_config::PanelConfig;
-use chameleon_config::WidgetsConfig;
+use chameleon_config::{Config, PanelConfig, WidgetsConfig};
 use chameleon_panel::Panel;
 use chameleon_widgets::WidgetsLayer;
 use dashmap::DashMap;
@@ -9,8 +7,7 @@ use grapes::{
     gtk::{self, gdk::Monitor},
     prelude::{MonitorExt, monitor::GrapesMonitorExt},
 };
-use std::rc::Rc;
-use std::sync::LazyLock;
+use std::{rc::Rc, sync::LazyLock};
 
 /// Global instance manager
 pub static INSTANCE_MANAGER: LazyLock<InstanceManager> =
@@ -24,6 +21,13 @@ pub struct InstanceManager {
 }
 
 impl InstanceManager {
+    pub fn monitor_connector_of_panel(&self, panel: &Panel) -> Option<String> {
+        self.panels
+            .iter()
+            .find(|pair| pair.value() == panel)
+            .map(|pair| pair.key().clone())
+    }
+
     pub fn configure_modules(
         &self,
         application: &gtk::Application,

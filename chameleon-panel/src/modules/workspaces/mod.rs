@@ -164,7 +164,7 @@ impl Workspaces {
         let root = gtk::Box::new(orientation, 0);
         root.set_widget_name("workspaces");
 
-        let workspaces = Self { root: root.clone() };
+        let workspaces = Self { root };
 
         workspaces.connect_handlers(sender);
         workspaces.spawn_listener_local(receiver);
