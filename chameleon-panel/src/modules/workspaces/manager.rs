@@ -6,38 +6,27 @@ use grapes::glib::{ControlFlow, clone};
 use grapes::gtk::gdk;
 use grapes::prelude::{BoxExt, Cast, MonitorExt, WidgetExt};
 use grapes::tokio::select;
-use grapes::tokio::sync::{
-    Mutex, RwLock, RwLockMappedWriteGuard, RwLockWriteGuard, mpsc,
-};
+use grapes::tokio::sync::{RwLock, mpsc};
 use grapes::{RT, glib, gtk};
 use std::collections::HashMap;
 use std::sync::LazyLock;
+
 use tokio_util::sync::CancellationToken;
 
-static WORKSPACES_MANAGER: RwLock<Option<WorkspacesManager>> =
-    RwLock::const_new(None);
+static WORKSPACES_MANAGER: LazyLock<RwLock<WorkspacesManager>> =
+    LazyLock::new(|| Default::default());
 
 static CANCELATION_TOKEN: RwLock<Option<CancellationToken>> =
     RwLock::const_new(None);
 
-static ACTIVE_WORKSPACE: LazyLock<Mutex<Workspace>> = LazyLock::new(|| {
-    let active_workspace = RT.block_on(Workspace::active()).unwrap();
-    Mutex::new(active_workspace)
-});
-
-async fn send_event(
-    monitor_connector: &String,
-    event: WorkspaceEvent,
-) -> anyhow::Result<()> {
-    let workspaces_manager = WorkspacesManager::write().await?;
+async fn send_event(monitor_connector: &String, event: WorkspaceEvent) {
+    let workspaces_manager = WORKSPACES_MANAGER.read().await;
 
     let maybe_sender = workspaces_manager
         .instances
         .iter()
         .find(|(connector, _)| *connector == monitor_connector)
-        .map(|(_, instance)| instance.sender.clone());
-
-    drop(workspaces_manager);
+        .map(|(_, instance)| &instance.sender);
 
     match maybe_sender {
         Some(sender) => {
@@ -47,10 +36,9 @@ async fn send_event(
         }
         None => log::warn!("Cant find channel for '{}'", monitor_connector),
     }
-
-    Ok(())
 }
 
+#[derive(Clone)]
 pub struct WorkspacesInstanceData {
     pub widget: gtk::Widget,
     pub sender: mpsc::Sender<WorkspaceEvent>,
@@ -79,58 +67,31 @@ impl WorkspacesManager {
         monitor: &gdk::Monitor,
         instance: WorkspacesInstanceData,
     ) -> anyhow::Result<()> {
-        let mut workspaces_manager = WorkspacesManager::write().await?;
+        if WORKSPACES_MANAGER.read().await.instances.is_empty() {
+            log::info!("Starting handler...");
+            let token = CancellationToken::new();
+            RT.spawn(Self::event_handler(token.clone()));
+
+            *CANCELATION_TOKEN.write().await = Some(token);
+        }
 
         let monitor_connector = monitor
             .connector()
             .ok_or(MonitorError::NoConnector)?
             .to_string();
 
-        workspaces_manager
+        WORKSPACES_MANAGER
+            .write()
+            .await
             .instances
             .insert(monitor_connector, instance);
 
         Ok(())
     }
 
-    async fn init() -> anyhow::Result<()> {
-        let mut workspaces_manager = WORKSPACES_MANAGER.write().await;
-        let mut cancelation_token = CANCELATION_TOKEN.write().await;
-
-        if workspaces_manager.is_some() || cancelation_token.is_some() {
-            panic!("Workspace manager already initialized")
-        }
-
-        *workspaces_manager = Some(WorkspacesManager::default());
-        drop(workspaces_manager);
-
-        let token = CancellationToken::new();
-        RT.spawn(WorkspacesManager::event_handler(token));
-
-        *cancelation_token = Some(token);
-
-        Ok(())
-    }
-
-    async fn write()
-    -> anyhow::Result<RwLockMappedWriteGuard<'static, WorkspacesManager>> {
-        let workspaces_manager = WORKSPACES_MANAGER.read().await;
-
-        if workspaces_manager.is_none() {
-            drop(workspaces_manager);
-            WorkspacesManager::init().await?;
-        }
-
-        let guard_with_option = WORKSPACES_MANAGER.write().await;
-        let guard = RwLockWriteGuard::map(guard_with_option, |wm| {
-            wm.as_mut().expect("already checked")
-        });
-
-        Ok(guard)
-    }
-
-    async fn event_handler(token: CancellationToken) -> anyhow::Result<()> {
+    pub async fn event_handler(token: CancellationToken) -> anyhow::Result<()> {
         let mut events_receiver = EVENTS.subscribe();
+        let mut active_workspace = Workspace::active().await.unwrap();
 
         loop {
             select! {
@@ -143,7 +104,7 @@ impl WorkspacesManager {
                         }
                     };
 
-                    if let Err(e) = Self::handle_event(event).await {
+                    if let Err(e) = Self::handle_event(event, &mut active_workspace).await {
                         log::error!("{e}");
                     };
                 }
@@ -157,9 +118,10 @@ impl WorkspacesManager {
         Ok(())
     }
 
-    async fn handle_event(event: HyprEvent) -> anyhow::Result<()> {
-        let mut active_workspace = ACTIVE_WORKSPACE.lock().await;
-
+    async fn handle_event(
+        event: HyprEvent,
+        active_workspace: &mut Workspace,
+    ) -> anyhow::Result<()> {
         match event {
             // Смена активного workspace
             HyprEvent::WorkspaceV2 { id, name: _ } => {
@@ -167,7 +129,7 @@ impl WorkspacesManager {
                     &active_workspace.monitor,
                     WorkspaceEvent::Deactivate(active_workspace.id),
                 )
-                .await?;
+                .await;
 
                 active_workspace.id = id;
 
@@ -175,7 +137,7 @@ impl WorkspacesManager {
                     &active_workspace.monitor,
                     WorkspaceEvent::Activate(active_workspace.id),
                 )
-                .await?;
+                .await;
             }
             // Смена активного монитора
             HyprEvent::FocusedMonV2 {
@@ -186,7 +148,7 @@ impl WorkspacesManager {
                     &active_workspace.monitor,
                     WorkspaceEvent::Deactivate(active_workspace.id),
                 )
-                .await?;
+                .await;
 
                 active_workspace.id = workspace_id;
                 active_workspace.monitor = monitor_connector;
@@ -195,21 +157,21 @@ impl WorkspacesManager {
                     &active_workspace.monitor,
                     WorkspaceEvent::Activate(active_workspace.id),
                 )
-                .await?;
+                .await;
             }
             HyprEvent::CreateWorkspaceV2 { id, name: _ } => {
                 send_event(
                     &active_workspace.monitor,
                     WorkspaceEvent::Create(id),
                 )
-                .await?;
+                .await;
             }
             HyprEvent::DestroyWorkspaceV2 { id, name: _ } => {
                 send_event(
                     &active_workspace.monitor,
                     WorkspaceEvent::Destroy(id),
                 )
-                .await?;
+                .await;
             }
             _ => (),
         };
@@ -218,11 +180,15 @@ impl WorkspacesManager {
     }
 
     /// Run only in main thread
-    async fn dispose(&mut self) {
-        let maybe_wmgr = WORKSPACES_MANAGER.write().await.take();
+    async fn remove_instances_and_stop_handler(&mut self) {
+        let mut workspaces_manager = WORKSPACES_MANAGER.write().await;
 
-        if let Some(wmgr) = maybe_wmgr {
-            wmgr.instances.into_iter().map(|(_, instance)| {
+        workspaces_manager
+            .instances
+            .iter_mut()
+            .for_each(|(_, instance)| {
+                let instance = instance.clone();
+
                 if let Some(parent) = instance.widget.parent()
                     && let Some(box_parent) = parent.downcast_ref::<gtk::Box>()
                 {
@@ -236,7 +202,6 @@ impl WorkspacesManager {
                     ));
                 }
             });
-        }
 
         if let Some(token) = CANCELATION_TOKEN.write().await.take() {
             token.cancel();

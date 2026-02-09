@@ -4,14 +4,13 @@ pub mod modules;
 use crate::{
     common::Metadata,
     modules::{
-        AsyncModuleFactory, Battery, Clock,
-        workspaces::factory::WorkspacesFactory,
+        Battery, Clock, ModuleFactory, workspaces::factory::WorkspacesFactory,
     },
 };
 use chameleon_config::{self as config, PanelConfig, panel::ModulesConfig};
 use config::panel::{Layer as PanelLayer, Module, ModulePlacement, Position};
 use grapes::{
-    RT, WindowComponent,
+    WindowComponent,
     gtk::{
         self, ApplicationWindow, Orientation,
         gdk::{self, prelude::MonitorExt},
@@ -159,15 +158,14 @@ impl Panel {
                         self.add_module(battery, &placement);
                     }
                     Module::Workspaces => {
-                        let workspaces = RT
-                            .block_on(WorkspacesFactory::create(
-                                workspaces.clone(),
-                                Metadata {
-                                    monitor: self.monitor.clone(),
-                                    orientation,
-                                },
-                            ))
-                            .unwrap();
+                        let workspaces = WorkspacesFactory::create(
+                            workspaces.clone(),
+                            Metadata {
+                                monitor: self.monitor.clone(),
+                                orientation,
+                            },
+                        )
+                        .unwrap();
 
                         self.add_module(workspaces, &placement);
                     }

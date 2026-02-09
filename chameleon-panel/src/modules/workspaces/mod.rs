@@ -4,7 +4,7 @@ mod manager;
 
 use crate::{common::Metadata, modules::workspaces::event::WorkspaceEvent};
 use chameleon_config::panel::WorkspacesConfig;
-use chameleon_ipc::hyprland::{self};
+use chameleon_ipc::hyprland::{self, Workspace};
 use grapes::{
     glib::{
         Downgrade,
@@ -32,6 +32,15 @@ impl Workspaces {
         root.set_widget_name("workspaces");
 
         let workspaces = Self { root };
+
+        RT.block_on(async {
+            for ws in Workspace::on_monitor(&meta.monitor).await.unwrap() {
+                workspaces.add_workspace_button(ws.id);
+            }
+
+            let active_workspace = Workspace::active().await.unwrap();
+            workspaces.activate_workspace_button(active_workspace.id);
+        });
 
         workspaces.spawn_listener_local(receiver);
 
@@ -111,6 +120,7 @@ impl UpdateableComponent for Workspaces {
     type Message = WorkspaceEvent;
 
     fn update(&self, event: WorkspaceEvent) {
+        log::info!("event {event:?}");
         match event {
             WorkspaceEvent::Create(id) => self.add_workspace_button(id),
             WorkspaceEvent::Destroy(id) => self.remove_workspace_button(id),
