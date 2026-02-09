@@ -180,7 +180,7 @@ impl WorkspacesManager {
     }
 
     /// Run only in main thread
-    async fn remove_instances_and_stop_handler(&mut self) {
+    pub async fn remove_instances_and_stop_handler() {
         let mut workspaces_manager = WORKSPACES_MANAGER.write().await;
 
         workspaces_manager
