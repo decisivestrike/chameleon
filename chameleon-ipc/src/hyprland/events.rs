@@ -43,7 +43,7 @@ pub enum HyprEvent {
         name: String,
     },
     FocusedMonV2 {
-        monitor_name: String,
+        monitor_connector: String,
         workspace_id: i32,
     },
     MonitorRemoved {
@@ -77,7 +77,7 @@ impl FromStr for HyprEvent {
             }
             "workspacev2" => event!(data, WorkspaceV2, id, name),
             "focusedmonv2" => {
-                event!(data, FocusedMonV2, monitor_name, workspace_id)
+                event!(data, FocusedMonV2, monitor_connector, workspace_id)
             }
             "createworkspacev2" => event!(data, CreateWorkspaceV2, id, name),
             "destroyworkspacev2" => event!(data, DestroyWorkspaceV2, id, name),

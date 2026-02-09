@@ -8,6 +8,7 @@ use serde::Deserialize;
 pub struct Workspace {
     pub id: i32,
     pub name: String,
+    /// Monitors connector
     pub monitor: String,
     #[serde(rename = "monitorID")]
     monitor_id: i32,
