@@ -1,0 +1,8 @@
+[package]
+name = "chameleon-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+grapes = { path = "../../grapes/grapes" }
+thiserror = "2.0.18"

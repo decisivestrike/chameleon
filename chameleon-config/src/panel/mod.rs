@@ -104,8 +104,8 @@ pub struct PanelConfig {
 }
 
 impl PanelConfig {
-    pub fn modules(&self) -> Modules {
-        Modules {
+    pub fn modules(&self) -> ModulesConfig {
+        ModulesConfig {
             clock: self.clock.clone(),
             battery: self.battery.clone(),
             workspaces: self.workspaces.clone(),
@@ -114,7 +114,7 @@ impl PanelConfig {
 }
 
 #[derive(Debug, Clone)]
-pub struct Modules {
+pub struct ModulesConfig {
     pub clock: Rc<ClockConfig>,
     pub battery: Rc<BatteryConfig>,
     pub workspaces: Rc<WorkspacesConfig>,

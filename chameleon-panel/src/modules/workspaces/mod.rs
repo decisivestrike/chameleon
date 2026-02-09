@@ -1,167 +1,36 @@
+mod event;
+mod factory;
+mod manager;
+
+use crate::{common::Metadata, modules::workspaces::event::WorkspaceEvent};
 use chameleon_config::panel::WorkspacesConfig;
-use chameleon_ipc::hyprland::{
-    self, HyprEvent, events::EVENTS, workspace::Workspace,
-};
-use dashmap::DashMap;
+use chameleon_ipc::hyprland::{self};
 use grapes::{
     glib::{
         Downgrade,
         clone::{Downgrade, Upgrade},
     },
-    gtk::{GestureClick, Label, Orientation, Widget},
+    gtk::{GestureClick, Label, Widget},
     prelude::{containers::GrapesBoxExt, *},
-    tokio::{
-        sync::{
-            RwLock,
-            mpsc::{self, Receiver, Sender},
-        },
-        task::JoinHandle,
-    },
+    tokio::sync::mpsc::{self, Receiver, Sender},
 };
-use std::{
-    rc::Rc,
-    sync::{Arc, LazyLock},
-};
-
-static INSTANSES: LazyLock<DashMap<String, mpsc::Sender<WorkspaceEvent>>> =
-    LazyLock::new(|| {
-        RT.spawn(event_handler());
-        Default::default()
-    });
-
-async fn send_to_monitor(monitor_name: &String, event: WorkspaceEvent) {
-    if let Some(pair) = INSTANSES.iter().find(|pair| pair.key() == monitor_name)
-    {
-        let sender = pair.value();
-
-        if let Err(e) = sender.send(event).await {
-            log::error!("{e}");
-        };
-    } else {
-        log::warn!("Cant find channel for '{}'", monitor_name);
-    }
-}
-
-async fn event_handler() {
-    let mut receiver = EVENTS.subscribe();
-
-    let active_workspace = Workspace::active().await.unwrap();
-    let mut active_workspace_id = active_workspace.id;
-    let mut active_monitor = active_workspace.monitor;
-
-    // TODO: on every reload
-    send_to_monitor(
-        &active_monitor,
-        WorkspaceEvent::ChangeActive {
-            from: 0,
-            to: active_workspace_id,
-        },
-    )
-    .await;
-
-    loop {
-        let maybe_event = receiver.recv().await;
-
-        let event = match maybe_event {
-            Ok(event) => event,
-            Err(e) => {
-                log::error!("{e}");
-                continue;
-            }
-        };
-
-        match event {
-            HyprEvent::WorkspaceV2 { id, name: _ } => {
-                send_to_monitor(
-                    &active_monitor,
-                    WorkspaceEvent::ChangeActive {
-                        from: active_workspace_id,
-                        to: id,
-                    },
-                )
-                .await;
-
-                active_workspace_id = id;
-            }
-            HyprEvent::FocusedMonV2 {
-                monitor_name,
-                workspace_id,
-            } => {
-                // Тут должны быть разные мониторы
-                send_to_monitor(
-                    &monitor_name,
-                    WorkspaceEvent::ChangeActive {
-                        from: active_workspace_id,
-                        to: workspace_id,
-                    },
-                )
-                .await;
-
-                active_workspace_id = workspace_id;
-                active_monitor = monitor_name;
-            }
-            HyprEvent::CreateWorkspaceV2 { id, name: _ } => {
-                send_to_monitor(&active_monitor, WorkspaceEvent::Create(id))
-                    .await;
-            }
-            HyprEvent::DestroyWorkspaceV2 { id, name: _ } => {
-                send_to_monitor(&active_monitor, WorkspaceEvent::Destroy(id))
-                    .await;
-            }
-            _ => (),
-        };
-    }
-}
-
-#[derive(Clone, Debug, Downgrade)]
-pub struct WorkspacesModel {
-    instances: Arc<DashMap<String, mpsc::Sender<WorkspaceEvent>>>,
-    active_workspace: Arc<RwLock<Workspace>>,
-    join_handle: Arc<JoinHandle<()>>,
-}
-
-impl WorkspacesModel {
-    /// Send event for
-    async fn send_event(&self, monitor: &gdk::Monitor, event: WorkspaceEvent) {
-        let monitor_name = monitor.connector().unwrap().to_string();
-
-        let maybe_pair =
-            INSTANSES.iter().find(|pair| pair.key() == &monitor_name);
-
-        if let Some(pair) = maybe_pair {
-            let sender = pair.value();
-
-            if let Err(e) = sender.send(event).await {
-                log::error!("{e}");
-            };
-        } else {
-            log::warn!("Cant find channel for '{}'", monitor_name);
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum WorkspaceEvent {
-    Create(i32),
-    Destroy(i32),
-    ChangeActive { from: i32, to: i32 },
-}
+use std::rc::Rc;
 
 #[derive(Clone, Debug, Component, Downgrade)]
 pub struct Workspaces {
     #[root]
     root: gtk::Box,
-    // active_workspace
 }
 
 impl Workspaces {
     pub fn new(
-        _config: Rc<WorkspacesConfig>,
-        orientation: Orientation,
+        config: Rc<WorkspacesConfig>,
+        meta: Metadata,
+        receiver: mpsc::Receiver<WorkspaceEvent>,
     ) -> Self {
         let (sender, receiver) = mpsc::channel(16);
 
-        let root = gtk::Box::new(orientation, 0);
+        let root = gtk::Box::new(meta.orientation, 0);
         root.set_widget_name("workspaces");
 
         let workspaces = Self { root };

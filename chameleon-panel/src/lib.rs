@@ -1,7 +1,8 @@
+pub mod common;
 pub mod modules;
 
 use crate::modules::{Battery, Clock, Workspaces};
-use chameleon_config::{self as config, PanelConfig, panel::Modules};
+use chameleon_config::{self as config, PanelConfig, panel::ModulesConfig};
 use config::panel::{Layer as PanelLayer, Module, ModulePlacement, Position};
 use grapes::{
     WindowComponent,
@@ -134,7 +135,7 @@ impl Panel {
             (&config.modules_right, ModulePlacement::Right),
         ];
 
-        let Modules {
+        let ModulesConfig {
             clock,
             battery,
             workspaces,
