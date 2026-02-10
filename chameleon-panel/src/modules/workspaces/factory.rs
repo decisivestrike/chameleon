@@ -1,12 +1,11 @@
 use crate::{
     common::Metadata,
     modules::{
-        ModuleFactory, Workspaces,
-        workspaces::manager::{WorkspacesInstanceData, WorkspacesManager},
+        ModuleFactory, Workspaces, workspaces::manager::WorkspacesManager,
     },
 };
 use chameleon_config::panel::WorkspacesConfig;
-use grapes::{Component, RT, tokio::sync::mpsc};
+use grapes::{RT, tokio::sync::mpsc};
 use std::rc::Rc;
 
 pub struct WorkspacesFactory;
@@ -24,11 +23,8 @@ impl ModuleFactory for WorkspacesFactory {
 
         let workspaces = Workspaces::new(&config, &meta, receiver);
 
-        let widget = workspaces.as_widget_ref().clone();
-        let instance_data = WorkspacesInstanceData::new(widget, sender);
-
-        if let Err(e) = RT
-            .block_on(WorkspacesManager::register(&meta.monitor, instance_data))
+        if let Err(e) =
+            RT.block_on(WorkspacesManager::register(&meta.monitor, sender))
         {
             log::error!("{e}");
         };

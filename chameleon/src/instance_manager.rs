@@ -21,12 +21,12 @@ pub struct InstanceManager {
 }
 
 impl InstanceManager {
-    pub fn monitor_connector_of_panel(&self, panel: &Panel) -> Option<String> {
-        self.panels
-            .iter()
-            .find(|pair| pair.value() == panel)
-            .map(|pair| pair.key().clone())
-    }
+    // pub fn monitor_connector_of_panel(&self, panel: &Panel) -> Option<String> {
+    //     self.panels
+    //         .iter()
+    //         .find(|pair| pair.value() == panel)
+    //         .map(|pair| pair.key().clone())
+    // }
 
     pub fn configure_modules(
         &self,

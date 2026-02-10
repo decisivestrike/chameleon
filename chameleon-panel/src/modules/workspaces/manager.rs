@@ -2,12 +2,11 @@ use crate::modules::workspaces::event::WorkspaceEvent;
 use chameleon_core::errors::MonitorError;
 use chameleon_ipc::hyprland::events::EVENTS;
 use chameleon_ipc::hyprland::{HyprEvent, Workspace};
-use grapes::glib::{ControlFlow, clone};
+use grapes::RT;
 use grapes::gtk::gdk;
-use grapes::prelude::{BoxExt, Cast, MonitorExt, WidgetExt};
+use grapes::prelude::MonitorExt;
 use grapes::tokio::select;
 use grapes::tokio::sync::{RwLock, mpsc};
-use grapes::{RT, glib, gtk};
 use std::collections::HashMap;
 use std::sync::LazyLock;
 use tokio_util::sync::CancellationToken;
@@ -25,36 +24,21 @@ async fn send_event(monitor_connector: &String, event: WorkspaceEvent) {
         .instances
         .iter()
         .find(|(connector, _)| *connector == monitor_connector)
-        .map(|(_, instance)| &instance.sender);
+        .map(|(_, sender)| sender);
 
     match maybe_sender {
         Some(sender) => {
             if let Err(e) = sender.send(event).await {
-                log::error!("{e}");
+                log::error!("Error while sending event: {e}");
             }
         }
         None => log::warn!("Cant find channel for '{}'", monitor_connector),
     }
 }
 
-#[derive(Clone)]
-pub struct WorkspacesInstanceData {
-    pub widget: gtk::Widget, // should be weak
-    pub sender: mpsc::Sender<WorkspaceEvent>,
-}
-
-impl WorkspacesInstanceData {
-    pub fn new(
-        widget: gtk::Widget,
-        sender: mpsc::Sender<WorkspaceEvent>,
-    ) -> Self {
-        Self { widget, sender }
-    }
-}
-
 #[derive(Default)]
 pub struct WorkspacesManager {
-    instances: HashMap<String, WorkspacesInstanceData>,
+    instances: HashMap<String, mpsc::Sender<WorkspaceEvent>>,
 }
 
 /// Because hashmap contains gtk widgets. Но мы не обновляем эти виджеты в другом потоке
@@ -64,10 +48,11 @@ unsafe impl Sync for WorkspacesManager {}
 impl WorkspacesManager {
     pub async fn register(
         monitor: &gdk::Monitor,
-        instance: WorkspacesInstanceData,
+        sender: mpsc::Sender<WorkspaceEvent>,
     ) -> anyhow::Result<()> {
-        if WORKSPACES_MANAGER.read().await.instances.is_empty() {
-            log::info!("Starting handler...");
+        if CANCELATION_TOKEN.read().await.is_none() {
+            log::info!("Starting workspace event handler");
+
             let token = CancellationToken::new();
             RT.spawn(Self::event_handler(token.clone()));
 
@@ -83,7 +68,7 @@ impl WorkspacesManager {
             .write()
             .await
             .instances
-            .insert(monitor_connector, instance);
+            .insert(monitor_connector, sender);
 
         Ok(())
     }
@@ -177,33 +162,14 @@ impl WorkspacesManager {
 
         Ok(())
     }
+}
 
-    /// Run only in main thread
-    pub async fn remove_instances_and_stop_handler() {
-        let mut workspaces_manager = WORKSPACES_MANAGER.write().await;
-
-        workspaces_manager
-            .instances
-            .iter_mut()
-            .for_each(|(_, instance)| {
-                let instance = instance.clone();
-
-                if let Some(parent) = instance.widget.parent()
-                    && let Some(box_parent) = parent.downcast_ref::<gtk::Box>()
-                {
-                    glib::idle_add_local(clone!(
-                        #[strong]
-                        box_parent,
-                        move || {
-                            box_parent.remove(&instance.widget);
-                            ControlFlow::Break
-                        }
-                    ));
-                }
-            });
-
-        if let Some(token) = CANCELATION_TOKEN.write().await.take() {
+impl Drop for WorkspacesManager {
+    fn drop(&mut self) {
+        if let Some(token) = CANCELATION_TOKEN.blocking_write().take() {
             token.cancel();
         }
+
+        println!("drop ws manager")
     }
 }
