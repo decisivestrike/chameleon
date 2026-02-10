@@ -10,7 +10,6 @@ use grapes::tokio::sync::{RwLock, mpsc};
 use grapes::{RT, glib, gtk};
 use std::collections::HashMap;
 use std::sync::LazyLock;
-
 use tokio_util::sync::CancellationToken;
 
 static WORKSPACES_MANAGER: LazyLock<RwLock<WorkspacesManager>> =
@@ -40,7 +39,7 @@ async fn send_event(monitor_connector: &String, event: WorkspaceEvent) {
 
 #[derive(Clone)]
 pub struct WorkspacesInstanceData {
-    pub widget: gtk::Widget,
+    pub widget: gtk::Widget, // should be weak
     pub sender: mpsc::Sender<WorkspaceEvent>,
 }
 

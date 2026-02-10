@@ -140,40 +140,48 @@ impl Panel {
             (&config.modules_right, ModulePlacement::Right),
         ];
 
-        let ModulesConfig {
-            clock,
-            battery,
-            workspaces,
-        } = config.modules();
+        let meta = Metadata {
+            monitor: self.monitor.clone(),
+            orientation,
+        };
 
         for (modules, placement) in all_modules {
             for name in modules {
-                match name {
-                    Module::Clock => {
-                        let clock = Clock::new(clock.clone());
-                        self.add_module(clock, &placement);
-                    }
-                    Module::Battery => {
-                        let battery = Battery::new(battery.clone());
-                        self.add_module(battery, &placement);
-                    }
-                    Module::Workspaces => {
-                        let workspaces = WorkspacesFactory::create(
-                            workspaces.clone(),
-                            Metadata {
-                                monitor: self.monitor.clone(),
-                                orientation,
-                            },
-                        )
-                        .unwrap();
-
-                        self.add_module(workspaces, &placement);
-                    }
-                };
-
-                info!("Added {name} to {placement} bar group.");
+                self.append_module(
+                    name,
+                    meta.clone(),
+                    &placement,
+                    &config.modules(),
+                )
+                .expect("error while appending module");
             }
         }
+    }
+
+    fn append_module(
+        &self,
+        module_name: &Module,
+        meta: Metadata,
+        placement: &ModulePlacement,
+        config: &ModulesConfig,
+    ) -> anyhow::Result<()> {
+        let module = match module_name {
+            Module::Clock => Clock::new(config.clock.clone()).as_ref().clone(),
+            Module::Battery => {
+                Battery::new(config.battery.clone()).as_ref().clone()
+            }
+            Module::Workspaces => {
+                WorkspacesFactory::create(&config.workspaces, &meta)?
+                    .as_ref()
+                    .clone()
+            }
+        };
+
+        self.add_module(module, placement);
+
+        info!("Added {module_name} to {placement} bar group.");
+
+        Ok(())
     }
 
     fn setup_window(&self) {

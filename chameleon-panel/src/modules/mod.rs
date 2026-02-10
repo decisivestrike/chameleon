@@ -17,7 +17,7 @@ pub trait ModuleFactory {
     type Component: Component;
 
     fn create(
-        config: Rc<Self::Config>,
-        meta: Metadata,
+        config: &Rc<Self::Config>,
+        meta: &Metadata,
     ) -> anyhow::Result<Self::Component>;
 }

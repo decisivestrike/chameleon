@@ -17,12 +17,12 @@ impl ModuleFactory for WorkspacesFactory {
 
     /// Creates `Workspaces` instance and register it in `WorkspacesManager`
     fn create(
-        config: Rc<WorkspacesConfig>,
-        meta: Metadata,
+        config: &Rc<WorkspacesConfig>,
+        meta: &Metadata,
     ) -> anyhow::Result<Workspaces> {
         let (sender, receiver) = mpsc::channel(64);
 
-        let workspaces = Workspaces::new(config, meta.clone(), receiver);
+        let workspaces = Workspaces::new(&config, &meta, receiver);
 
         let widget = workspaces.as_widget_ref().clone();
         let instance_data = WorkspacesInstanceData::new(widget, sender);

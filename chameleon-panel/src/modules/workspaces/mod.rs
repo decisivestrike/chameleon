@@ -23,9 +23,9 @@ pub struct Workspaces {
 }
 
 impl Workspaces {
-    pub fn new(
-        _config: Rc<WorkspacesConfig>,
-        meta: Metadata,
+    fn new(
+        _config: &Rc<WorkspacesConfig>,
+        meta: &Metadata,
         receiver: mpsc::Receiver<WorkspaceEvent>,
     ) -> Self {
         let root = gtk::Box::new(meta.orientation, 0);
