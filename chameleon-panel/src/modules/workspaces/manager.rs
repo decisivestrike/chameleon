@@ -10,6 +10,7 @@ use grapes::tokio::sync::{
     RwLock, RwLockMappedWriteGuard, RwLockReadGuard, RwLockWriteGuard, mpsc,
 };
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
 pub static WORKSPACES_MANAGER: RwLock<Option<WorkspacesManager>> =
@@ -41,11 +42,11 @@ impl WorkspacesManager {
         Ok(())
     }
 
-    pub async fn unregister(monitor_connector: String) {
+    pub async fn unregister(monitor_connector: Arc<String>) {
         WorkspacesManager::write()
             .await
             .instances
-            .remove(&monitor_connector);
+            .remove(&*monitor_connector);
 
         if WorkspacesManager::read().await.instances.len() == 0 {
             WORKSPACES_MANAGER.write().await.take();

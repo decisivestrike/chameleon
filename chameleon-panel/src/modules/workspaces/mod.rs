@@ -17,13 +17,13 @@ use grapes::{
     prelude::{containers::GrapesBoxExt, *},
     tokio::sync::mpsc::{self, Receiver},
 };
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 #[derive(Clone, Debug, Component, Downgrade)]
 pub struct Workspaces {
     #[root]
     root: gtk::Box,
-    monitor: Rc<String>,
+    monitor: Arc<String>,
 }
 
 impl Workspaces {
@@ -142,11 +142,10 @@ impl UpdateableComponent for Workspaces {
 
 impl Drop for Workspaces {
     fn drop(&mut self) {
-        if Rc::strong_count(&self.monitor) == 1 {
+        if Arc::strong_count(&self.monitor) == 1 {
             log::debug!("ws unregistered");
 
-            let monitor = self.monitor.to_string();
-            RT.spawn(WorkspacesManager::unregister(monitor));
+            RT.spawn(WorkspacesManager::unregister(self.monitor.clone()));
         }
     }
 }
