@@ -17,33 +17,10 @@ static WORKSPACES_MANAGER: LazyLock<RwLock<WorkspacesManager>> =
 static CANCELATION_TOKEN: RwLock<Option<CancellationToken>> =
     RwLock::const_new(None);
 
-async fn send_event(monitor_connector: &String, event: WorkspaceEvent) {
-    let workspaces_manager = WORKSPACES_MANAGER.read().await;
-
-    let maybe_sender = workspaces_manager
-        .instances
-        .iter()
-        .find(|(connector, _)| *connector == monitor_connector)
-        .map(|(_, sender)| sender);
-
-    match maybe_sender {
-        Some(sender) => {
-            if let Err(e) = sender.send(event).await {
-                log::error!("Error while sending event: {e}");
-            }
-        }
-        None => log::warn!("Cant find channel for '{}'", monitor_connector),
-    }
-}
-
 #[derive(Default)]
 pub struct WorkspacesManager {
     instances: HashMap<String, mpsc::Sender<WorkspaceEvent>>,
 }
-
-/// Because hashmap contains gtk widgets. Но мы не обновляем эти виджеты в другом потоке
-unsafe impl Send for WorkspacesManager {}
-unsafe impl Sync for WorkspacesManager {}
 
 impl WorkspacesManager {
     pub async fn register(
@@ -73,7 +50,7 @@ impl WorkspacesManager {
         Ok(())
     }
 
-    pub async fn event_handler(token: CancellationToken) -> anyhow::Result<()> {
+    async fn event_handler(token: CancellationToken) -> anyhow::Result<()> {
         let mut events_receiver = EVENTS.subscribe();
         let mut active_workspace = Workspace::active().await.unwrap();
 
@@ -109,7 +86,7 @@ impl WorkspacesManager {
         match event {
             // Смена активного workspace
             HyprEvent::WorkspaceV2 { id, name: _ } => {
-                send_event(
+                Self::send_event(
                     &active_workspace.monitor,
                     WorkspaceEvent::Deactivate(active_workspace.id),
                 )
@@ -117,7 +94,7 @@ impl WorkspacesManager {
 
                 active_workspace.id = id;
 
-                send_event(
+                Self::send_event(
                     &active_workspace.monitor,
                     WorkspaceEvent::Activate(active_workspace.id),
                 )
@@ -128,7 +105,7 @@ impl WorkspacesManager {
                 monitor_connector,
                 workspace_id,
             } => {
-                send_event(
+                Self::send_event(
                     &active_workspace.monitor,
                     WorkspaceEvent::Deactivate(active_workspace.id),
                 )
@@ -137,21 +114,21 @@ impl WorkspacesManager {
                 active_workspace.id = workspace_id;
                 active_workspace.monitor = monitor_connector;
 
-                send_event(
+                Self::send_event(
                     &active_workspace.monitor,
                     WorkspaceEvent::Activate(active_workspace.id),
                 )
                 .await;
             }
             HyprEvent::CreateWorkspaceV2 { id, name: _ } => {
-                send_event(
+                Self::send_event(
                     &active_workspace.monitor,
                     WorkspaceEvent::Create(id),
                 )
                 .await;
             }
             HyprEvent::DestroyWorkspaceV2 { id, name: _ } => {
-                send_event(
+                Self::send_event(
                     &active_workspace.monitor,
                     WorkspaceEvent::Destroy(id),
                 )
@@ -161,6 +138,25 @@ impl WorkspacesManager {
         };
 
         Ok(())
+    }
+
+    async fn send_event(monitor_connector: &String, event: WorkspaceEvent) {
+        let workspaces_manager = WORKSPACES_MANAGER.read().await;
+
+        let maybe_sender = workspaces_manager
+            .instances
+            .iter()
+            .find(|(connector, _)| *connector == monitor_connector)
+            .map(|(_, sender)| sender);
+
+        match maybe_sender {
+            Some(sender) => {
+                if let Err(e) = sender.send(event).await {
+                    log::error!("Error while sending event: {e}");
+                }
+            }
+            None => log::warn!("Cant find channel for '{}'", monitor_connector),
+        }
     }
 }
 
@@ -173,3 +169,7 @@ impl Drop for WorkspacesManager {
         println!("drop ws manager")
     }
 }
+
+/// Because hashmap contains gtk widgets. Но мы не обновляем эти виджеты в другом потоке
+unsafe impl Send for WorkspacesManager {}
+unsafe impl Sync for WorkspacesManager {}
