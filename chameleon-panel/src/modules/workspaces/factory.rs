@@ -12,13 +12,10 @@ pub struct WorkspacesFactory;
 
 impl ModuleFactory for WorkspacesFactory {
     type Config = WorkspacesConfig;
-    type Component = Workspaces;
+    type Module = Workspaces;
 
     /// Creates `Workspaces` instance and register it in `WorkspacesManager`
-    fn create(
-        config: &Rc<WorkspacesConfig>,
-        meta: &Metadata,
-    ) -> anyhow::Result<Workspaces> {
+    fn create(config: &Rc<WorkspacesConfig>, meta: &Metadata) -> Workspaces {
         let (sender, receiver) = mpsc::channel(64);
 
         let workspaces = Workspaces::new(&config, &meta, receiver);
@@ -29,6 +26,6 @@ impl ModuleFactory for WorkspacesFactory {
             log::error!("{e}");
         };
 
-        Ok(workspaces)
+        workspaces
     }
 }

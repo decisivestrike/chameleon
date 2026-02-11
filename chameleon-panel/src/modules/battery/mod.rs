@@ -1,3 +1,6 @@
+mod factory;
+pub use factory::BatteryFactory;
+
 use chameleon_config::panel::BatteryConfig;
 use grapes::{
     Component, Reactive, derived,
@@ -23,7 +26,7 @@ impl Drop for Battery {
 }
 
 impl Battery {
-    pub fn new(config: Rc<BatteryConfig>) -> Self {
+    pub fn new(config: &Rc<BatteryConfig>) -> Self {
         let maybe_charge = subscriber(&task(async |sender| {
             let duration = Duration::from_secs(60);
 
@@ -34,6 +37,7 @@ impl Battery {
             }
         }));
 
+        let config = config.clone();
         let formatted_charge = derived(move || {
             let charge = maybe_charge.get().unwrap_or(0);
             Battery::format(charge, &config.icons)

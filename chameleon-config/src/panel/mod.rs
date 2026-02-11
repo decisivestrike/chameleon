@@ -4,7 +4,7 @@ pub use modules::*;
 use serde::Deserialize;
 use std::{fmt, rc::Rc};
 
-/// All taskbar modules
+/// All panel modules
 #[derive(Debug, Deserialize)]
 pub enum Module {
     #[serde(rename = "clock")]

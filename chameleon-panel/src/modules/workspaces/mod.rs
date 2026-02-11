@@ -14,24 +14,13 @@ use grapes::{
     prelude::{containers::GrapesBoxExt, *},
     tokio::sync::mpsc::{self, Receiver},
 };
-use std::{cell::Cell, rc::Rc};
+use std::rc::Rc;
 
-#[derive(Debug, Component, Downgrade)]
+#[derive(Clone, Debug, Component, Downgrade)]
 pub struct Workspaces {
     #[root]
     root: gtk::Box,
-    strong_count: Rc<Cell<u32>>,
-}
-
-impl Clone for Workspaces {
-    fn clone(&self) -> Self {
-        self.strong_count.set(self.strong_count.get() + 1);
-
-        Self {
-            root: self.root.clone(),
-            strong_count: self.strong_count.clone(),
-        }
-    }
+    rc: Rc<()>,
 }
 
 impl Workspaces {
@@ -45,7 +34,7 @@ impl Workspaces {
 
         let workspaces = Self {
             root,
-            strong_count: Cell::new(1).into(),
+            rc: Rc::new(()),
         };
 
         RT.block_on(async {
@@ -73,7 +62,7 @@ impl Workspaces {
             }
         });
 
-        log::info!("local listener dropped")
+        log::debug!("local listener dropped")
     }
 
     fn create_button(id: i32) -> Label {
@@ -137,7 +126,6 @@ impl UpdateableComponent for Workspaces {
     type Message = WorkspaceEvent;
 
     fn update(&self, event: WorkspaceEvent) {
-        log::info!("event {event:?}");
         match event {
             WorkspaceEvent::Create(id) => self.add_workspace_button(id),
             WorkspaceEvent::Destroy(id) => self.remove_workspace_button(id),
@@ -151,9 +139,7 @@ impl UpdateableComponent for Workspaces {
 
 impl Drop for Workspaces {
     fn drop(&mut self) {
-        self.strong_count.set(self.strong_count.get() - 1);
-
-        if self.strong_count.get() == 0 {
+        if Rc::strong_count(&self.rc) == 1 {
             println!("drop ws")
         }
     }

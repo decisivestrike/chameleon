@@ -4,13 +4,14 @@ pub mod modules;
 use crate::{
     common::Metadata,
     modules::{
-        Battery, Clock, ModuleFactory, workspaces::factory::WorkspacesFactory,
+        ModuleFactory, battery::BatteryFactory, clock::ClockFactory,
+        workspaces::factory::WorkspacesFactory,
     },
 };
 use chameleon_config::{self as config, PanelConfig, panel::ModulesConfig};
 use config::panel::{Layer as PanelLayer, Module, ModulePlacement, Position};
 use grapes::{
-    WindowComponent,
+    Component, WindowComponent,
     gtk::{
         self, ApplicationWindow, Orientation,
         gdk::{self, prelude::MonitorExt},
@@ -33,6 +34,8 @@ pub struct Panel {
     center: gtk::Box,
     right: gtk::Box,
     monitor: gdk::Monitor,
+
+    modules: Vec<Box<dyn Component>>,
 }
 
 impl Panel {
@@ -58,6 +61,7 @@ impl Panel {
             center,
             right,
             monitor: monitor.clone(),
+            modules: Vec::new(),
         };
 
         bar.setup_window();
@@ -159,25 +163,22 @@ impl Panel {
     }
 
     fn append_module(
-        &self,
+        &mut self,
         module_name: &Module,
         meta: Metadata,
         placement: &ModulePlacement,
         config: &ModulesConfig,
     ) -> anyhow::Result<()> {
         let module = match module_name {
-            Module::Clock => Clock::new(config.clock.clone()).as_ref().clone(),
-            Module::Battery => {
-                Battery::new(config.battery.clone()).as_ref().clone()
-            }
+            Module::Clock => ClockFactory::boxed(&config.clock, &meta),
+            Module::Battery => BatteryFactory::boxed(&config.battery, &meta),
             Module::Workspaces => {
-                WorkspacesFactory::create(&config.workspaces, &meta)?
-                    .as_ref()
-                    .clone()
+                WorkspacesFactory::boxed(&config.workspaces, &meta)
             }
         };
 
-        self.add_module(module, placement);
+        self.add_module(module.as_ref(), placement);
+        self.modules.push(module);
 
         info!("Added {module_name} to {placement} bar group.");
 

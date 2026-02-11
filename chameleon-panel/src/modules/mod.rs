@@ -14,10 +14,13 @@ use std::rc::Rc;
 /// Panel module factory
 pub trait ModuleFactory {
     type Config;
-    type Component: Component;
+    type Module: Component;
 
-    fn create(
-        config: &Rc<Self::Config>,
-        meta: &Metadata,
-    ) -> anyhow::Result<Self::Component>;
+    fn create(config: &Rc<Self::Config>, meta: &Metadata) -> Self::Module;
+
+    fn boxed(config: &Rc<Self::Config>, meta: &Metadata) -> Box<dyn Component> {
+        let instance = Self::create(config, meta);
+
+        Box::new(instance)
+    }
 }

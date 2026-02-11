@@ -1,3 +1,6 @@
+mod factory;
+pub use factory::ClockFactory;
+
 use chameleon_config::{self as config};
 use chrono::{DateTime, Local};
 use config::panel::modules::ClockConfig;
@@ -18,7 +21,7 @@ pub struct Clock {
 impl Clock {
     const NAME: &str = "clock";
 
-    pub fn new(config: Rc<ClockConfig>) -> Self {
+    pub fn new(config: &Rc<ClockConfig>) -> Self {
         let time = subscriber(&task(async |sender| {
             let duration = Duration::from_secs(1);
 
@@ -33,6 +36,7 @@ impl Clock {
             }
         }));
 
+        let config = config.clone();
         let formatter_time =
             derived(move || Clock::format(*time.get(), &config.format));
 
