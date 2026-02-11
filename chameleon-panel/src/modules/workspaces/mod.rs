@@ -65,7 +65,7 @@ impl Workspaces {
             }
         });
 
-        log::debug!("local listener dropped")
+        log::debug!("Local listener stopped")
     }
 
     fn create_button(id: i32) -> Label {

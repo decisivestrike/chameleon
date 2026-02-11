@@ -91,29 +91,23 @@ impl WorkspacesManager {
                     let event = match maybe_event {
                         Ok(event) => event,
                         Err(e) => {
-                            log::error!("{e}");
+                            log::error!("In event handler: {e}");
                             continue;
                         }
                     };
 
-                    if let Err(e) = Self::handle_event(event, &mut active_workspace).await {
-                        log::error!("{e}");
-                    };
+                    Self::handle_event(event, &mut active_workspace).await;
                 }
-                _ = token.cancelled() => {
-                    log::info!("Shutting down workspace event handler...");
-                    break;
-                }
+                _ = token.cancelled() => { break; }
             }
         }
+
+        log::debug!("Workspace event handler was stopped");
 
         Ok(())
     }
 
-    async fn handle_event(
-        event: HyprEvent,
-        active_workspace: &mut Workspace,
-    ) -> anyhow::Result<()> {
+    async fn handle_event(event: HyprEvent, active_workspace: &mut Workspace) {
         match event {
             // Смена активного workspace
             HyprEvent::WorkspaceV2 { id, name: _ } => {
@@ -167,8 +161,6 @@ impl WorkspacesManager {
             }
             _ => (),
         };
-
-        Ok(())
     }
 
     async fn send_event(monitor_connector: &String, event: WorkspaceEvent) {
@@ -197,6 +189,6 @@ impl Drop for WorkspacesManager {
             token.cancel();
         }
 
-        log::debug!("drop ws manager")
+        log::debug!("Workspaces manager was dropped")
     }
 }
