@@ -2,7 +2,10 @@ mod event;
 pub mod factory;
 mod manager;
 
-use crate::{common::Metadata, modules::workspaces::event::WorkspaceEvent};
+use crate::{
+    common::Metadata,
+    modules::workspaces::{event::WorkspaceEvent, manager::WorkspacesManager},
+};
 use chameleon_config::panel::WorkspacesConfig;
 use chameleon_ipc::hyprland::{self, Workspace};
 use grapes::{
@@ -20,7 +23,7 @@ use std::rc::Rc;
 pub struct Workspaces {
     #[root]
     root: gtk::Box,
-    rc: Rc<()>,
+    monitor: Rc<String>,
 }
 
 impl Workspaces {
@@ -34,7 +37,7 @@ impl Workspaces {
 
         let workspaces = Self {
             root,
-            rc: Rc::new(()),
+            monitor: meta.monitor.connector().unwrap().to_string().into(),
         };
 
         RT.block_on(async {
@@ -139,8 +142,11 @@ impl UpdateableComponent for Workspaces {
 
 impl Drop for Workspaces {
     fn drop(&mut self) {
-        if Rc::strong_count(&self.rc) == 1 {
-            println!("drop ws")
+        if Rc::strong_count(&self.monitor) == 1 {
+            log::debug!("ws unregistered");
+
+            let monitor = self.monitor.to_string();
+            RT.spawn(WorkspacesManager::unregister(monitor));
         }
     }
 }

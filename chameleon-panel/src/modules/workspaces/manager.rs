@@ -6,20 +6,19 @@ use grapes::RT;
 use grapes::gtk::gdk;
 use grapes::prelude::MonitorExt;
 use grapes::tokio::select;
-use grapes::tokio::sync::{RwLock, mpsc};
+use grapes::tokio::sync::{
+    RwLock, RwLockMappedWriteGuard, RwLockReadGuard, RwLockWriteGuard, mpsc,
+};
 use std::collections::HashMap;
-use std::sync::LazyLock;
 use tokio_util::sync::CancellationToken;
 
-static WORKSPACES_MANAGER: LazyLock<RwLock<WorkspacesManager>> =
-    LazyLock::new(|| Default::default());
-
-static CANCELATION_TOKEN: RwLock<Option<CancellationToken>> =
+pub static WORKSPACES_MANAGER: RwLock<Option<WorkspacesManager>> =
     RwLock::const_new(None);
 
 #[derive(Default)]
 pub struct WorkspacesManager {
-    instances: HashMap<String, mpsc::Sender<WorkspaceEvent>>,
+    pub(super) instances: HashMap<String, mpsc::Sender<WorkspaceEvent>>,
+    token: Option<CancellationToken>,
 }
 
 impl WorkspacesManager {
@@ -27,22 +26,14 @@ impl WorkspacesManager {
         monitor: &gdk::Monitor,
         sender: mpsc::Sender<WorkspaceEvent>,
     ) -> anyhow::Result<()> {
-        if CANCELATION_TOKEN.read().await.is_none() {
-            log::info!("Starting workspace event handler");
-
-            let token = CancellationToken::new();
-            RT.spawn(Self::event_handler(token.clone()));
-
-            *CANCELATION_TOKEN.write().await = Some(token);
-        }
+        Self::init_if_none().await;
 
         let monitor_connector = monitor
             .connector()
             .ok_or(MonitorError::NoConnector)?
             .to_string();
 
-        WORKSPACES_MANAGER
-            .write()
+        WorkspacesManager::write()
             .await
             .instances
             .insert(monitor_connector, sender);
@@ -50,9 +41,48 @@ impl WorkspacesManager {
         Ok(())
     }
 
+    pub async fn unregister(monitor_connector: String) {
+        WorkspacesManager::write()
+            .await
+            .instances
+            .remove(&monitor_connector);
+
+        if WorkspacesManager::read().await.instances.len() == 0 {
+            WORKSPACES_MANAGER.write().await.take();
+        }
+    }
+
+    /// Initializes singleton if it none
+    async fn init_if_none() {
+        if WORKSPACES_MANAGER.read().await.is_none() {
+            let mut ws_manager = WORKSPACES_MANAGER.write().await;
+            *ws_manager = Some(WorkspacesManager::default());
+
+            let token = CancellationToken::new();
+            RT.spawn(Self::event_handler(token.clone()));
+
+            if let Some(manager) = ws_manager.as_mut() {
+                manager.token = Some(token);
+            }
+        }
+    }
+
+    pub(super) async fn read() -> RwLockReadGuard<'static, WorkspacesManager> {
+        let guard = WORKSPACES_MANAGER.read().await;
+
+        RwLockReadGuard::map(guard, |g| g.as_ref().unwrap())
+    }
+
+    pub(super) async fn write()
+    -> RwLockMappedWriteGuard<'static, WorkspacesManager> {
+        let guard = WORKSPACES_MANAGER.write().await;
+
+        RwLockWriteGuard::map(guard, |g| g.as_mut().unwrap())
+    }
+
     async fn event_handler(token: CancellationToken) -> anyhow::Result<()> {
         let mut events_receiver = EVENTS.subscribe();
-        let mut active_workspace = Workspace::active().await.unwrap();
+        let mut active_workspace = Workspace::active().await?;
 
         loop {
             select! {
@@ -141,7 +171,7 @@ impl WorkspacesManager {
     }
 
     async fn send_event(monitor_connector: &String, event: WorkspaceEvent) {
-        let workspaces_manager = WORKSPACES_MANAGER.read().await;
+        let workspaces_manager = WorkspacesManager::read().await;
 
         let maybe_sender = workspaces_manager
             .instances
@@ -162,14 +192,10 @@ impl WorkspacesManager {
 
 impl Drop for WorkspacesManager {
     fn drop(&mut self) {
-        if let Some(token) = CANCELATION_TOKEN.blocking_write().take() {
+        if let Some(token) = self.token.take() {
             token.cancel();
         }
 
-        println!("drop ws manager")
+        log::debug!("drop ws manager")
     }
 }
-
-/// Because hashmap contains gtk widgets. Но мы не обновляем эти виджеты в другом потоке
-unsafe impl Send for WorkspacesManager {}
-unsafe impl Sync for WorkspacesManager {}
