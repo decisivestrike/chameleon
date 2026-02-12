@@ -7,6 +7,9 @@ pub use battery::Battery;
 pub mod workspaces;
 pub use workspaces::Workspaces;
 
+pub mod keyboard_layout;
+pub use keyboard_layout::KeyboardLayout;
+
 use crate::common::Metadata;
 use grapes::Component;
 use std::rc::Rc;
