@@ -1,48 +1,24 @@
 mod factory;
 pub use factory::ClockFactory;
 
-use chameleon_config::{self as config};
 use chrono::{DateTime, Local};
-use config::panel::modules::ClockConfig;
-use grapes::{
-    Component, Reactive, derived,
-    gtk::{self, Label, prelude::WidgetExt},
-    subscriber, task,
-    tokio::time::sleep,
-};
-use std::{rc::Rc, time::Duration};
+use grapes::{Component, State, gtk::prelude::WidgetExt};
+use grapes_components::StatefullLabel;
+use std::rc::Rc;
 
-#[derive(Clone, Debug, Component)]
+#[derive(Debug, Component)]
 pub struct Clock {
     #[root]
-    label: gtk::Label,
+    label: StatefullLabel<String>,
 }
 
 impl Clock {
     const NAME: &str = "clock";
 
-    pub fn new(config: &Rc<ClockConfig>) -> Self {
-        let time = subscriber(&task(async |sender| {
-            let duration = Duration::from_secs(1);
-
-            loop {
-                let time = Local::now();
-
-                if let Err(e) = sender.send(time) {
-                    log::info!("Its ok if channel closed: {e}");
-                };
-
-                sleep(duration).await;
-            }
-        }));
-
-        let config = config.clone();
-        let formatter_time =
-            derived(move || Clock::format(*time.get(), &config.format));
-
-        let label = Label::statefull(&formatter_time);
-        label.set_widget_name(Self::NAME);
-        label.add_css_class("module");
+    pub fn new(formatted_time: &Rc<State<String>>) -> Self {
+        let label = StatefullLabel::new(formatted_time);
+        label.as_ref().set_widget_name(Self::NAME);
+        label.as_ref().add_css_class("module");
 
         Self { label }
     }

@@ -5,7 +5,6 @@ use chameleon_config::panel::BatteryConfig;
 use grapes::{
     Component, Reactive, derived,
     gtk::{Label, prelude::WidgetExt},
-    subscriber, task,
     tokio::{self, time::sleep},
 };
 use log::warn;

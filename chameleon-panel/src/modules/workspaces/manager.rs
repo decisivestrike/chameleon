@@ -13,11 +13,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
-pub static WORKSPACES_MANAGER: RwLock<Option<WorkspacesManager>> =
+pub(super) static WORKSPACES_MANAGER: RwLock<Option<WorkspacesManager>> =
     RwLock::const_new(None);
 
 #[derive(Default)]
-pub struct WorkspacesManager {
+pub(super) struct WorkspacesManager {
     pub(super) instances: HashMap<String, mpsc::Sender<WorkspaceEvent>>,
     token: Option<CancellationToken>,
 }
@@ -82,7 +82,7 @@ impl WorkspacesManager {
     }
 
     async fn event_handler(token: CancellationToken) -> anyhow::Result<()> {
-        let mut events_receiver = EVENTS.subscribe();
+        let mut events_receiver = EVENTS.sender().subscribe();
         let mut active_workspace = Workspace::active().await?;
 
         loop {
