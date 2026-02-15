@@ -22,25 +22,6 @@ impl ModuleFactory for BatteryFactory {
     type Module = Battery;
 
     fn create(config: &Rc<Self::Config>, _meta: &Metadata) -> Self::Module {
-        if !CHARGE_TASK.read().unwrap().is_ready() {
-            CHARGE_TASK.write().unwrap().set(async move |token| {
-                loop {
-                    let charge = Battery::charge().await.unwrap();
-                    let formatted_charge =
-                        Battery::format(charge, &config.icons);
-
-                    // If dont have subs
-                    if let Err(_) = CHARGE_SENDER.send(formatted_charge) {
-                        break;
-                    }
-
-                    if token.is_cancelled() {
-                        break;
-                    }
-                }
-            });
-        }
-
         CHARGE_TASK.write().unwrap().spawn();
 
         let formatted_charge = state("".to_string());

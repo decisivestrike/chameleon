@@ -6,10 +6,8 @@ use grapes::{
     css::StylePriority,
     glib::{self, clone},
     gtk,
-    tokio::sync::mpsc::{self, Sender},
 };
 use inotify::{Inotify, WatchMask};
-use log::info;
 use std::{path::PathBuf, rc::Rc, sync::Arc};
 
 /// Tracks styles and loads them when they change
@@ -27,11 +25,9 @@ impl StylesWatcher {
     }
 
     pub fn run(self) {
-        let (sender, mut receiver) = mpsc::channel::<()>(16);
-
         let Self { app, config_path } = self;
 
-        RT.spawn(Self::watcher(sender, config_path, styles_path));
+        RT.spawn(Self::watcher(styles_path));
 
         glib::spawn_future_local(async move {
             loop {
@@ -65,11 +61,7 @@ impl StylesWatcher {
         log::info!("Styles reloaded");
     }
 
-    async fn watcher(
-        sender: Sender<()>,
-        config_path: PathBuf,
-        styles_path: PathBuf,
-    ) {
+    async fn watcher(styles_path: PathBuf) {
         let inotify =
             Inotify::init().expect("Error while initializing inotify instance");
 

@@ -270,7 +270,7 @@ name = "chameleon"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "argh",
+ "chameleon-cli",
  "chameleon-config",
  "chameleon-ipc",
  "chameleon-panel",
@@ -285,10 +285,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "chameleon-cli"
+version = "0.1.0"
+dependencies = [
+ "argh",
+]
+
+[[package]]
 name = "chameleon-config"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chameleon-cli",
  "grapes",
  "inotify",
  "log",

@@ -23,7 +23,7 @@ impl Chameleon {
         let Args {
             config_path,
             styles_path: style_path,
-            watch,
+            watch_enabled: watch,
         } = args;
 
         let app = gtk::Application::builder()
@@ -50,7 +50,7 @@ impl Chameleon {
         ));
 
         if watch {
-            let watcher = StylesWatcher::new(&app, config_path, style_path);
+            let watcher = StylesWatcher::new(&app, style_path);
             watcher.run();
         }
 

@@ -1,5 +1,4 @@
 mod app;
-mod cli;
 mod hot_reload;
 mod instance_manager;
 

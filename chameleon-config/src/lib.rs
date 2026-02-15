@@ -4,56 +4,45 @@ pub use panel::PanelConfig;
 pub mod widgets;
 pub use widgets::WidgetsConfig;
 
-use anyhow::{Result, bail};
-use log::error;
+use chameleon_cli::ARGS;
 use serde::Deserialize;
-use std::{
-    fmt,
-    path::{Path, PathBuf},
-    rc::Rc,
-    sync::OnceLock,
-};
+use std::{fmt, path::Path, sync::LazyLock};
 
-static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
+pub static CONFIG: LazyLock<Config> = LazyLock::new(|| {
+    let config_path = &ARGS.config_path;
+    Config::init(config_path)
+});
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
     #[serde(default, rename = "widgets")]
-    pub widgets: Rc<WidgetsConfig>,
-    #[serde(default, rename = "panel")] // Statusbar panel
-    pub panel: Rc<PanelConfig>,
+    pub widgets: WidgetsConfig,
+    #[serde(default, rename = "panel")]
+    pub panel: PanelConfig,
 }
 
 impl Config {
-    pub fn init<P>(path: P) -> Self
+    fn init<P>(config_path: P) -> Self
     where
         P: AsRef<Path> + fmt::Debug,
     {
-        CONFIG_PATH.get_or_init(|| path.as_ref().to_path_buf());
-
-        match Self::read() {
-            Ok(config) => config,
-            Err(e) => {
-                error!("{e}");
-                std::process::exit(-1);
-            }
-        }
-    }
-
-    pub fn read() -> Result<Self> {
-        let path = CONFIG_PATH.get().unwrap();
-
-        let toml_str = match std::fs::read_to_string(&path) {
+        let toml_str = match std::fs::read_to_string(&config_path) {
             Ok(file) => file,
             Err(e) => {
-                bail!("Failed to open config file at {path:?}. {e}")
+                log::error!(
+                    "Failed to open config file at {config_path:?}. {e}"
+                );
+                std::process::exit(-1);
             }
         };
 
         match toml::from_str(&toml_str) {
-            Ok(config) => Ok(config),
-            Err(e) => bail!("{e}"),
+            Ok(config) => config,
+            Err(e) => {
+                log::error!("{e}");
+                std::process::exit(-1);
+            }
         }
     }
 }

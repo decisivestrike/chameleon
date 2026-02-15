@@ -5,18 +5,17 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = "1.0.100"
-
-env_logger = "0.11.8"
-log = "0.4.28"
-argh = "0.1.13"
-inotify = "0.11.0"
-futures-util = "0.3.31"
-console-subscriber = "0.5.0"
-
 grapes = { path = "../../grapes/grapes" }
+chameleon-cli = { path = "../chameleon-cli" }
 chameleon-config = { path = "../chameleon-config" }
 chameleon-ipc = { path = "../chameleon-ipc" }
 chameleon-panel = { path = "../chameleon-panel" }
 chameleon-widgets = { path = "../chameleon-widgets" }
+
+anyhow = "1.0.100"
+env_logger = "0.11.8"
+log = "0.4.28"
+inotify = "0.11.0"
+futures-util = "0.3.31"
+console-subscriber = "0.5.0"
 dashmap = "6.1.0"

@@ -2,7 +2,7 @@ pub mod modules;
 pub use modules::*;
 
 use serde::Deserialize;
-use std::{fmt, rc::Rc};
+use std::fmt;
 
 /// All panel modules
 #[derive(Debug, Deserialize)]
@@ -96,26 +96,9 @@ pub struct PanelConfig {
     #[serde(default)]
     pub modules_right: Vec<Module>,
     #[serde(default, rename = "clock")]
-    pub clock: Rc<ClockConfig>,
+    pub clock: ClockConfig,
     #[serde(default, rename = "battery")]
-    pub battery: Rc<BatteryConfig>,
+    pub battery: BatteryConfig,
     #[serde(default, rename = "workspaces")]
-    pub workspaces: Rc<WorkspacesConfig>,
-}
-
-impl PanelConfig {
-    pub fn modules(&self) -> ModulesConfig {
-        ModulesConfig {
-            clock: self.clock.clone(),
-            battery: self.battery.clone(),
-            workspaces: self.workspaces.clone(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ModulesConfig {
-    pub clock: Rc<ClockConfig>,
-    pub battery: Rc<BatteryConfig>,
-    pub workspaces: Rc<WorkspacesConfig>,
+    pub workspaces: WorkspacesConfig,
 }
