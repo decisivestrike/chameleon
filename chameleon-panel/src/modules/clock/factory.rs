@@ -8,7 +8,7 @@ use grapes::{
     RespawnableTask, state,
     tokio::sync::{RwLock, broadcast},
 };
-use std::{rc::Rc, sync::LazyLock};
+use std::sync::LazyLock;
 
 pub static FTIME_SENDER: LazyLock<broadcast::Sender<String>> =
     LazyLock::new(|| broadcast::Sender::new(64));
@@ -22,7 +22,7 @@ impl ModuleFactory for ClockFactory {
     type Config = ClockConfig;
     type Module = Clock;
 
-    fn create(config: &Rc<Self::Config>, _meta: &Metadata) -> Self::Module {
+    fn create(config: &Self::Config, _meta: &Metadata) -> Self::Module {
         FTIME_TASK.blocking_write().spawn();
 
         let formatted_time = state(Local::now().to_string());

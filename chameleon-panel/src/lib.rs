@@ -8,7 +8,7 @@ use crate::{
         workspaces::factory::WorkspacesFactory,
     },
 };
-use chameleon_config::{self as config, PanelConfig, panel::ModulesConfig};
+use chameleon_config::{self as config, PanelConfig};
 use config::panel::{Layer as PanelLayer, Module, ModulePlacement, Position};
 use grapes::{
     Component, WindowComponent,
@@ -21,12 +21,9 @@ use grapes::{
     prelude::{OrientableExt, containers::GrapesBoxExt},
 };
 use log::info;
-use std::rc::Rc;
-use uuid::Uuid;
 
 #[derive(WindowComponent)]
 pub struct Panel {
-    id: Uuid,
     #[root]
     window: ApplicationWindow,
     centerbox: gtk::CenterBox,
@@ -42,7 +39,7 @@ impl Panel {
     pub fn new(
         application: &gtk::Application,
         monitor: &gdk::Monitor,
-        config: Rc<PanelConfig>,
+        config: &PanelConfig,
     ) -> Self {
         let window = ApplicationWindow::new(application);
         let centerbox = gtk::CenterBox::new();
@@ -54,7 +51,6 @@ impl Panel {
         let right = gtk::Box::new(Orientation::Horizontal, 0);
 
         let mut bar = Self {
-            id: Uuid::new_v4(),
             window,
             centerbox,
             left,
@@ -93,7 +89,7 @@ impl Panel {
         self.centerbox.set_end_widget(Some(&self.right));
     }
 
-    pub fn configure(&mut self, config: Rc<config::PanelConfig>) {
+    pub fn configure(&mut self, config: &PanelConfig) {
         self.set_position(&config.position);
 
         let orientation = match config.position {
@@ -151,13 +147,8 @@ impl Panel {
 
         for (modules, placement) in all_modules {
             for name in modules {
-                self.append_module(
-                    name,
-                    meta.clone(),
-                    &placement,
-                    &config.modules(),
-                )
-                .expect("error while appending module");
+                self.append_module(name, meta.clone(), &placement, &config)
+                    .expect("error while appending module");
             }
         }
     }
@@ -167,7 +158,7 @@ impl Panel {
         module_name: &Module,
         meta: Metadata,
         placement: &ModulePlacement,
-        config: &ModulesConfig,
+        config: &PanelConfig,
     ) -> anyhow::Result<()> {
         let module = match module_name {
             Module::Clock => ClockFactory::boxed(&config.clock, &meta),
@@ -214,11 +205,5 @@ impl Panel {
         window.set_anchor(Edge::Right, right);
         window.set_anchor(Edge::Bottom, bottom);
         window.set_anchor(Edge::Left, left);
-    }
-}
-
-impl PartialEq for Panel {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
     }
 }

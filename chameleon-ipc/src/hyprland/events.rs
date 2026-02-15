@@ -1,7 +1,7 @@
 use crate::hyprland::TX_SOCK;
 use anyhow::{anyhow, bail};
 use grapes::{
-    Task,
+    RT,
     tokio::{
         io::{AsyncBufReadExt, BufReader},
         net::UnixStream,
@@ -18,6 +18,13 @@ use std::{
     sync::LazyLock,
     time::Duration,
 };
+
+pub static EVENT_SENDER: LazyLock<broadcast::Sender<HyprEvent>> =
+    LazyLock::new(|| {
+        let sender = broadcast::Sender::new(64);
+        RT.spawn(event_listener());
+        sender
+    });
 
 /// (&str, HyprEvent variant, variant fields) -> HyprEvent
 macro_rules! event {
@@ -118,41 +125,36 @@ where
     }
 }
 
-pub static EVENT_SENDER: LazyLock<broadcast::Sender<HyprEvent>> =
-    LazyLock::new(|| broadcast::Sender::new(64));
+async fn event_listener() {
+    loop {
+        let stream = connect_with_backoff(&*TX_SOCK).await;
+        let mut lines = BufReader::new(stream).lines();
 
-static _EVENTS: LazyLock<Task<()>> = LazyLock::new(|| {
-    Task::new(async |_| {
         loop {
-            let stream = connect_with_backoff(&*TX_SOCK).await;
-            let mut lines = BufReader::new(stream).lines();
-
-            loop {
-                let line = match lines.next_line().await {
-                    Ok(Some(line)) => line,
-                    Ok(None) => {
-                        warn!("Event stream EOF; reconnecting...");
-                        break;
-                    }
-                    Err(e) => {
-                        warn!("Read line failed: {e}");
-                        break;
-                    }
-                };
-
-                let event = match line.parse::<HyprEvent>() {
-                    Ok(ev) => ev,
-                    Err(_e) => {
-                        // warn!("{e}");
-                        continue;
-                    }
-                };
-
-                if let Err(e) = EVENT_SENDER.send(event) {
-                    warn!("broadcast closed (no receivers): {e}");
-                    return;
+            let line = match lines.next_line().await {
+                Ok(Some(line)) => line,
+                Ok(None) => {
+                    warn!("Event stream EOF; reconnecting...");
+                    break;
                 }
+                Err(e) => {
+                    warn!("Read line failed: {e}");
+                    break;
+                }
+            };
+
+            let event = match line.parse::<HyprEvent>() {
+                Ok(ev) => ev,
+                Err(_e) => {
+                    // warn!("{e}");
+                    continue;
+                }
+            };
+
+            if let Err(e) = EVENT_SENDER.send(event) {
+                warn!("broadcast closed (no receivers): {e}");
+                return;
             }
         }
-    })
-});
+    }
+}

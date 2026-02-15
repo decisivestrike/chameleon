@@ -4,10 +4,7 @@ use crate::{
 };
 use chameleon_config::panel::BatteryConfig;
 use grapes::{RespawnableTask, state, tokio::sync::broadcast};
-use std::{
-    rc::Rc,
-    sync::{LazyLock, RwLock},
-};
+use std::sync::{LazyLock, RwLock};
 
 pub static CHARGE_SENDER: LazyLock<broadcast::Sender<String>> =
     LazyLock::new(|| broadcast::Sender::new(64));
@@ -21,7 +18,7 @@ impl ModuleFactory for BatteryFactory {
     type Config = BatteryConfig;
     type Module = Battery;
 
-    fn create(config: &Rc<Self::Config>, _meta: &Metadata) -> Self::Module {
+    fn create(config: &Self::Config, _meta: &Metadata) -> Self::Module {
         CHARGE_TASK.write().unwrap().spawn();
 
         let formatted_charge = state("".to_string());

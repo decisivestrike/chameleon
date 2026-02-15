@@ -23,7 +23,7 @@ impl Chameleon {
         let Args {
             config_path,
             styles_path: style_path,
-            watch_enabled: watch,
+            watch_enabled,
         } = args;
 
         let app = gtk::Application::builder()
@@ -42,14 +42,13 @@ impl Chameleon {
             move |_| Css::load(&style_path).apply(StylePriority::User)
         ));
 
-        let config = Rc::new(Config::init(&config_path));
         app.connect_activate(clone!(
             #[strong]
             config,
             move |app| INSTANCE_MANAGER.configure_modules(app, &config)
         ));
 
-        if watch {
+        if watch_enabled {
             let watcher = StylesWatcher::new(&app, style_path);
             watcher.run();
         }

@@ -17,7 +17,7 @@ use grapes::{
     prelude::{containers::GrapesBoxExt, *},
     tokio::sync::mpsc::{self, Receiver},
 };
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 #[derive(Clone, Debug, Component, Downgrade)]
 pub struct Workspaces {
@@ -28,7 +28,7 @@ pub struct Workspaces {
 
 impl Workspaces {
     fn new(
-        _config: &Rc<WorkspacesConfig>,
+        _config: &WorkspacesConfig,
         meta: &Metadata,
         receiver: mpsc::Receiver<WorkspaceEvent>,
     ) -> Self {
@@ -94,8 +94,10 @@ impl Workspaces {
             .find(|child| child.widget_name() == button_name)
             .map(|child| f(child));
     }
+}
 
-    // --- Event handlers ---
+/// Event handlers
+impl Workspaces {
     pub fn add_workspace_button(&self, id: i32) {
         let button = Self::create_button(id);
 
