@@ -1,6 +1,6 @@
 use crate::modules::workspaces::event::WorkspaceEvent;
 use chameleon_core::errors::MonitorError;
-use chameleon_ipc::hyprland::events::EVENTS;
+use chameleon_ipc::hyprland::events::EVENT_SENDER;
 use chameleon_ipc::hyprland::{HyprEvent, Workspace};
 use grapes::RT;
 use grapes::gtk::gdk;
@@ -82,7 +82,7 @@ impl WorkspacesManager {
     }
 
     async fn event_handler(token: CancellationToken) -> anyhow::Result<()> {
-        let mut events_receiver = EVENTS.sender().subscribe();
+        let mut events_receiver = EVENT_SENDER.subscribe();
         let mut active_workspace = Workspace::active().await?;
 
         loop {

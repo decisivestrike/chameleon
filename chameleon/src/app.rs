@@ -1,5 +1,5 @@
 use crate::{
-    cli::Args, hot_reload::Watcher, instance_manager::INSTANCE_MANAGER,
+    cli::Args, hot_reload::StylesWatcher, instance_manager::INSTANCE_MANAGER,
 };
 use chameleon_config::Config;
 use grapes::{
@@ -50,7 +50,7 @@ impl Chameleon {
         ));
 
         if watch {
-            let watcher = Watcher::new(&app, config_path, style_path);
+            let watcher = StylesWatcher::new(&app, config_path, style_path);
             watcher.run();
         }
 

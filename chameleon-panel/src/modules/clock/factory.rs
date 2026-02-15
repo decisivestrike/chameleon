@@ -4,11 +4,18 @@ use crate::{
 };
 use chameleon_config::panel::ClockConfig;
 use chrono::Local;
-use grapes::{SubscribableTask, Task, state, tokio::sync::RwLock};
-use std::rc::Rc;
+use grapes::{
+    RespawnableTask, state,
+    tokio::sync::{RwLock, broadcast},
+};
+use std::{rc::Rc, sync::LazyLock};
+use tokio_util::sync::CancellationToken;
 
-pub static FTIME_TASK: RwLock<Option<SubscribableTask<String>>> =
-    RwLock::const_new(None);
+pub static FTIME_SENDER: LazyLock<broadcast::Sender<String>> =
+    LazyLock::new(|| broadcast::Sender::new(64));
+
+static FTIME_TASK: RwLock<RespawnableTask<()>> =
+    RwLock::const_new(RespawnableTask::new());
 
 pub struct ClockFactory;
 
@@ -17,30 +24,33 @@ impl ModuleFactory for ClockFactory {
     type Module = Clock;
 
     fn create(config: &Rc<Self::Config>, _meta: &Metadata) -> Self::Module {
-        if FTIME_TASK.blocking_read().is_none() {
-            let mut ftime_task = FTIME_TASK.blocking_write();
+        if !FTIME_TASK.blocking_read().is_ready() {
             let time_format = config.format.clone();
 
-            *ftime_task =
-                Some(Task::subscribable(async move |sender, token| {
+            FTIME_TASK.blocking_write().set(
+                async move |token: CancellationToken| {
                     loop {
                         let time = Local::now();
-                        let formatted_time = Clock::format(time, &time_format);
+                        let formatted_time =
+                            time.format(&time_format).to_string();
 
-                        sender.send(formatted_time);
+                        // If dont have subs
+                        if let Err(_) = FTIME_SENDER.send(formatted_time) {
+                            break;
+                        }
 
                         if token.is_cancelled() {
                             break;
                         }
                     }
-                }));
+                },
+            );
         }
 
-        let guard = FTIME_TASK.blocking_read();
-        let ftime_task = guard.as_ref().expect("already checked");
+        FTIME_TASK.blocking_write().spawn();
 
         let formatted_time = state(Local::now().to_string());
-        formatted_time.track(&ftime_task);
+        formatted_time.track(&FTIME_SENDER);
 
         Clock::new(&formatted_time)
     }

@@ -1,21 +1,21 @@
 mod factory;
 pub use factory::BatteryFactory;
 
-use chameleon_config::panel::BatteryConfig;
 use grapes::{
-    Component, Reactive, derived,
-    gtk::{Label, prelude::WidgetExt},
-    tokio::{self, time::sleep},
+    Component, State,
+    gtk::prelude::WidgetExt,
+    tokio::{self},
 };
+use grapes_components::StatefullLabel;
 use log::warn;
-use std::{rc::Rc, time::Duration};
+use std::rc::Rc;
 
 const BAT: &str = "BAT1";
 
-#[derive(Clone, Debug, Component)]
+#[derive(Debug, Component)]
 pub struct Battery {
     #[root]
-    label: Label,
+    label: StatefullLabel<String>,
 }
 
 impl Drop for Battery {
@@ -25,26 +25,10 @@ impl Drop for Battery {
 }
 
 impl Battery {
-    pub fn new(config: &Rc<BatteryConfig>) -> Self {
-        let maybe_charge = subscriber(&task(async |sender| {
-            let duration = Duration::from_secs(60);
-
-            loop {
-                let charge = Battery::charge().await;
-                sender.send(charge).unwrap();
-                sleep(duration).await;
-            }
-        }));
-
-        let config = config.clone();
-        let formatted_charge = derived(move || {
-            let charge = maybe_charge.get().unwrap_or(0);
-            Battery::format(charge, &config.icons)
-        });
-
-        let label = Label::statefull(&formatted_charge);
-        label.add_css_class("module");
-        label.set_widget_name("battery");
+    pub fn new(charge: &Rc<State<String>>) -> Self {
+        let label = StatefullLabel::new(&charge);
+        label.as_ref().add_css_class("module");
+        label.as_ref().set_widget_name("battery");
 
         Self { label }
     }

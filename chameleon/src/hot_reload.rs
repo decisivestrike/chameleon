@@ -1,3 +1,4 @@
+use crate::instance_manager::INSTANCE_MANAGER;
 use chameleon_config::Config;
 use futures_util::StreamExt;
 use grapes::{
@@ -11,36 +12,24 @@ use inotify::{Inotify, WatchMask};
 use log::info;
 use std::{path::PathBuf, rc::Rc, sync::Arc};
 
-use crate::instance_manager::INSTANCE_MANAGER;
-
-/// Смотрит за конфигами и загружает их при изменениях
-pub struct Watcher {
+/// Tracks styles and loads them when they change
+pub struct StylesWatcher {
     app: gtk::Application,
     config_path: PathBuf,
-    styles_path: PathBuf,
 }
 
-impl Watcher {
-    pub fn new(
-        app: &gtk::Application,
-        config_path: PathBuf,
-        styles_path: PathBuf,
-    ) -> Self {
+impl StylesWatcher {
+    pub fn new(app: &gtk::Application, config_path: PathBuf) -> Self {
         Self {
             app: app.clone(),
             config_path,
-            styles_path,
         }
     }
 
     pub fn run(self) {
         let (sender, mut receiver) = mpsc::channel::<()>(16);
 
-        let Self {
-            app,
-            config_path,
-            styles_path,
-        } = self;
+        let Self { app, config_path } = self;
 
         RT.spawn(Self::watcher(sender, config_path, styles_path));
 
@@ -62,7 +51,7 @@ impl Watcher {
     }
 
     /// Spawn local task
-    fn on_styles_change(styles_path: &Arc<PathBuf>) {
+    fn load_styles(styles_path: &Arc<PathBuf>) {
         glib::idle_add(clone!(
             #[strong]
             styles_path,
@@ -72,13 +61,8 @@ impl Watcher {
                 glib::ControlFlow::Break
             }
         ));
-        info!("Styles reloaded");
-    }
 
-    /// Just sends empty message
-    async fn on_config_change(sender: &Sender<()>) {
-        sender.send(()).await.unwrap();
-        info!("Config reloaded");
+        log::info!("Styles reloaded");
     }
 
     async fn watcher(
@@ -88,11 +72,6 @@ impl Watcher {
     ) {
         let inotify =
             Inotify::init().expect("Error while initializing inotify instance");
-
-        let config_wd = inotify
-            .watches()
-            .add(&config_path, WatchMask::CLOSE_WRITE)
-            .expect("Failed to add config file watch");
 
         let styles_wd = inotify
             .watches()
@@ -107,14 +86,9 @@ impl Watcher {
         loop {
             if let Some(maybe_event) = stream.next().await
                 && let Ok(event) = maybe_event
+                && event.wd == styles_wd
             {
-                let wd = event.wd;
-
-                if wd == config_wd {
-                    Self::on_config_change(&sender).await;
-                } else if wd == styles_wd {
-                    Self::on_styles_change(&styles_path);
-                }
+                Self::load_styles(&styles_path);
             }
         }
     }
