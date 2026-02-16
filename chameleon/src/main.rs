@@ -14,8 +14,6 @@ fn main() -> glib::ExitCode {
     // console_subscriber::init();
     init_logger();
 
-    COMPOSITOR.run();
-
     // TODO: replace ~ on home
 
     let app = Chameleon::new(&ARGS);

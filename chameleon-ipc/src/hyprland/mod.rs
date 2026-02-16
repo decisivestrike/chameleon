@@ -5,7 +5,10 @@ pub mod workspace;
 pub use event::HyprEvent;
 pub use workspace::*;
 
-use crate::{compositor::Compositor, hyprland::listener::EventListener};
+use crate::{
+    COMPOSITOR, CompositorVariant, compositor::Compositor,
+    hyprland::listener::EventListener,
+};
 use anyhow::Result;
 use grapes::{
     RT,
@@ -40,10 +43,6 @@ impl Compositor for Hyprland {
     fn subscribe(&self) -> broadcast::Receiver<HyprEvent> {
         self.event_sender.subscribe()
     }
-
-    fn run(&'static self) {
-        RT.spawn(EventListener::run(self));
-    }
 }
 
 impl Hyprland {
@@ -56,6 +55,10 @@ impl Hyprland {
             format!("{xdg_runtime_dir}/hypr/{his}/.socket.sock").into();
         let sender_sock =
             format!("{xdg_runtime_dir}/hypr/{his}/.socket2.sock").into();
+
+        if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
+            RT.spawn(EventListener::run(hyprland));
+        }
 
         Self {
             event_sender,

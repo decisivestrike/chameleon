@@ -12,7 +12,6 @@ pub(super) static MANAGER: OnceLock<WorkspacesManager> = OnceLock::new();
 
 pub(super) struct WorkspacesManager {
     instances: DashMap<String, mpsc::Sender<WorkspaceEvent>>,
-    hyprland: &'static Hyprland,
 }
 
 impl WorkspacesManager {
@@ -21,7 +20,6 @@ impl WorkspacesManager {
 
         Self {
             instances: Default::default(),
-            hyprland,
         }
     }
 

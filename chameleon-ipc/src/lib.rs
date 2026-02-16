@@ -1,7 +1,7 @@
 pub mod compositor;
 pub mod hyprland;
 
-use crate::{compositor::Compositor, hyprland::Hyprland};
+use crate::hyprland::Hyprland;
 use std::{env::var, sync::LazyLock};
 
 pub static COMPOSITOR: LazyLock<CompositorVariant> =
@@ -25,15 +25,6 @@ impl CompositorVariant {
             CompositorVariant::Niri(())
         } else {
             CompositorVariant::Unknown
-        }
-    }
-
-    /// Starts a task that listens to the compositor's events
-    pub fn run(&'static self) {
-        match self {
-            CompositorVariant::Hyprland(hyprland) => hyprland.run(),
-            CompositorVariant::Niri(_) => unimplemented!("not yet"),
-            CompositorVariant::Unknown => (),
         }
     }
 }
