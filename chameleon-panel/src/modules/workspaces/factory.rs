@@ -14,7 +14,10 @@ impl ModuleFactory for WorkspacesFactory {
     type Module = Workspaces;
 
     /// Creates `Workspaces` instance and register it in `WorkspacesManager`
-    fn create(config: &WorkspacesConfig, meta: &Metadata) -> Workspaces {
+    fn create(
+        config: &WorkspacesConfig,
+        meta: &Metadata,
+    ) -> anyhow::Result<Workspaces> {
         let (sender, receiver) = mpsc::channel(64);
 
         let workspaces = Workspaces::new(config, &meta, receiver);
@@ -25,6 +28,6 @@ impl ModuleFactory for WorkspacesFactory {
             log::error!("{e}");
         };
 
-        workspaces
+        Ok(workspaces)
     }
 }

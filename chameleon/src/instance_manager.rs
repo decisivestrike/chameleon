@@ -7,7 +7,7 @@ use grapes::{
     gtk::{self, gdk::Monitor},
     prelude::{MonitorExt, monitor::GrapesMonitorExt},
 };
-use std::{rc::Rc, sync::LazyLock};
+use std::sync::LazyLock;
 
 /// Global instance manager
 pub static INSTANCE_MANAGER: LazyLock<InstanceManager> =
@@ -24,7 +24,7 @@ impl InstanceManager {
     pub fn configure_modules(
         &self,
         application: &gtk::Application,
-        config: &Rc<Config>,
+        config: &Config,
     ) {
         self.configure_panels(application, &config.panel);
         self.configure_widgets_layers(application, &config.widgets);
@@ -36,7 +36,7 @@ impl InstanceManager {
     fn configure_panels(
         &self,
         application: &gtk::Application,
-        panel_config: &Rc<PanelConfig>,
+        panel_config: &PanelConfig,
     ) {
         if !self.panels.is_empty() {
             self.panels.retain(|_, panel| {
@@ -49,8 +49,7 @@ impl InstanceManager {
             log::info!("Setup panels...");
 
             for monitor in Monitor::all().iter() {
-                let panel =
-                    Panel::new(application, monitor, panel_config.clone());
+                let panel = Panel::new(application, monitor, panel_config);
                 panel.present();
 
                 let connector_name = monitor.connector().unwrap().to_string();
@@ -62,7 +61,7 @@ impl InstanceManager {
     fn configure_widgets_layers(
         &self,
         application: &gtk::Application,
-        widgets_config: &Rc<WidgetsConfig>,
+        widgets_config: &WidgetsConfig,
     ) {
         if !self.widgets_layers.is_empty() {
             self.widgets_layers.retain(|_, wl| {
@@ -75,11 +74,8 @@ impl InstanceManager {
             log::info!("Setup widgets...");
 
             for monitor in Monitor::all().iter() {
-                let widgets_layer = WidgetsLayer::new(
-                    application,
-                    monitor,
-                    widgets_config.clone(),
-                );
+                let widgets_layer =
+                    WidgetsLayer::new(application, monitor, widgets_config);
                 widgets_layer.present();
 
                 let connector_name = monitor.connector().unwrap().to_string();

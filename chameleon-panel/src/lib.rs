@@ -4,8 +4,7 @@ pub mod modules;
 use crate::{
     common::Metadata,
     modules::{
-        ModuleFactory, battery::BatteryFactory, clock::ClockFactory,
-        workspaces::factory::WorkspacesFactory,
+        Battery, Clock, ModuleFactory, workspaces::factory::WorkspacesFactory,
     },
 };
 use chameleon_config::{self as config, PanelConfig};
@@ -20,7 +19,6 @@ use grapes::{
     layer_shell::{Edge, KeyboardMode, Layer, LayerShell},
     prelude::{OrientableExt, containers::GrapesBoxExt},
 };
-use log::info;
 
 #[derive(WindowComponent)]
 pub struct Panel {
@@ -147,8 +145,7 @@ impl Panel {
 
         for (modules, placement) in all_modules {
             for name in modules {
-                self.append_module(name, meta.clone(), &placement, &config)
-                    .expect("error while appending module");
+                self.append_module(name, meta.clone(), &placement, &config);
             }
         }
     }
@@ -159,21 +156,24 @@ impl Panel {
         meta: Metadata,
         placement: &ModulePlacement,
         config: &PanelConfig,
-    ) -> anyhow::Result<()> {
-        let module = match module_name {
-            Module::Clock => ClockFactory::boxed(&config.clock, &meta),
-            Module::Battery => BatteryFactory::boxed(&config.battery, &meta),
+    ) {
+        let maybe_module = match module_name {
+            Module::Clock => Clock::boxed(&config.clock, &meta),
+            Module::Battery => Battery::boxed(&config.battery, &meta),
             Module::Workspaces => {
                 WorkspacesFactory::boxed(&config.workspaces, &meta)
             }
         };
 
-        self.add_module(module.as_ref(), placement);
-        self.modules.push(module);
+        match maybe_module {
+            Ok(module) => {
+                self.add_module(module.as_ref(), placement);
+                self.modules.push(module);
 
-        info!("Added {module_name} to {placement} bar group.");
-
-        Ok(())
+                log::info!("Added {module_name} to {placement} bar group.");
+            }
+            Err(e) => log::warn!("{e}"),
+        }
     }
 
     fn setup_window(&self) {

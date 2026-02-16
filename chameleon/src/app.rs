@@ -1,16 +1,17 @@
-use crate::{
-    cli::Args, hot_reload::StylesWatcher, instance_manager::INSTANCE_MANAGER,
-};
-use chameleon_config::Config;
+use crate::instance_manager::INSTANCE_MANAGER;
+use chameleon_cli::Args;
+use chameleon_config::CONFIG;
+use futures_util::StreamExt;
 use grapes::{
-    Css,
+    Css, RT,
     css::StylePriority,
     gio::ApplicationFlags,
-    glib::{ExitCode, clone},
+    glib::{self, ExitCode},
     gtk::{self},
     prelude::{ApplicationExt, ApplicationExtManual},
 };
-use std::rc::Rc;
+use inotify::{Inotify, WatchMask};
+use std::path::PathBuf;
 
 const APPLICATION_ID: &str = "decisivestrike.chameleon";
 
@@ -19,11 +20,11 @@ pub struct Chameleon {
 }
 
 impl Chameleon {
-    pub fn new(args: Args) -> Self {
+    pub fn new(args: &'static Args) -> Self {
         let Args {
-            config_path,
-            styles_path: style_path,
+            styles_path,
             watch_enabled,
+            ..
         } = args;
 
         let app = gtk::Application::builder()
@@ -36,21 +37,16 @@ impl Chameleon {
             ExitCode::SUCCESS
         });
 
-        app.connect_startup(clone!(
-            #[strong]
-            style_path,
-            move |_| Css::load(&style_path).apply(StylePriority::User)
-        ));
+        app.connect_startup(move |_| {
+            Css::load(styles_path).apply(StylePriority::User)
+        });
 
-        app.connect_activate(clone!(
-            #[strong]
-            config,
-            move |app| INSTANCE_MANAGER.configure_modules(app, &config)
-        ));
+        app.connect_activate(move |app| {
+            INSTANCE_MANAGER.configure_modules(app, &CONFIG)
+        });
 
-        if watch_enabled {
-            let watcher = StylesWatcher::new(&app, style_path);
-            watcher.run();
+        if *watch_enabled {
+            Self::start_styles_watcher(styles_path);
         }
 
         Self { app }
@@ -58,5 +54,37 @@ impl Chameleon {
 
     pub fn run(&self) -> ExitCode {
         self.app.run()
+    }
+
+    fn start_styles_watcher(styles_path: &'static PathBuf) {
+        RT.spawn(Self::styles_watcher(styles_path));
+    }
+
+    async fn styles_watcher(styles_path: &'static PathBuf) {
+        let inotify =
+            Inotify::init().expect("Error while initializing inotify instance");
+
+        let styles_wd = inotify
+            .watches()
+            .add(&styles_path, WatchMask::CLOSE_WRITE)
+            .expect("Failed to add styles file watch");
+
+        let mut buffer = [0; 1024];
+        let mut stream = inotify.into_event_stream(&mut buffer).unwrap();
+
+        loop {
+            if let Some(maybe_event) = stream.next().await
+                && let Ok(event) = maybe_event
+                && event.wd == styles_wd
+            {
+                glib::idle_add(move || {
+                    Css::load(&*styles_path).apply(StylePriority::User);
+
+                    glib::ControlFlow::Break
+                });
+
+                log::info!("Styles reloaded");
+            }
+        }
     }
 }

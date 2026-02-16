@@ -18,11 +18,17 @@ pub trait ModuleFactory {
     type Config;
     type Module: Component;
 
-    fn create(config: &Self::Config, meta: &Metadata) -> Self::Module;
+    fn create(
+        config: &Self::Config,
+        meta: &Metadata,
+    ) -> anyhow::Result<Self::Module>;
 
-    fn boxed(config: &Self::Config, meta: &Metadata) -> Box<dyn Component> {
-        let instance = Self::create(config, meta);
+    fn boxed(
+        config: &Self::Config,
+        meta: &Metadata,
+    ) -> anyhow::Result<Box<dyn Component>> {
+        let instance = Self::create(config, meta)?;
 
-        Box::new(instance)
+        Ok(Box::new(instance))
     }
 }

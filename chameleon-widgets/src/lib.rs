@@ -32,7 +32,7 @@ impl WidgetsLayer {
     pub fn new(
         application: &gtk::Application,
         monitor: &gdk::Monitor,
-        _config: Rc<WidgetsConfig>,
+        _config: &WidgetsConfig,
     ) -> Self {
         let window = ApplicationWindow::new(application);
 

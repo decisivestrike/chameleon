@@ -1,9 +1,8 @@
 mod app;
-mod hot_reload;
 mod instance_manager;
 
 use crate::app::Chameleon;
-
+use chameleon_cli::ARGS;
 use grapes::glib::{self};
 
 fn init_logger() {
@@ -16,7 +15,7 @@ fn main() -> glib::ExitCode {
 
     // TODO: replace ~ on home
 
-    let app = Chameleon::new(argh::from_env());
+    let app = Chameleon::new(&ARGS);
 
     app.run()
 }
