@@ -1,23 +1,33 @@
+use std::sync::OnceLock;
+
 use crate::modules::workspaces::event::WorkspaceEvent;
 use chameleon_core::errors::MonitorError;
-use chameleon_ipc::hyprland::{HyprEvent, Workspace};
+use chameleon_ipc::{
+    compositor::Compositor,
+    hyprland::{HyprEvent, Hyprland, Workspace},
+};
 use dashmap::DashMap;
-use grapes::RT;
-use grapes::gtk::gdk;
-use grapes::prelude::MonitorExt;
-use grapes::tokio::sync::mpsc;
-use std::sync::LazyLock;
+use grapes::{RT, gtk::gdk, prelude::MonitorExt, tokio::sync::mpsc};
 
-static INSTANCES: LazyLock<DashMap<String, mpsc::Sender<WorkspaceEvent>>> =
-    LazyLock::new(|| {
-        RT.spawn(WorkspacesManager::event_handler());
-        Default::default()
-    });
+pub(super) static MANAGER: OnceLock<WorkspacesManager> = OnceLock::new();
 
-pub(super) struct WorkspacesManager;
+pub(super) struct WorkspacesManager {
+    instances: DashMap<String, mpsc::Sender<WorkspaceEvent>>,
+    hyprland: &'static Hyprland,
+}
 
 impl WorkspacesManager {
+    pub fn new(hyprland: &'static Hyprland) -> Self {
+        RT.spawn(Self::event_handler(hyprland));
+
+        Self {
+            instances: Default::default(),
+            hyprland,
+        }
+    }
+
     pub async fn register(
+        &self,
         monitor: &gdk::Monitor,
         sender: mpsc::Sender<WorkspaceEvent>,
     ) -> anyhow::Result<()> {
@@ -26,14 +36,14 @@ impl WorkspacesManager {
             .ok_or(MonitorError::NoConnector)?
             .to_string();
 
-        INSTANCES.insert(monitor_connector, sender);
+        self.instances.insert(monitor_connector, sender);
 
         Ok(())
     }
 
-    async fn event_handler() -> ! {
-        let mut events_receiver = EVENT_SENDER.subscribe();
-        let mut active_workspace = Workspace::active().await.unwrap();
+    async fn event_handler(hyprland: &'static Hyprland) -> ! {
+        let mut events_receiver = hyprland.subscribe();
+        let mut active_workspace = hyprland.active_workspace().await.unwrap();
 
         loop {
             let maybe_event = events_receiver.recv().await;
@@ -106,7 +116,8 @@ impl WorkspacesManager {
     }
 
     async fn send_event(monitor_connector: &String, event: WorkspaceEvent) {
-        let maybe_sender = INSTANCES.get(monitor_connector);
+        let maybe_sender =
+            MANAGER.get().unwrap().instances.get(monitor_connector);
 
         match maybe_sender {
             Some(sender) => {

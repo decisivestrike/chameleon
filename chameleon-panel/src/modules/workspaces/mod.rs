@@ -5,12 +5,15 @@ use crate::{
     common::Metadata,
     modules::{
         ModuleFactory,
-        workspaces::{event::WorkspaceEvent, manager::WorkspacesManager},
+        workspaces::{
+            event::WorkspaceEvent,
+            manager::{MANAGER, WorkspacesManager},
+        },
     },
 };
-use anyhow::Result;
+use anyhow::{Result, bail};
 use chameleon_config::panel::WorkspacesConfig;
-use chameleon_ipc::hyprland::{self, Workspace};
+use chameleon_ipc::{COMPOSITOR, CompositorVariant, hyprland::Hyprland};
 use grapes::{
     glib::clone::Downgrade,
     gtk::{GestureClick, Label, Widget},
@@ -23,6 +26,7 @@ use std::rc::Rc;
 pub struct Workspaces {
     #[root]
     root: gtk::Box,
+    hyprland: &'static Hyprland,
 }
 
 impl ModuleFactory for Workspaces {
@@ -33,37 +37,45 @@ impl ModuleFactory for Workspaces {
         config: &WorkspacesConfig,
         meta: &Metadata,
     ) -> Result<Rc<dyn Component>> {
-        let (sender, receiver) = mpsc::channel(64);
+        if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
+            let manager =
+                MANAGER.get_or_init(|| WorkspacesManager::new(hyprland));
 
-        let workspaces = Workspaces::new(config, &meta, receiver);
+            let (sender, receiver) = mpsc::channel(64);
+            let workspaces = Workspaces::new(config, &meta, receiver, hyprland);
 
-        if let Err(e) =
-            RT.block_on(WorkspacesManager::register(&meta.monitor, sender))
-        {
-            log::error!("{e}");
-        };
+            if let Err(e) = RT.block_on(manager.register(&meta.monitor, sender))
+            {
+                log::error!("{e}");
+            };
 
-        Ok(workspaces)
+            Ok(workspaces)
+        } else {
+            bail!("U can use workspaces only with Hyprland");
+        }
     }
 }
 
 impl Workspaces {
     fn new(
-        _config: &WorkspacesConfig,
+        config: &WorkspacesConfig,
         meta: &Metadata,
         receiver: mpsc::Receiver<WorkspaceEvent>,
+        hyprland: &'static Hyprland,
     ) -> Rc<Self> {
         let root = gtk::Box::new(meta.orientation, 0);
         root.set_widget_name("workspaces");
 
-        let workspaces = Rc::new(Self { root });
+        let workspaces = Rc::new(Self { root, hyprland });
 
         RT.block_on(async {
-            for ws in Workspace::on_monitor(&meta.monitor).await.unwrap() {
+            for ws in
+                hyprland.workspaces_on_monitor(&meta.monitor).await.unwrap()
+            {
                 workspaces.add_workspace_button(ws.id);
             }
 
-            let active_workspace = Workspace::active().await.unwrap();
+            let active_workspace = hyprland.active_workspace().await.unwrap();
             workspaces.activate_workspace_button(active_workspace.id);
         });
 
@@ -89,15 +101,17 @@ impl Workspaces {
         log::debug!("Local listener stopped")
     }
 
-    fn create_button(id: i32) -> Label {
+    fn create_button(&self, id: i32) -> Label {
         let button = Label::new(Some(&id.to_string()));
         let event_controller = GestureClick::new();
+
+        let hyprland = self.hyprland;
 
         event_controller.connect_pressed(move |_, _, _, _| {
             // On click
             RT.spawn(async move {
                 let command = format!("dispatch workspace {}", id);
-                let _ = hyprland::command(command.as_bytes()).await;
+                let _ = hyprland.command(command.as_bytes()).await;
             });
         });
 
@@ -120,7 +134,7 @@ impl Workspaces {
 /// Event handlers
 impl Workspaces {
     pub fn add_workspace_button(&self, id: i32) {
-        let button = Self::create_button(id);
+        let button = self.create_button(id);
 
         for child in self.root.children() {
             let child_id: i32 = child.widget_name().parse().unwrap();

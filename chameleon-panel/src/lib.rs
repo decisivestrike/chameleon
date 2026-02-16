@@ -8,6 +8,7 @@ use crate::{
     modules::{Battery, Clock, ModuleFactory, Workspaces},
 };
 use chameleon_config::{self as config, PanelConfig};
+use chameleon_ipc::COMPOSITOR;
 use config::panel::{Layer as PanelLayer, Module, ModulePlacement, Position};
 use grapes::{
     Component, WindowComponent,
@@ -141,6 +142,7 @@ impl Panel {
         let meta = Metadata {
             monitor: self.monitor.clone(),
             orientation,
+            compositor: &COMPOSITOR,
         };
 
         for (modules, placement) in all_modules {

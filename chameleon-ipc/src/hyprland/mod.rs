@@ -19,6 +19,7 @@ use grapes::{
 };
 use std::{env::var, path::PathBuf};
 
+#[derive(Debug)]
 pub struct Hyprland {
     event_sender: broadcast::Sender<HyprEvent>,
 
