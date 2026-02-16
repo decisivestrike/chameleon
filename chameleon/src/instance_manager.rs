@@ -13,6 +13,8 @@ use std::sync::LazyLock;
 pub static INSTANCE_MANAGER: LazyLock<InstanceManager> =
     LazyLock::new(|| Default::default());
 
+/// Handles monitors connection/disconnection
+///
 /// String here is a monitor connector name
 #[derive(Default)]
 pub struct InstanceManager {

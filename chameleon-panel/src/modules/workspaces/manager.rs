@@ -1,6 +1,5 @@
 use crate::modules::workspaces::event::WorkspaceEvent;
 use chameleon_core::errors::MonitorError;
-use chameleon_ipc::hyprland::events::EVENT_SENDER;
 use chameleon_ipc::hyprland::{HyprEvent, Workspace};
 use dashmap::DashMap;
 use grapes::RT;
