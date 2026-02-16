@@ -1,4 +1,5 @@
 use crate::{common::Metadata, modules::ModuleFactory};
+use anyhow::bail;
 use chameleon_config::{CONFIG, panel::BatteryConfig};
 use grapes::{
     Component, RT, State,
@@ -39,15 +40,20 @@ impl ModuleFactory for Battery {
     type Module = Battery;
 
     fn create(
-        _config: &Self::Config,
+        config: &Self::Config,
         _meta: &Metadata,
     ) -> anyhow::Result<Self::Module> {
-        // find bat. err if not
+        match RT
+            .block_on(Self::formatted_charge(BAT_PLACEHOLDER, &config.icons))
+        {
+            Some(formatted_charge) => {
+                let fcs = state(formatted_charge);
+                fcs.track(&CHARGE_SENDER);
 
-        let formatted_charge = state("".to_string());
-        formatted_charge.track(&CHARGE_SENDER);
-
-        Ok(Battery::new(&formatted_charge))
+                Ok(Battery::new(&fcs))
+            }
+            None => bail!("I can't find the battery in your device"),
+        }
     }
 }
 
