@@ -12,7 +12,6 @@ use grapes::{
     },
 };
 use grapes_components::StatefullLabel;
-use log::warn;
 use std::{rc::Rc, sync::LazyLock, time::Duration};
 
 pub static CHARGE_SENDER: LazyLock<broadcast::Sender<String>> =
@@ -45,13 +44,13 @@ impl ModuleFactory for Battery {
         match RT
             .block_on(Self::formatted_charge(BAT_PLACEHOLDER, &config.icons))
         {
-            Some(formatted_charge) => {
+            Ok(formatted_charge) => {
                 let fcs = state(formatted_charge);
                 fcs.track(&CHARGE_SENDER);
 
                 Ok(Rc::new(Battery::new(&fcs)))
             }
-            None => bail!("I can't find the battery in your device"),
+            Err(e) => bail!("I can't find the battery in your device: {e}"),
         }
     }
 }
@@ -69,27 +68,23 @@ impl Battery {
     async fn formatted_charge(
         bat: &str,
         icons: &Vec<String>,
-    ) -> Option<String> {
-        Battery::charge(bat)
-            .await
-            .map(|charge| Battery::format(charge, icons))
+    ) -> anyhow::Result<String> {
+        let charge = Battery::charge(bat).await?;
+
+        Ok(Battery::format(charge, icons))
     }
 
-    async fn charge(bat: &str) -> Option<u8> {
+    async fn charge(bat: &str) -> anyhow::Result<u8> {
         let battery_path = format!("/sys/class/power_supply/{}/capacity", bat);
 
-        match tokio::fs::read_to_string(battery_path).await {
-            Ok(raw_charge) => Some(
-                raw_charge
-                    .trim()
-                    .parse::<u8>()
-                    .expect(&format!("Can't parse '{}'", raw_charge)),
-            ),
-            Err(e) => {
-                warn!("{e}");
-                None
-            }
-        }
+        let charge_str = tokio::fs::read_to_string(battery_path).await?;
+
+        let charge = charge_str
+            .trim()
+            .parse::<u8>()
+            .expect(&format!("Can't parse '{}'", charge_str));
+
+        Ok(charge)
     }
 
     fn format(charge: u8, icons: &Vec<String>) -> String {
@@ -104,10 +99,10 @@ impl Battery {
         sender: broadcast::Sender<String>,
     ) {
         loop {
-            if let Some(formatted_charge) =
+            if let Ok(charge) =
                 Battery::formatted_charge(BAT_PLACEHOLDER, &config.icons).await
             {
-                let _ = sender.send(formatted_charge);
+                let _ = sender.send(charge);
             }
 
             sleep(Duration::from_secs(60)).await;

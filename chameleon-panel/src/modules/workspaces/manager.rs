@@ -1,5 +1,3 @@
-use std::sync::OnceLock;
-
 use crate::modules::workspaces::event::WorkspaceEvent;
 use chameleon_core::errors::MonitorError;
 use chameleon_ipc::{
@@ -8,6 +6,7 @@ use chameleon_ipc::{
 };
 use dashmap::DashMap;
 use grapes::{RT, gtk::gdk, prelude::MonitorExt, tokio::sync::mpsc};
+use std::sync::OnceLock;
 
 pub(super) static MANAGER: OnceLock<WorkspacesManager> = OnceLock::new();
 
