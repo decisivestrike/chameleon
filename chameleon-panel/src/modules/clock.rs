@@ -30,16 +30,16 @@ pub struct Clock {
 
 impl ModuleFactory for Clock {
     type Config = ClockConfig;
-    type Module = Clock;
 
     fn create(
         _config: &Self::Config,
         _meta: &Metadata,
-    ) -> anyhow::Result<Self::Module> {
+    ) -> anyhow::Result<Rc<dyn Component>> {
         let formatted_time = state(Local::now().to_string());
         formatted_time.track(&TIME_SENDER);
 
-        Ok(Clock::new(&formatted_time))
+        let clock = Clock::new(&formatted_time);
+        Ok(Rc::new(clock))
     }
 }
 

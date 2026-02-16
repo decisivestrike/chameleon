@@ -1,29 +1,50 @@
 mod event;
-pub mod factory;
 mod manager;
 
 use crate::{
     common::Metadata,
-    modules::workspaces::{event::WorkspaceEvent, manager::WorkspacesManager},
+    modules::{
+        ModuleFactory,
+        workspaces::{event::WorkspaceEvent, manager::WorkspacesManager},
+    },
 };
+use anyhow::Result;
 use chameleon_config::panel::WorkspacesConfig;
 use chameleon_ipc::hyprland::{self, Workspace};
 use grapes::{
-    glib::{
-        Downgrade,
-        clone::{Downgrade, Upgrade},
-    },
+    glib::clone::Downgrade,
     gtk::{GestureClick, Label, Widget},
     prelude::{containers::GrapesBoxExt, *},
-    tokio::sync::mpsc::{self, Receiver},
+    tokio::sync::mpsc::{self},
 };
-use std::sync::Arc;
+use std::rc::Rc;
 
-#[derive(Clone, Debug, Component, Downgrade)]
+#[derive(Debug, Component)]
 pub struct Workspaces {
     #[root]
     root: gtk::Box,
-    monitor: Arc<String>,
+}
+
+impl ModuleFactory for Workspaces {
+    type Config = WorkspacesConfig;
+
+    /// Creates `Workspaces` instance and register it in `WorkspacesManager`
+    fn create(
+        config: &WorkspacesConfig,
+        meta: &Metadata,
+    ) -> Result<Rc<dyn Component>> {
+        let (sender, receiver) = mpsc::channel(64);
+
+        let workspaces = Workspaces::new(config, &meta, receiver);
+
+        if let Err(e) =
+            RT.block_on(WorkspacesManager::register(&meta.monitor, sender))
+        {
+            log::error!("{e}");
+        };
+
+        Ok(workspaces)
+    }
 }
 
 impl Workspaces {
@@ -31,14 +52,11 @@ impl Workspaces {
         _config: &WorkspacesConfig,
         meta: &Metadata,
         receiver: mpsc::Receiver<WorkspaceEvent>,
-    ) -> Self {
+    ) -> Rc<Self> {
         let root = gtk::Box::new(meta.orientation, 0);
         root.set_widget_name("workspaces");
 
-        let workspaces = Self {
-            root,
-            monitor: meta.monitor.connector().unwrap().to_string().into(),
-        };
+        let workspaces = Rc::new(Self { root });
 
         RT.block_on(async {
             for ws in Workspace::on_monitor(&meta.monitor).await.unwrap() {
@@ -54,7 +72,10 @@ impl Workspaces {
         workspaces
     }
 
-    fn spawn_listener_local(&self, mut receiver: Receiver<WorkspaceEvent>) {
+    fn spawn_listener_local(
+        self: &Rc<Self>,
+        mut receiver: mpsc::Receiver<WorkspaceEvent>,
+    ) {
         let ws_weak = self.downgrade();
 
         glib::spawn_future_local(async move {
@@ -138,16 +159,6 @@ impl UpdateableComponent for Workspaces {
             WorkspaceEvent::Deactivate(id) => {
                 self.deactivate_workspace_button(id)
             }
-        }
-    }
-}
-
-impl Drop for Workspaces {
-    fn drop(&mut self) {
-        if Arc::strong_count(&self.monitor) == 1 {
-            log::debug!("ws unregistered");
-
-            RT.spawn(WorkspacesManager::unregister(self.monitor.clone()));
         }
     }
 }

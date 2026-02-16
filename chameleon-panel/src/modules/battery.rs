@@ -37,12 +37,11 @@ pub struct Battery {
 
 impl ModuleFactory for Battery {
     type Config = BatteryConfig;
-    type Module = Battery;
 
     fn create(
         config: &Self::Config,
         _meta: &Metadata,
-    ) -> anyhow::Result<Self::Module> {
+    ) -> anyhow::Result<Rc<dyn Component>> {
         match RT
             .block_on(Self::formatted_charge(BAT_PLACEHOLDER, &config.icons))
         {
@@ -50,7 +49,7 @@ impl ModuleFactory for Battery {
                 let fcs = state(formatted_charge);
                 fcs.track(&CHARGE_SENDER);
 
-                Ok(Battery::new(&fcs))
+                Ok(Rc::new(Battery::new(&fcs)))
             }
             None => bail!("I can't find the battery in your device"),
         }

@@ -1,4 +1,6 @@
 pub mod clock;
+use std::rc::Rc;
+
 pub use clock::Clock;
 
 pub mod battery;
@@ -16,19 +18,9 @@ use grapes::Component;
 /// Panel module factory
 pub trait ModuleFactory {
     type Config;
-    type Module: Component;
 
     fn create(
         config: &Self::Config,
         meta: &Metadata,
-    ) -> anyhow::Result<Self::Module>;
-
-    fn boxed(
-        config: &Self::Config,
-        meta: &Metadata,
-    ) -> anyhow::Result<Box<dyn Component>> {
-        let instance = Self::create(config, meta)?;
-
-        Ok(Box::new(instance))
-    }
+    ) -> anyhow::Result<Rc<dyn Component>>;
 }

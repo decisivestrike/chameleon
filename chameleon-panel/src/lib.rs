@@ -1,11 +1,11 @@
 pub mod common;
 pub mod modules;
 
+use std::rc::Rc;
+
 use crate::{
     common::Metadata,
-    modules::{
-        Battery, Clock, ModuleFactory, workspaces::factory::WorkspacesFactory,
-    },
+    modules::{Battery, Clock, ModuleFactory, Workspaces},
 };
 use chameleon_config::{self as config, PanelConfig};
 use config::panel::{Layer as PanelLayer, Module, ModulePlacement, Position};
@@ -30,7 +30,7 @@ pub struct Panel {
     right: gtk::Box,
     monitor: gdk::Monitor,
 
-    modules: Vec<Box<dyn Component>>,
+    modules: Vec<Rc<dyn Component>>,
 }
 
 impl Panel {
@@ -158,11 +158,9 @@ impl Panel {
         config: &PanelConfig,
     ) {
         let maybe_module = match module_name {
-            Module::Clock => Clock::boxed(&config.clock, &meta),
-            Module::Battery => Battery::boxed(&config.battery, &meta),
-            Module::Workspaces => {
-                WorkspacesFactory::boxed(&config.workspaces, &meta)
-            }
+            Module::Clock => Clock::create(&config.clock, &meta),
+            Module::Battery => Battery::create(&config.battery, &meta),
+            Module::Workspaces => Workspaces::create(&config.workspaces, &meta),
         };
 
         match maybe_module {
