@@ -56,9 +56,11 @@ impl Hyprland {
         let sender_sock =
             format!("{xdg_runtime_dir}/hypr/{his}/.socket2.sock").into();
 
-        if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
-            RT.spawn(EventListener::run(hyprland));
-        }
+        RT.spawn(async move {
+            if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
+                RT.spawn(EventListener::run(hyprland));
+            }
+        });
 
         Self {
             event_sender,
