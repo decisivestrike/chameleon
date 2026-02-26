@@ -324,6 +324,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "chameleon-launcher"
+version = "0.1.0"
+dependencies = [
+ "chameleon-config",
+ "chameleon-core",
+ "chameleon-ipc",
+ "grapes",
+ "grapes-components",
+]
+
+[[package]]
 name = "chameleon-panel"
 version = "0.1.0"
 dependencies = [
