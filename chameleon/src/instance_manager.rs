@@ -1,25 +1,32 @@
 use chameleon_config::{Config, PanelConfig, WidgetsConfig};
+use chameleon_launcher::Launcher;
 use chameleon_panel::Panel;
 use chameleon_widgets::WidgetsLayer;
 use dashmap::DashMap;
 use grapes::{
-    WindowComponent,
+    RT, WindowComponent, glib,
     gtk::{self, gdk::Monitor},
     prelude::{MonitorExt, monitor::GrapesMonitorExt},
+    tokio::{
+        fs,
+        io::{AsyncBufReadExt, BufReader},
+        net::UnixListener,
+        sync::RwLock,
+    },
 };
-use std::sync::LazyLock;
+use std::{path::Path, sync::LazyLock};
 
 /// Global instance manager
 pub static INSTANCE_MANAGER: LazyLock<InstanceManager> =
-    LazyLock::new(|| Default::default());
+    LazyLock::new(InstanceManager::default);
 
 /// Handles monitors connection/disconnection
 ///
 /// String here is a monitor connector name
-#[derive(Default)]
 pub struct InstanceManager {
     widgets_layers: DashMap<String, WidgetsLayer>,
     panels: DashMap<String, Panel>,
+    launcher: RwLock<Option<Launcher>>,
 }
 
 impl InstanceManager {
@@ -30,8 +37,15 @@ impl InstanceManager {
     ) {
         self.configure_panels(application, &config.panel);
         self.configure_widgets_layers(application, &config.widgets);
+        self.configure_launcher(application);
 
         log::info!("Modules configured!");
+    }
+
+    pub fn toggle_launcher(&self) {
+        if let Some(launcher) = &*self.launcher.blocking_read() {
+            launcher.toggle_visibility();
+        }
     }
 
     /// Просто удаляем все панельки. Если они включены, то снова создаем
@@ -84,6 +98,58 @@ impl InstanceManager {
                 self.widgets_layers.insert(connector_name, widgets_layer);
             }
         }
+    }
+
+    fn configure_launcher(&self, application: &gtk::Application) {
+        log::info!("Setup launcher...");
+        let launcher = Launcher::new(application);
+
+        launcher.present();
+        launcher.toggle_visibility();
+
+        *self.launcher.blocking_write() = Some(launcher);
+    }
+
+    async fn listen_socket() {
+        let socket_path = &format!("/tmp/chameleon-recv.sock");
+
+        // Удаляем старый сокет
+        let path = Path::new(socket_path);
+        if path.exists() {
+            let _ = fs::remove_file(socket_path).await;
+        }
+
+        let listener = UnixListener::bind(socket_path).unwrap();
+        log::info!("Слушаем: {}", socket_path);
+
+        loop {
+            let (stream, _addr) = listener.accept().await.unwrap();
+            let mut lines = BufReader::new(stream).lines();
+
+            match lines.next_line().await {
+                Ok(Some(_line)) => {
+                    glib::idle_add(|| {
+                        INSTANCE_MANAGER.toggle_launcher();
+                        glib::ControlFlow::Break
+                    });
+                }
+                _ => (),
+            }
+        }
+    }
+}
+
+impl Default for InstanceManager {
+    fn default() -> Self {
+        let im = Self {
+            widgets_layers: Default::default(),
+            panels: Default::default(),
+            launcher: None.into(),
+        };
+
+        RT.spawn(Self::listen_socket());
+
+        im
     }
 }
 

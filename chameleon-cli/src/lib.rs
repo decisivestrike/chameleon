@@ -24,6 +24,9 @@ pub struct Args {
 
     #[argh(switch, short = 'w', description = "watch mode for styles")]
     pub watch_enabled: bool,
+
+    #[argh(switch, short = 't', description = "toggle launcher visibility")]
+    pub toggle_launcher: bool,
 }
 
 impl Args {

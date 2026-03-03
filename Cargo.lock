@@ -273,6 +273,7 @@ dependencies = [
  "chameleon-cli",
  "chameleon-config",
  "chameleon-ipc",
+ "chameleon-launcher",
  "chameleon-panel",
  "chameleon-widgets",
  "console-subscriber",

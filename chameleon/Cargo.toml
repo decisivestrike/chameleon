@@ -7,6 +7,7 @@ edition = "2024"
 [dependencies]
 grapes = { path = "../../grapes/grapes" }
 chameleon-cli = { path = "../chameleon-cli" }
+chameleon-launcher = { path = "../chameleon-launcher" }
 chameleon-config = { path = "../chameleon-config" }
 chameleon-ipc = { path = "../chameleon-ipc" }
 chameleon-panel = { path = "../chameleon-panel" }
