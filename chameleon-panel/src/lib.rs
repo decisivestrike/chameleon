@@ -182,7 +182,7 @@ impl Panel {
         window.init_layer_shell();
         window.set_namespace(Some("chameleon-taskbar"));
 
-        window.set_widget_name("Panel");
+        window.set_widget_name("panel");
 
         window.set_decorated(false);
         window.set_resizable(false);

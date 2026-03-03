@@ -19,6 +19,8 @@ fn main() -> glib::ExitCode {
 
         let mut stream = UnixStream::connect(socket_path).unwrap();
         stream.write_all(&[2]).unwrap();
+
+        return glib::ExitCode::new(0);
     }
 
     // if !layer_shell::is_supported() {

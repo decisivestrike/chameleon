@@ -22,9 +22,12 @@ impl Launcher {
     }
 
     pub fn toggle_visibility(&self) {
-        println!("toggle");
         let current_visibility = self.window.is_visible();
         self.window.set_visible(!current_visibility);
+
+        // if !current_visibility {
+        //     self.window.grab_focus();
+        // }
     }
 
     fn create_configured_application_window(
@@ -33,16 +36,14 @@ impl Launcher {
         let window = gtk::ApplicationWindow::new(application);
         window.init_layer_shell();
 
-        window.set_widget_name("Launcher");
-        window.set_resizable(false);
-        window.set_default_size(400, 400);
+        window.set_widget_name("launcher");
 
         let label = gtk::Label::new(Some("IT WORKS"));
         window.set_child(Some(&label));
 
         window.set_namespace(Some("chameleon-launcher"));
-        window.set_exclusive_zone(-1);
-        window.set_layer(Layer::Top);
+        // window.set_exclusive_zone(-1);
+        window.set_layer(Layer::Overlay);
         window.set_keyboard_mode(if true {
             KeyboardMode::Exclusive
         } else {
