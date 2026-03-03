@@ -2,8 +2,8 @@ use grapes::gio::ListStore;
 use grapes::glib::{self, GString, clone};
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
-    EventControllerKey, GridView, Label, ListItem, ListView,
-    SignalListItemFactory, SingleSelection, StringList, Widget,
+    EventControllerKey, GridView, Label, ListItem, ListView, PolicyType,
+    ScrolledWindow, SignalListItemFactory, SingleSelection, StringList, Widget,
 };
 use grapes::layer_shell::{KeyboardMode, Layer, LayerShell};
 use grapes::prelude::{
@@ -33,28 +33,10 @@ pub struct Launcher {
 
 impl Launcher {
     pub fn new(application: &gtk::Application) -> Self {
-        let window = Self::create_configured_application_window(application);
-
         let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        window.set_child(Some(&container));
 
         let entry = gtk::Entry::new();
         container.append(&entry);
-
-        let list = gtk::ListBox::new();
-
-        for number in 0..=100 {
-            let label = gtk::Label::new(Some(&number.to_string()));
-            list.append(&label);
-        }
-
-        let scrollable = gtk::ScrolledWindow::builder()
-            .hscrollbar_policy(gtk::PolicyType::Never)
-            .min_content_width(360)
-            .child(&list)
-            .build();
-
-        container.append(&scrollable);
 
         let model: StringList =
             (0..=100_000).map(|number| number.to_string()).collect();
@@ -77,7 +59,18 @@ impl Launcher {
 
         let list_view = ListView::new(Some(selection_model), Some(factory));
 
-        container.append(&list_view);
+        let scrolled_window = ScrolledWindow::builder()
+            .hscrollbar_policy(PolicyType::Never)
+            .vscrollbar_policy(PolicyType::Automatic)
+            .min_content_width(360)
+            .min_content_height(400)
+            .child(&list_view)
+            .build();
+
+        container.append(&scrolled_window);
+
+        let window = Self::create_configured_application_window(application);
+        window.set_child(Some(&container));
 
         Self {
             window,
