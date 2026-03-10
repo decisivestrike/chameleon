@@ -1,9 +1,10 @@
 use std::collections::BTreeSet;
-use std::env::var;
+use std::env::{home_dir, var};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use freedesktop_desktop_entry::desktop_entries;
 use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
@@ -45,7 +46,7 @@ impl Launcher {
         let entry = gtk::Entry::new();
         container.append(&entry);
 
-        let model = Self::setup_model(&entry);
+        let model = Self::setup_drun_model(&entry);
         let factory = Self::create_factory();
 
         let list_view = ListView::new(Some(model), Some(factory));
@@ -100,7 +101,54 @@ impl Launcher {
         factory
     }
 
-    fn setup_model(entry: &gtk::Entry) -> impl IsA<SelectionModel> {
+    fn setup_drun_model(entry: &gtk::Entry) -> impl IsA<SelectionModel> {
+        let model = list_application();
+
+        let filter = gtk::CustomFilter::new(clone!(
+            #[strong]
+            entry,
+            move |obj| {
+                let string_object = obj
+                    .downcast_ref::<StringObject>()
+                    .expect("The object needs to be of type `StringObject`");
+
+                string_object.string().contains(&entry.text().to_string())
+            }
+        ));
+        let filter_model =
+            FilterListModel::new(Some(model), Some(filter.clone()));
+
+        let sorter = gtk::CustomSorter::new(move |obj1, obj2| {
+            let string_object_1 = obj1
+                .downcast_ref::<StringObject>()
+                .expect("The object needs to be of type `StringObject`");
+            let string_object_2 = obj2
+                .downcast_ref::<StringObject>()
+                .expect("The object needs to be of type `StringObject`");
+
+            let str_1 = string_object_1.string();
+            let str_2 = string_object_2.string();
+
+            str_1.cmp(&str_2).into()
+        });
+        let filter_and_sort_model =
+            SortListModel::new(Some(filter_model), Some(sorter.clone()));
+
+        entry.connect_changed(clone!(
+            #[strong]
+            filter,
+            #[strong]
+            sorter,
+            move |_| {
+                filter.changed(FilterChange::Different);
+                sorter.changed(SorterChange::Different);
+            }
+        ));
+
+        SingleSelection::new(Some(filter_and_sort_model))
+    }
+
+    fn setup_run_model(entry: &gtk::Entry) -> impl IsA<SelectionModel> {
         let model = list_executables_from_path();
 
         let filter = gtk::CustomFilter::new(clone!(
@@ -245,4 +293,30 @@ fn list_executables_from_path() -> StringList {
     }
 
     names.into_iter().collect()
+}
+
+fn list_application() -> StringList {
+    let entries = desktop_entries(&["ru".to_string()]);
+
+    entries
+        .into_iter()
+        .filter_map(|entry| {
+            let group = entry.groups.desktop_entry().unwrap();
+            group.entry("Exec")?;
+
+            match group.entry("NoDisplay") {
+                None | Some("false") => (),
+                _ => return None,
+            };
+
+            match group.entry("Hidden") {
+                None | Some("false") => (),
+                _ => return None,
+            };
+
+            println!("{:#?}\n", group);
+
+            Some(group.entry("Name")?.to_string())
+        })
+        .collect()
 }
