@@ -1,23 +1,23 @@
 use std::collections::BTreeSet;
-use std::env::{home_dir, var};
+use std::env::var;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use freedesktop_desktop_entry::{DesktopEntry, desktop_entries};
 use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
     EventControllerKey, FilterChange, FilterListModel, GridView, Label,
-    ListItem, ListItemFactory, ListView, PolicyType, ScrolledWindow,
-    SelectionModel, SignalListItemFactory, SingleSelection, SortListModel,
-    SorterChange, StringList, Widget,
+    ListItem, ListView, PolicyType, ScrolledWindow, SelectionModel,
+    SignalListItemFactory, SingleSelection, SortListModel, SorterChange,
+    StringList, Widget,
 };
 use grapes::layer_shell::{KeyboardMode, Layer, LayerShell};
 use grapes::prelude::{
-    BoxExt, Cast, CastNone, EditableExt, EntryExt, FilterExt,
+    BoxExt, Cast, EditableExt, EntryExt, FilterExt,
     GObjectPropertyExpressionExt, GtkWindowExt, IsA, ListItemExt, ListModelExt,
-    SelectionModelExt, SorterExt, WidgetExt,
+    SorterExt, WidgetExt,
 };
 use grapes::{
     WindowComponent,
@@ -30,11 +30,18 @@ enum View {
     List(ListView),
 }
 
+enum Mode {
+    Run,
+    Drun,
+}
+
 #[derive(WindowComponent)]
 pub struct Launcher {
     #[root]
     window: ApplicationWindow,
 
+    desktop_entries: Vec<DesktopEntry>,
+    list_executables: StringList,
     container: gtk::Box,
     entry: gtk::Entry,
     list_view: ListView,
@@ -42,6 +49,29 @@ pub struct Launcher {
 
 impl Launcher {
     pub fn new(application: &gtk::Application) -> Self {
+        // get locale
+        let desktop_entries = desktop_entries(&["ru".to_string()])
+            .into_iter()
+            .filter_map(|entry| {
+                let group = entry.groups.desktop_entry()?;
+                group.entry("Exec")?;
+
+                match group.entry("NoDisplay") {
+                    None | Some("false") => (),
+                    _ => return None,
+                };
+
+                match group.entry("Hidden") {
+                    None | Some("false") => (),
+                    _ => return None,
+                };
+
+                Some(entry)
+            })
+            .collect();
+
+        let list_executables = list_executables_from_path();
+
         let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
         let entry = gtk::Entry::new();
@@ -49,12 +79,11 @@ impl Launcher {
             let text = entry.text().to_string();
             println!("Enter нажат: {}", text);
 
-            // Очистить поле поиска
             entry.set_text("");
         });
         container.append(&entry);
 
-        let model = Self::setup_drun_model(&entry);
+        let model = Self::setup_drun_model(&entry, &desktop_entries);
         let factory = Self::create_factory();
 
         let list_view = ListView::new(Some(model.clone()), Some(factory));
@@ -78,6 +107,8 @@ impl Launcher {
         window.set_child(Some(&container));
 
         Self {
+            desktop_entries,
+            list_executables,
             window,
             container,
             entry,
@@ -94,7 +125,17 @@ impl Launcher {
         // }
     }
 
-    fn create_factory() -> impl IsA<ListItemFactory> {
+    fn application_list(desktop_entries: &Vec<DesktopEntry>) -> StringList {
+        desktop_entries
+            .iter()
+            .filter_map(|entry| {
+                let group = entry.groups.desktop_entry().unwrap();
+                Some(group.entry("Name")?.to_string())
+            })
+            .collect()
+    }
+
+    fn create_factory() -> SignalListItemFactory {
         let factory = SignalListItemFactory::new();
 
         factory.connect_setup(move |_, list_item| {
@@ -165,8 +206,11 @@ impl Launcher {
         SingleSelection::new(Some(filter_and_sort_model))
     }
 
-    fn setup_drun_model(entry: &gtk::Entry) -> SingleSelection {
-        let model = list_application();
+    fn setup_drun_model(
+        entry: &gtk::Entry,
+        desktop_entries: &Vec<DesktopEntry>,
+    ) -> SingleSelection {
+        let model = Self::application_list(desktop_entries);
 
         Self::setup_model_base(entry, model)
     }
@@ -205,11 +249,13 @@ impl Launcher {
             #[strong]
             window,
             move |_, key, _, _| {
-                if key == Key::Escape {
-                    window.set_visible(false);
+                match key {
+                    Key::Escape => {
+                        window.set_visible(false);
+                        glib::Propagation::Stop
+                    }
+                    _ => glib::Propagation::Proceed,
                 }
-
-                glib::Propagation::Proceed
             }
         ));
         window.add_controller(controller);
@@ -225,12 +271,17 @@ fn is_executable(path: &Path) -> bool {
     if !path.is_file() {
         return false;
     }
-    if let Ok(metadata) = fs::metadata(path) {
-        let mode = metadata.permissions().mode();
-        // Проверяем любой из битов исполнения (owner/group/other)
-        mode & 0o111 != 0
-    } else {
-        false
+
+    match fs::metadata(path) {
+        Ok(metadata) => {
+            let mode = metadata.permissions().mode();
+            // Проверяем любой из битов исполнения (owner/group/other)
+            mode & 0o111 != 0
+        }
+        Err(e) => {
+            log::error!("{e}");
+            false
+        }
     }
 }
 
@@ -249,22 +300,14 @@ fn list_executables_from_path() -> StringList {
             Err(_) => continue,
         };
 
-        for entry in entries {
-            let entry = match entry {
+        for maybe_entry in entries {
+            let entry = match maybe_entry {
                 Ok(e) => e,
                 Err(_) => continue,
             };
             let file_path = entry.path();
 
-            if !file_path.is_file() {
-                continue;
-            }
-            if let Ok(metadata) = fs::metadata(&file_path) {
-                let mode = metadata.permissions().mode();
-                if mode & 0o111 == 0 {
-                    continue;
-                }
-            } else {
+            if !is_executable(&file_path) {
                 continue;
             }
 
@@ -275,28 +318,4 @@ fn list_executables_from_path() -> StringList {
     }
 
     names.into_iter().collect()
-}
-
-fn list_application() -> StringList {
-    desktop_entries(&["ru".to_string()])
-        .into_iter()
-        .filter_map(|entry| {
-            let group = entry.groups.desktop_entry().unwrap();
-            group.entry("Exec")?;
-
-            match group.entry("NoDisplay") {
-                None | Some("false") => (),
-                _ => return None,
-            };
-
-            match group.entry("Hidden") {
-                None | Some("false") => (),
-                _ => return None,
-            };
-
-            println!("{:#?}\n", group);
-
-            Some(group.entry("Name")?.to_string())
-        })
-        .collect()
 }

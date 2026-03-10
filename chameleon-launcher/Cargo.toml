@@ -10,3 +10,4 @@ chameleon-config = { path = "../chameleon-config" }
 chameleon-ipc = { path = "../chameleon-ipc" }
 chameleon-core = { path = "../chameleon-core" }
 freedesktop-desktop-entry = "0.8.1"
+log = "0.4.29"
