@@ -4,7 +4,7 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
-use freedesktop_desktop_entry::desktop_entries;
+use freedesktop_desktop_entry::{DesktopEntry, desktop_entries};
 use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
@@ -15,8 +15,9 @@ use grapes::gtk::{
 };
 use grapes::layer_shell::{KeyboardMode, Layer, LayerShell};
 use grapes::prelude::{
-    BoxExt, Cast, EditableExt, FilterExt, GObjectPropertyExpressionExt,
-    GtkWindowExt, IsA, ListItemExt, SorterExt, WidgetExt,
+    BoxExt, Cast, CastNone, EditableExt, EntryExt, FilterExt,
+    GObjectPropertyExpressionExt, GtkWindowExt, IsA, ListItemExt, ListModelExt,
+    SelectionModelExt, SorterExt, WidgetExt,
 };
 use grapes::{
     WindowComponent,
@@ -44,12 +45,23 @@ impl Launcher {
         let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
         let entry = gtk::Entry::new();
+        entry.connect_activate(move |entry| {
+            let text = entry.text().to_string();
+            println!("Enter нажат: {}", text);
+
+            // Очистить поле поиска
+            entry.set_text("");
+        });
         container.append(&entry);
 
         let model = Self::setup_drun_model(&entry);
         let factory = Self::create_factory();
 
-        let list_view = ListView::new(Some(model), Some(factory));
+        let list_view = ListView::new(Some(model.clone()), Some(factory));
+        list_view.connect_activate(move |list, i| {
+            let item = list.model().and_then(|m| m.item(i));
+            println!("Item: {item:?}");
+        });
 
         let scrolled_window = ScrolledWindow::builder()
             .hscrollbar_policy(PolicyType::Never)
@@ -101,9 +113,10 @@ impl Launcher {
         factory
     }
 
-    fn setup_drun_model(entry: &gtk::Entry) -> impl IsA<SelectionModel> {
-        let model = list_application();
-
+    fn setup_model_base(
+        entry: &gtk::Entry,
+        model: StringList,
+    ) -> SingleSelection {
         let filter = gtk::CustomFilter::new(clone!(
             #[strong]
             entry,
@@ -112,7 +125,10 @@ impl Launcher {
                     .downcast_ref::<StringObject>()
                     .expect("The object needs to be of type `StringObject`");
 
-                string_object.string().contains(&entry.text().to_string())
+                string_object
+                    .string()
+                    .to_lowercase()
+                    .contains(&entry.text().to_string().to_lowercase())
             }
         ));
         let filter_model =
@@ -131,6 +147,7 @@ impl Launcher {
 
             str_1.cmp(&str_2).into()
         });
+
         let filter_and_sort_model =
             SortListModel::new(Some(filter_model), Some(sorter.clone()));
 
@@ -148,51 +165,16 @@ impl Launcher {
         SingleSelection::new(Some(filter_and_sort_model))
     }
 
+    fn setup_drun_model(entry: &gtk::Entry) -> SingleSelection {
+        let model = list_application();
+
+        Self::setup_model_base(entry, model)
+    }
+
     fn setup_run_model(entry: &gtk::Entry) -> impl IsA<SelectionModel> {
         let model = list_executables_from_path();
 
-        let filter = gtk::CustomFilter::new(clone!(
-            #[strong]
-            entry,
-            move |obj| {
-                let string_object = obj
-                    .downcast_ref::<StringObject>()
-                    .expect("The object needs to be of type `StringObject`");
-
-                string_object.string().contains(&entry.text().to_string())
-            }
-        ));
-        let filter_model =
-            FilterListModel::new(Some(model), Some(filter.clone()));
-
-        let sorter = gtk::CustomSorter::new(move |obj1, obj2| {
-            let string_object_1 = obj1
-                .downcast_ref::<StringObject>()
-                .expect("The object needs to be of type `StringObject`");
-            let string_object_2 = obj2
-                .downcast_ref::<StringObject>()
-                .expect("The object needs to be of type `StringObject`");
-
-            let str_1 = string_object_1.string();
-            let str_2 = string_object_2.string();
-
-            str_1.cmp(&str_2).into()
-        });
-        let filter_and_sort_model =
-            SortListModel::new(Some(filter_model), Some(sorter.clone()));
-
-        entry.connect_changed(clone!(
-            #[strong]
-            filter,
-            #[strong]
-            sorter,
-            move |_| {
-                filter.changed(FilterChange::Different);
-                sorter.changed(SorterChange::Different);
-            }
-        ));
-
-        SingleSelection::new(Some(filter_and_sort_model))
+        Self::setup_model_base(entry, model)
     }
 
     fn create_configured_application_window(
@@ -227,7 +209,7 @@ impl Launcher {
                     window.set_visible(false);
                 }
 
-                glib::Propagation::Stop
+                glib::Propagation::Proceed
             }
         ));
         window.add_controller(controller);
@@ -296,9 +278,7 @@ fn list_executables_from_path() -> StringList {
 }
 
 fn list_application() -> StringList {
-    let entries = desktop_entries(&["ru".to_string()]);
-
-    entries
+    desktop_entries(&["ru".to_string()])
         .into_iter()
         .filter_map(|entry| {
             let group = entry.groups.desktop_entry().unwrap();
