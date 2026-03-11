@@ -42,6 +42,7 @@ pub struct Launcher {
 
     desktop_entries: Vec<DesktopEntry>,
     list_executables: StringList,
+    selection_model: SingleSelection,
     container: gtk::Box,
     entry: gtk::Entry,
     list_view: ListView,
@@ -83,10 +84,11 @@ impl Launcher {
         });
         container.append(&entry);
 
-        let model = Self::setup_drun_model(&entry, &desktop_entries);
+        let selection_model = Self::setup_drun_model(&entry, &desktop_entries);
         let factory = Self::create_factory();
 
-        let list_view = ListView::new(Some(model.clone()), Some(factory));
+        let list_view =
+            ListView::new(Some(selection_model.clone()), Some(factory));
         list_view.connect_activate(move |list, i| {
             let item = list.model().and_then(|m| m.item(i));
             println!("Item: {item:?}");
@@ -109,6 +111,7 @@ impl Launcher {
         Self {
             desktop_entries,
             list_executables,
+            selection_model,
             window,
             container,
             entry,
