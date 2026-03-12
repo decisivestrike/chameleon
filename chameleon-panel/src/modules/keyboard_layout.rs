@@ -4,10 +4,13 @@ use chameleon_ipc::{
     COMPOSITOR, CompositorVariant, compositor::Compositor, hyprland::HyprEvent,
 };
 use grapes::{
-    Component, RT, State,
+    Component, RT, State, glib,
     prelude::WidgetExt,
     state,
-    tokio::sync::broadcast::{self, Sender},
+    tokio::sync::{
+        broadcast::{self, Sender},
+        oneshot,
+    },
 };
 use grapes_components::StatefullLabel;
 use std::{rc::Rc, sync::LazyLock};
@@ -34,11 +37,32 @@ impl ModuleFactory for KeyboardLayout {
         config: &Self::Config,
         meta: &Metadata,
     ) -> Result<Rc<dyn Component>> {
-        let layout = state("".to_string());
-        layout.track(&*EVENT_LISTENER);
+        if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
+            // let (sender, recv) = oneshot::channel();
 
-        let keyboard_layout = KeyboardLayout::new(&layout);
-        Ok(Rc::new(keyboard_layout))
+            let layout = state(String::new());
+            layout.track(&*EVENT_LISTENER);
+
+            // RT.spawn(async move {
+            //     let active_layout = hyprland.active_layout().await.unwrap();
+            //     if let Err(e) = sender.send(active_layout) {
+            //         log::error!("{e}");
+            //     };
+            // });
+
+            // glib::spawn_future_local({
+            //     let state_clone = layout.clone();
+            //     async move {
+            //         let active_layout = recv.await.unwrap();
+            //         state_clone.set(active_layout)
+            //     }
+            // });
+
+            let keyboard_layout = KeyboardLayout::new(&layout);
+            Ok(Rc::new(keyboard_layout))
+        } else {
+            panic!()
+        }
     }
 }
 

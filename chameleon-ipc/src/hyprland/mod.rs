@@ -92,6 +92,12 @@ impl Hyprland {
         Ok(serde_json::from_str(&json_str)?)
     }
 
+    // pub async fn active_layout(&self) -> Result<String> {
+    //     let json_str = self.query(b"j/activelayout\0").await?;
+
+    //     Ok(serde_json::from_str(&json_str)?)
+    // }
+
     pub async fn workspaces(&self) -> Result<Vec<Workspace>> {
         let json_str = self.query(b"j/workspaces\0").await?;
 
