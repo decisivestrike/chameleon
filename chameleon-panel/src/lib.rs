@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use crate::{
     common::Metadata,
-    modules::{Battery, Clock, ModuleFactory, Workspaces},
+    modules::{Battery, Clock, KeyboardLayout, ModuleFactory, Workspaces},
 };
 use chameleon_config::{self as config, PanelConfig};
 use chameleon_ipc::COMPOSITOR;
@@ -163,6 +163,7 @@ impl Panel {
             Module::Clock => Clock::create(&config.clock, &meta),
             Module::Battery => Battery::create(&config.battery, &meta),
             Module::Workspaces => Workspaces::create(&config.workspaces, &meta),
+            Module::Layout => KeyboardLayout::create(&(), &meta),
         };
 
         match maybe_module {
