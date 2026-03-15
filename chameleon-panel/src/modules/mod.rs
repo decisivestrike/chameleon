@@ -9,8 +9,8 @@ pub use battery::Battery;
 pub mod workspaces;
 pub use workspaces::Workspaces;
 
-pub mod keyboard_layout;
-pub use keyboard_layout::KeyboardLayout;
+pub mod keymap;
+pub use keymap::Keymap;
 
 use crate::common::Metadata;
 use grapes::Component;

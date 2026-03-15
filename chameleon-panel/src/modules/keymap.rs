@@ -19,18 +19,18 @@ pub static EVENT_LISTENER: LazyLock<broadcast::Sender<String>> =
     LazyLock::new(|| {
         let sender = broadcast::Sender::new(64);
 
-        RT.spawn(KeyboardLayout::background_task(sender.clone()));
+        RT.spawn(Keymap::background_task(sender.clone()));
 
         sender
     });
 
 #[derive(Debug, Component)]
-pub struct KeyboardLayout {
+pub struct Keymap {
     #[root]
     label: StatefullLabel<String>,
 }
 
-impl ModuleFactory for KeyboardLayout {
+impl ModuleFactory for Keymap {
     type Config = ();
 
     fn create(
@@ -65,7 +65,7 @@ impl ModuleFactory for KeyboardLayout {
                 }
             });
 
-            let keyboard_layout = KeyboardLayout::new(&layout);
+            let keyboard_layout = Keymap::new(&layout);
             Ok(Rc::new(keyboard_layout))
         } else {
             panic!()
@@ -73,7 +73,7 @@ impl ModuleFactory for KeyboardLayout {
     }
 }
 
-impl KeyboardLayout {
+impl Keymap {
     const NAME: &str = "keyboard-layout";
 
     pub fn new(layout: &Rc<State<String>>) -> Self {

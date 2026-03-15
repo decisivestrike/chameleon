@@ -13,8 +13,8 @@ pub enum Module {
     Battery,
     #[serde(rename = "workspaces")]
     Workspaces,
-    #[serde(rename = "layout")]
-    Layout,
+    #[serde(rename = "keymap")]
+    Keymap,
 }
 
 impl fmt::Display for Module {
@@ -26,7 +26,7 @@ impl fmt::Display for Module {
                 Module::Clock => "clock",
                 Module::Battery => "battery",
                 Module::Workspaces => "workspaces",
-                Module::Layout => "layout",
+                Module::Keymap => "layout",
             }
         )
     }
