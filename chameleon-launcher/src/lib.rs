@@ -1,61 +1,39 @@
-use std::collections::BTreeSet;
-use std::env::var;
-use std::fs;
-use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
-
-use freedesktop_desktop_entry::{DesktopEntry, desktop_entries};
+use freedesktop_desktop_entry::desktop_entries;
 use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
-    EventControllerKey, FilterChange, FilterListModel, GridView, Label,
-    ListItem, ListView, PolicyType, ScrolledWindow, SelectionModel,
+    self, EventControllerKey, FilterChange, FilterListModel, Label, ListItem,
+    ListScrollFlags, ListView, PolicyType, ScrolledWindow,
     SignalListItemFactory, SingleSelection, SortListModel, SorterChange,
     StringList, Widget,
 };
 use grapes::layer_shell::{KeyboardMode, Layer, LayerShell};
 use grapes::prelude::{
-    BoxExt, Cast, EditableExt, EntryExt, FilterExt,
-    GObjectPropertyExpressionExt, GtkWindowExt, IsA, ListItemExt, ListModelExt,
-    SorterExt, WidgetExt,
+    BoxExt, Cast, CastNone, EditableExt, EntryExt, FilterExt,
+    GObjectPropertyExpressionExt, GtkWindowExt, ListItemExt, SorterExt,
+    WidgetExt,
 };
-use grapes::{
-    WindowComponent,
-    gtk::{self, ApplicationWindow},
-};
+use grapes::{WindowComponent, gtk::ApplicationWindow};
 use gtk::StringObject;
-
-enum View {
-    Grid(GridView),
-    List(ListView),
-}
-
-enum Mode {
-    Run,
-    Drun,
-}
+use std::collections::HashMap;
+use std::io;
+use std::process::{Child, Command, Stdio};
 
 #[derive(WindowComponent)]
 pub struct Launcher {
     #[root]
     window: ApplicationWindow,
-
-    desktop_entries: Vec<DesktopEntry>,
-    list_executables: StringList,
-    selection_model: SingleSelection,
-    container: gtk::Box,
-    entry: gtk::Entry,
-    list_view: ListView,
 }
 
 impl Launcher {
     pub fn new(application: &gtk::Application) -> Self {
         // get locale
-        let desktop_entries = desktop_entries(&["ru".to_string()])
+        let locales = &["ru".to_string()];
+
+        let desktop_entries: HashMap<_, _> = desktop_entries(locales)
             .into_iter()
             .filter_map(|entry| {
                 let group = entry.groups.desktop_entry()?;
-                group.entry("Exec")?;
 
                 match group.entry("NoDisplay") {
                     None | Some("false") => (),
@@ -67,36 +45,30 @@ impl Launcher {
                     _ => return None,
                 };
 
-                Some(entry)
+                let name = group.entry("Name")?.to_string();
+                let exec = group.entry("Exec")?.to_string();
+
+                Some((name, exec))
             })
             .collect();
 
-        let list_executables = list_executables_from_path();
-
         let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
-
         let entry = gtk::Entry::new();
-        entry.connect_activate(move |entry| {
-            let text = entry.text().to_string();
-            println!("Enter нажат: {}", text);
-
-            entry.set_text("");
-        });
         container.append(&entry);
 
-        let selection_model = Self::setup_drun_model(&entry, &desktop_entries);
+        let selection_model = Self::setup_model(
+            &entry,
+            desktop_entries.keys().map(|k| k.clone()).collect(),
+        );
         let factory = Self::create_factory();
-
         let list_view =
             ListView::new(Some(selection_model.clone()), Some(factory));
-        list_view.connect_activate(move |list, i| {
-            let item = list.model().and_then(|m| m.item(i));
-            println!("Item: {item:?}");
-        });
 
         let scrolled_window = ScrolledWindow::builder()
             .hscrollbar_policy(PolicyType::Never)
             .vscrollbar_policy(PolicyType::Automatic)
+            .can_focus(false)
+            .can_target(false)
             .min_content_width(360)
             .min_content_height(400)
             .overlay_scrolling(true)
@@ -108,15 +80,30 @@ impl Launcher {
         let window = Self::create_configured_application_window(application);
         window.set_child(Some(&container));
 
-        Self {
-            desktop_entries,
-            list_executables,
-            selection_model,
-            window,
-            container,
-            entry,
-            list_view,
-        }
+        entry.connect_activate({
+            let selection_model = selection_model.clone();
+            let window = window.clone();
+            let list_view = list_view.clone();
+            move |entry| {
+                let selected_item: StringObject = selection_model
+                    .selected_item()
+                    .and_downcast()
+                    .expect("cant cast");
+
+                let name = selected_item.string();
+
+                if let Some(exec) = desktop_entries.get(&name.to_string()) {
+                    Self::start_app(&exec).expect("cant run");
+                }
+
+                window.set_visible(false);
+                entry.set_text("");
+                selection_model.set_selected(0);
+                list_view.scroll_to(0, ListScrollFlags::FOCUS, None);
+            }
+        });
+
+        Self { window }
     }
 
     pub fn toggle_visibility(&self) {
@@ -126,16 +113,6 @@ impl Launcher {
         // if !current_visibility {
         //     self.window.grab_focus();
         // }
-    }
-
-    fn application_list(desktop_entries: &Vec<DesktopEntry>) -> StringList {
-        desktop_entries
-            .iter()
-            .filter_map(|entry| {
-                let group = entry.groups.desktop_entry().unwrap();
-                Some(group.entry("Name")?.to_string())
-            })
-            .collect()
     }
 
     fn create_factory() -> SignalListItemFactory {
@@ -157,10 +134,7 @@ impl Launcher {
         factory
     }
 
-    fn setup_model_base(
-        entry: &gtk::Entry,
-        model: StringList,
-    ) -> SingleSelection {
+    fn setup_model(entry: &gtk::Entry, model: StringList) -> SingleSelection {
         let filter = gtk::CustomFilter::new(clone!(
             #[strong]
             entry,
@@ -209,21 +183,6 @@ impl Launcher {
         SingleSelection::new(Some(filter_and_sort_model))
     }
 
-    fn setup_drun_model(
-        entry: &gtk::Entry,
-        desktop_entries: &Vec<DesktopEntry>,
-    ) -> SingleSelection {
-        let model = Self::application_list(desktop_entries);
-
-        Self::setup_model_base(entry, model)
-    }
-
-    fn setup_run_model(entry: &gtk::Entry) -> impl IsA<SelectionModel> {
-        let model = list_executables_from_path();
-
-        Self::setup_model_base(entry, model)
-    }
-
     fn create_configured_application_window(
         application: &gtk::Application,
     ) -> gtk::ApplicationWindow {
@@ -268,57 +227,15 @@ impl Launcher {
 
         window
     }
-}
 
-fn is_executable(path: &Path) -> bool {
-    if !path.is_file() {
-        return false;
+    // Sync
+    fn start_app(name: &str) -> io::Result<Child> {
+        Command::new("sh")
+            .arg("-c")
+            .arg(name)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
     }
-
-    match fs::metadata(path) {
-        Ok(metadata) => {
-            let mode = metadata.permissions().mode();
-            // Проверяем любой из битов исполнения (owner/group/other)
-            mode & 0o111 != 0
-        }
-        Err(e) => {
-            log::error!("{e}");
-            false
-        }
-    }
-}
-
-fn list_executables_from_path() -> StringList {
-    let path_var = var("PATH").unwrap();
-
-    let mut names: BTreeSet<String> = BTreeSet::new();
-
-    for dir in path_var.split(':') {
-        if dir.is_empty() {
-            continue;
-        }
-        let path = Path::new(dir);
-        let entries = match fs::read_dir(path) {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
-
-        for maybe_entry in entries {
-            let entry = match maybe_entry {
-                Ok(e) => e,
-                Err(_) => continue,
-            };
-            let file_path = entry.path();
-
-            if !is_executable(&file_path) {
-                continue;
-            }
-
-            if let Some(name) = file_path.file_name().and_then(|n| n.to_str()) {
-                names.insert(name.to_string());
-            }
-        }
-    }
-
-    names.into_iter().collect()
 }
