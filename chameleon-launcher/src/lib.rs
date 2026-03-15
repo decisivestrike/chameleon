@@ -1,6 +1,5 @@
 use freedesktop_desktop_entry::desktop_entries;
 use grapes::glib::{self, clone};
-use grapes::gtk::builders::ListViewBuilder;
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
     self, EventControllerKey, FilterChange, FilterListModel, Label, ListItem,

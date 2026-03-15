@@ -5,9 +5,12 @@ pub mod workspace;
 pub use event::HyprEvent;
 pub use workspace::*;
 
+mod device;
+
 use crate::{
-    COMPOSITOR, CompositorVariant, compositor::Compositor,
-    hyprland::listener::EventListener,
+    COMPOSITOR, CompositorVariant,
+    compositor::Compositor,
+    hyprland::{device::Devices, listener::EventListener},
 };
 use anyhow::Result;
 use grapes::{
@@ -92,11 +95,11 @@ impl Hyprland {
         Ok(serde_json::from_str(&json_str)?)
     }
 
-    // pub async fn active_layout(&self) -> Result<String> {
-    //     let json_str = self.query(b"j/activelayout\0").await?;
+    pub async fn devices(&self) -> Result<Devices> {
+        let json_str = self.query(b"j/devices\0").await?;
 
-    //     Ok(serde_json::from_str(&json_str)?)
-    // }
+        Ok(serde_json::from_str(&json_str)?)
+    }
 
     pub async fn workspaces(&self) -> Result<Vec<Workspace>> {
         let json_str = self.query(b"j/workspaces\0").await?;

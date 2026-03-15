@@ -38,25 +38,32 @@ impl ModuleFactory for KeyboardLayout {
         meta: &Metadata,
     ) -> Result<Rc<dyn Component>> {
         if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
-            // let (sender, recv) = oneshot::channel();
+            let (sender, recv) = oneshot::channel();
 
             let layout = state(String::new());
             layout.track(&*EVENT_LISTENER);
 
-            // RT.spawn(async move {
-            //     let active_layout = hyprland.active_layout().await.unwrap();
-            //     if let Err(e) = sender.send(active_layout) {
-            //         log::error!("{e}");
-            //     };
-            // });
+            RT.spawn(async move {
+                let devices = hyprland.devices().await.unwrap();
+                let active_keymap = devices
+                    .keyboards
+                    .into_iter()
+                    .find(|kb| kb.main)
+                    .unwrap()
+                    .active_keymap;
 
-            // glib::spawn_future_local({
-            //     let state_clone = layout.clone();
-            //     async move {
-            //         let active_layout = recv.await.unwrap();
-            //         state_clone.set(active_layout)
-            //     }
-            // });
+                if let Err(e) = sender.send(active_keymap) {
+                    log::error!("{e:?}");
+                };
+            });
+
+            glib::spawn_future_local({
+                let state_clone = layout.clone();
+                async move {
+                    let active_keymap = recv.await.unwrap();
+                    state_clone.set(active_keymap)
+                }
+            });
 
             let keyboard_layout = KeyboardLayout::new(&layout);
             Ok(Rc::new(keyboard_layout))
