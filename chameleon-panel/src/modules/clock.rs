@@ -3,7 +3,8 @@ use chameleon_config::{CONFIG, panel::ClockConfig};
 use chrono::Local;
 use grapes::{
     Component, RT, State,
-    gtk::prelude::WidgetExt,
+    gtk::{self, Image, prelude::WidgetExt},
+    prelude::{BoxExt, containers::GrapesBoxExt},
     state,
     tokio::{
         sync::broadcast::{self, Sender},
@@ -25,17 +26,18 @@ pub static TIME_SENDER: LazyLock<broadcast::Sender<String>> =
 #[derive(Debug, Component)]
 pub struct Clock {
     #[root]
-    label: StatefullLabel<String>,
+    container: gtk::Box,
+    _label: StatefullLabel<String>, // panic if remove
 }
 
 impl ModuleFactory for Clock {
     type Config = ClockConfig;
 
     fn create(
-        _config: &Self::Config,
+        config: &Self::Config,
         _meta: &Metadata,
     ) -> anyhow::Result<Rc<dyn Component>> {
-        let formatted_time = state(Local::now().to_string());
+        let formatted_time = state(Clock::formatted_time(&config.format));
         formatted_time.track(&TIME_SENDER);
 
         let clock = Clock::new(&formatted_time);
@@ -48,11 +50,22 @@ impl Clock {
 
     pub fn new(formatted_time: &Rc<State<String>>) -> Self {
         let label = StatefullLabel::new(formatted_time);
+        println!("{}", formatted_time.get());
+
+        let icon = Image::from_icon_name("appointment-symbolic");
+        icon.set_size_request(24, 24);
+
+        let container = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        container.append(&icon);
+        container.append_ref(&label);
 
         label.as_ref().set_widget_name(Self::NAME);
         label.as_ref().add_css_class("module");
 
-        Self { label }
+        Self {
+            container,
+            _label: label,
+        }
     }
 
     fn formatted_time(format: &str) -> String {
@@ -65,9 +78,9 @@ impl Clock {
 
         loop {
             let formatted_time = Clock::formatted_time(format);
-            let _ = sender.send(formatted_time);
+            sender.send(formatted_time).unwrap();
 
-            sleep(Duration::from_secs(10)).await;
+            sleep(Duration::from_secs(1)).await;
         }
     }
 }
