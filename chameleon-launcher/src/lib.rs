@@ -1,5 +1,6 @@
 use freedesktop_desktop_entry::desktop_entries;
 use grapes::glib::{self, clone};
+use grapes::gtk::builders::ListViewBuilder;
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
     self, EventControllerKey, FilterChange, FilterListModel, Label, ListItem,
@@ -29,8 +30,71 @@ impl Launcher {
     pub fn new(application: &gtk::Application) -> Self {
         // get locale
         let locales = &["ru".to_string()];
+        let entries = Self::find_desktop_entries(locales);
 
-        let desktop_entries: HashMap<_, _> = desktop_entries(locales)
+        let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        let entry = gtk::Entry::builder()
+            .placeholder_text("Explore...")
+            .hexpand(true)
+            .build();
+
+        let (selection_model, list_view) =
+            Self::setup_list_view(&entry, &entries);
+
+        let scrolled_window = ScrolledWindow::builder()
+            .hscrollbar_policy(PolicyType::Never)
+            .vscrollbar_policy(PolicyType::Automatic)
+            .can_focus(false)
+            .can_target(false)
+            .min_content_width(360)
+            .min_content_height(400)
+            .overlay_scrolling(true)
+            .child(&list_view)
+            .build();
+
+        let window = Self::create_application_window(application);
+
+        entry.connect_activate(clone!(
+            #[strong]
+            window,
+            move |entry| {
+                let selected_item: StringObject = selection_model
+                    .selected_item()
+                    .and_downcast()
+                    .expect("cant cast");
+
+                let name = selected_item.string();
+
+                if let Some(exec) = entries.get(&name.to_string()) {
+                    Self::start_app(&exec).expect("cant run");
+                }
+
+                window.set_visible(false);
+                entry.set_text("");
+                selection_model.set_selected(0);
+                list_view.scroll_to(0, ListScrollFlags::FOCUS, None);
+            }
+        ));
+
+        container.append(&entry);
+        container.append(&scrolled_window);
+
+        window.set_child(Some(&container));
+
+        Self { window }
+    }
+
+    pub fn toggle_visibility(&self) {
+        let current_visibility = self.window.is_visible();
+        self.window.set_visible(!current_visibility);
+
+        // if !current_visibility {
+        //     self.window.grab_focus();
+        // }
+    }
+
+    fn find_desktop_entries(locales: &[String]) -> HashMap<String, String> {
+        desktop_entries(locales)
             .into_iter()
             .filter_map(|entry| {
                 let group = entry.groups.desktop_entry()?;
@@ -50,69 +114,24 @@ impl Launcher {
 
                 Some((name, exec))
             })
-            .collect();
-
-        let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        let entry = gtk::Entry::new();
-        container.append(&entry);
-
-        let selection_model = Self::setup_model(
-            &entry,
-            desktop_entries.keys().map(|k| k.clone()).collect(),
-        );
-        let factory = Self::create_factory();
-        let list_view =
-            ListView::new(Some(selection_model.clone()), Some(factory));
-
-        let scrolled_window = ScrolledWindow::builder()
-            .hscrollbar_policy(PolicyType::Never)
-            .vscrollbar_policy(PolicyType::Automatic)
-            .can_focus(false)
-            .can_target(false)
-            .min_content_width(360)
-            .min_content_height(400)
-            .overlay_scrolling(true)
-            .child(&list_view)
-            .build();
-
-        container.append(&scrolled_window);
-
-        let window = Self::create_configured_application_window(application);
-        window.set_child(Some(&container));
-
-        entry.connect_activate({
-            let selection_model = selection_model.clone();
-            let window = window.clone();
-            let list_view = list_view.clone();
-            move |entry| {
-                let selected_item: StringObject = selection_model
-                    .selected_item()
-                    .and_downcast()
-                    .expect("cant cast");
-
-                let name = selected_item.string();
-
-                if let Some(exec) = desktop_entries.get(&name.to_string()) {
-                    Self::start_app(&exec).expect("cant run");
-                }
-
-                window.set_visible(false);
-                entry.set_text("");
-                selection_model.set_selected(0);
-                list_view.scroll_to(0, ListScrollFlags::FOCUS, None);
-            }
-        });
-
-        Self { window }
+            .collect()
     }
 
-    pub fn toggle_visibility(&self) {
-        let current_visibility = self.window.is_visible();
-        self.window.set_visible(!current_visibility);
+    fn setup_list_view(
+        entry: &gtk::Entry,
+        entries: &HashMap<String, String>,
+    ) -> (SingleSelection, ListView) {
+        let names = entries.keys().map(|k| k.clone()).collect();
 
-        // if !current_visibility {
-        //     self.window.grab_focus();
-        // }
+        let selection_model = Self::setup_selection_model(entry, names);
+        let item_factory = Self::create_factory();
+
+        let list_view = ListView::builder()
+            .model(&selection_model)
+            .factory(&item_factory)
+            .build();
+
+        (selection_model, list_view)
     }
 
     fn create_factory() -> SignalListItemFactory {
@@ -120,21 +139,26 @@ impl Launcher {
 
         factory.connect_setup(move |_, list_item| {
             let label = Label::new(None);
+
             let list_item = list_item
                 .downcast_ref::<ListItem>()
                 .expect("Needs to be ListItem");
-            list_item.set_child(Some(&label));
 
             list_item
                 .property_expression("item")
                 .chain_property::<StringObject>("string")
                 .bind(&label, "label", Widget::NONE);
+
+            list_item.set_child(Some(&label));
         });
 
         factory
     }
 
-    fn setup_model(entry: &gtk::Entry, model: StringList) -> SingleSelection {
+    fn setup_selection_model(
+        entry: &gtk::Entry,
+        model: StringList,
+    ) -> SingleSelection {
         let filter = gtk::CustomFilter::new(clone!(
             #[strong]
             entry,
@@ -183,7 +207,7 @@ impl Launcher {
         SingleSelection::new(Some(filter_and_sort_model))
     }
 
-    fn create_configured_application_window(
+    fn create_application_window(
         application: &gtk::Application,
     ) -> gtk::ApplicationWindow {
         let window = gtk::ApplicationWindow::new(application);
@@ -228,7 +252,6 @@ impl Launcher {
         window
     }
 
-    // Sync
     fn start_app(name: &str) -> io::Result<Child> {
         Command::new("sh")
             .arg("-c")
