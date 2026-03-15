@@ -3,7 +3,7 @@ use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
     self, EventControllerKey, FilterChange, FilterListModel, Label, ListItem,
-    ListScrollFlags, ListView, PolicyType, ScrolledWindow,
+    ListScrollFlags, ListView, PolicyType, Revealer, ScrolledWindow,
     SignalListItemFactory, SingleSelection, SortListModel, SorterChange,
     StringList, Widget,
 };
@@ -18,14 +18,20 @@ use gtk::StringObject;
 use std::collections::HashMap;
 use std::io;
 use std::process::{Child, Command, Stdio};
+use std::time::Duration;
 
 #[derive(WindowComponent)]
 pub struct Launcher {
     #[root]
     window: ApplicationWindow,
+    revealer: Revealer,
+    entry: gtk::Entry,
+    visibility: bool,
 }
 
 impl Launcher {
+    const ANIMATION_DURATION_MS: u32 = 300;
+
     pub fn new(application: &gtk::Application) -> Self {
         // get locale
         let locales = &["ru".to_string()];
@@ -68,6 +74,8 @@ impl Launcher {
                     Self::start_app(&exec).expect("cant run");
                 }
 
+                // window.toggle_visibility();
+
                 window.set_visible(false);
                 entry.set_text("");
                 selection_model.set_selected(0);
@@ -78,14 +86,52 @@ impl Launcher {
         container.append(&entry);
         container.append(&scrolled_window);
 
-        window.set_child(Some(&container));
+        let revealer = gtk::Revealer::builder()
+            .transition_duration(Self::ANIMATION_DURATION_MS)
+            .transition_type(gtk::RevealerTransitionType::SwingUp)
+            .child(&container)
+            .reveal_child(false)
+            .build();
 
-        Self { window }
+        window.set_child(Some(&revealer));
+
+        let visibility = false;
+        window.set_visible(visibility);
+
+        Self {
+            window,
+            entry,
+            revealer,
+            visibility,
+        }
     }
 
-    pub fn toggle_visibility(&self) {
-        let current_visibility = self.window.is_visible();
-        self.window.set_visible(!current_visibility);
+    pub fn toggle_visibility(&mut self) {
+        let window = self.window.clone();
+        let target_visibility = !self.visibility;
+
+        let animation_duration =
+            Duration::from_millis(Self::ANIMATION_DURATION_MS as u64);
+
+        if target_visibility {
+            window.present();
+            self.revealer.set_reveal_child(target_visibility);
+
+            let entry = self.entry.clone();
+
+            glib::timeout_add_local_once(animation_duration, move || {
+                window.set_focus(Some(&entry));
+            });
+        } else {
+            self.revealer.set_reveal_child(target_visibility);
+            self.entry.set_text("");
+
+            glib::timeout_add_local_once(animation_duration, move || {
+                window.set_visible(target_visibility)
+            });
+        }
+
+        self.visibility = target_visibility;
 
         // if !current_visibility {
         //     self.window.grab_focus();
@@ -244,9 +290,6 @@ impl Launcher {
             }
         ));
         window.add_controller(controller);
-
-        window.present();
-        window.set_visible(false);
 
         window
     }

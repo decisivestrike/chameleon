@@ -43,7 +43,7 @@ impl InstanceManager {
     }
 
     pub fn toggle_launcher(&self) {
-        if let Some(launcher) = &*self.launcher.blocking_read() {
+        if let Some(launcher) = &mut *self.launcher.blocking_write() {
             launcher.toggle_visibility();
         }
     }
@@ -103,9 +103,6 @@ impl InstanceManager {
     fn configure_launcher(&self, application: &gtk::Application) {
         log::info!("Setup launcher...");
         let launcher = Launcher::new(application);
-
-        launcher.present();
-        launcher.toggle_visibility();
 
         *self.launcher.blocking_write() = Some(launcher);
     }
