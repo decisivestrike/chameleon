@@ -3,7 +3,7 @@ use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
     self, EventControllerKey, FilterChange, FilterListModel, Label, ListItem,
-    ListScrollFlags, ListView, PolicyType, Revealer, ScrolledWindow,
+    ListScrollFlags, ListView, PolicyType, ScrolledWindow,
     SignalListItemFactory, SingleSelection, SortListModel, SorterChange,
     StringList, Widget,
 };
@@ -15,24 +15,25 @@ use grapes::prelude::{
 };
 use grapes::{WindowComponent, gtk::ApplicationWindow};
 use gtk::StringObject;
+use std::cell::Cell;
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::io;
 use std::process::{Child, Command, Stdio};
-use std::time::Duration;
+use std::rc::Rc;
 
 #[derive(WindowComponent)]
 pub struct Launcher {
     #[root]
     window: ApplicationWindow,
-    revealer: Revealer,
     entry: gtk::Entry,
-    visibility: bool,
+    selection_model: SingleSelection,
+    list_view: ListView,
+    visibility: Cell<bool>,
 }
 
 impl Launcher {
-    const ANIMATION_DURATION_MS: u32 = 300;
-
-    pub fn new(application: &gtk::Application) -> Self {
+    pub fn new(application: &gtk::Application) -> Rc<Self> {
         // get locale
         let locales = &["ru".to_string()];
         let entries = Self::find_desktop_entries(locales);
@@ -59,83 +60,71 @@ impl Launcher {
 
         let window = Self::create_application_window(application);
 
+        container.append(&entry);
+        container.append(&scrolled_window);
+
+        window.set_child(Some(&container));
+
+        let launcher = Rc::new(Self {
+            window: window.clone(),
+            entry: entry.clone(),
+            selection_model,
+            list_view,
+            visibility: Cell::new(false),
+        });
+
         entry.connect_activate(clone!(
-            #[strong]
-            window,
-            move |entry| {
-                let selected_item: StringObject = selection_model
+            #[weak]
+            launcher,
+            move |_| {
+                let selected_item: StringObject = launcher
+                    .selection_model
                     .selected_item()
                     .and_downcast()
                     .expect("cant cast");
 
-                let name = selected_item.string();
+                let name = selected_item.string().to_string();
 
-                if let Some(exec) = entries.get(&name.to_string()) {
+                if let Some(exec) = entries.get(&name) {
                     Self::start_app(&exec).expect("cant run");
                 }
 
-                // window.toggle_visibility();
-
-                window.set_visible(false);
-                entry.set_text("");
-                selection_model.set_selected(0);
-                list_view.scroll_to(0, ListScrollFlags::FOCUS, None);
+                launcher.toggle_visibility();
             }
         ));
 
-        container.append(&entry);
-        container.append(&scrolled_window);
+        let controller = EventControllerKey::new();
+        controller.connect_key_pressed(clone!(
+            #[strong]
+            launcher,
+            move |_, key, _, _| {
+                match key {
+                    Key::Escape => {
+                        launcher.toggle_visibility();
+                        glib::Propagation::Stop
+                    }
+                    _ => glib::Propagation::Proceed,
+                }
+            }
+        ));
+        window.add_controller(controller);
 
-        let revealer = gtk::Revealer::builder()
-            .transition_duration(Self::ANIMATION_DURATION_MS)
-            .transition_type(gtk::RevealerTransitionType::SwingUp)
-            .child(&container)
-            .reveal_child(false)
-            .build();
-
-        window.set_child(Some(&revealer));
-
-        let visibility = false;
-        window.set_visible(visibility);
-
-        Self {
-            window,
-            entry,
-            revealer,
-            visibility,
-        }
+        launcher
     }
 
-    pub fn toggle_visibility(&mut self) {
-        let window = self.window.clone();
-        let target_visibility = !self.visibility;
-
-        let animation_duration =
-            Duration::from_millis(Self::ANIMATION_DURATION_MS as u64);
+    pub fn toggle_visibility(&self) {
+        let target_visibility = !self.visibility.get();
 
         if target_visibility {
-            window.present();
-            self.revealer.set_reveal_child(target_visibility);
-
-            let entry = self.entry.clone();
-
-            glib::timeout_add_local_once(animation_duration, move || {
-                window.set_focus(Some(&entry));
-            });
+            self.window.present();
         } else {
-            self.revealer.set_reveal_child(target_visibility);
+            self.window.set_visible(target_visibility);
             self.entry.set_text("");
-
-            glib::timeout_add_local_once(animation_duration, move || {
-                window.set_visible(target_visibility)
-            });
+            self.selection_model.set_selected(0);
+            self.list_view.scroll_to(0, ListScrollFlags::FOCUS, None);
         }
 
-        self.visibility = target_visibility;
-
-        // if !current_visibility {
-        //     self.window.grab_focus();
-        // }
+        self.visibility.set(target_visibility);
     }
 
     fn find_desktop_entries(locales: &[String]) -> HashMap<String, String> {
@@ -256,11 +245,11 @@ impl Launcher {
         application: &gtk::Application,
     ) -> gtk::ApplicationWindow {
         let window = gtk::ApplicationWindow::new(application);
+
         window.init_layer_shell();
+
         window.set_size_request(600, 400);
-
         window.set_widget_name("launcher");
-
         window.set_namespace(Some("chameleon-launcher"));
         window.set_exclusive_zone(-1);
         window.set_layer(Layer::Top);
@@ -270,31 +259,10 @@ impl Launcher {
             KeyboardMode::OnDemand
         });
 
-        // window.set_anchor(Edge::Left, true);
-        // window.set_anchor(Edge::Right, true);
-        // window.set_anchor(Edge::Top, true);
-        // window.set_anchor(Edge::Bottom, true);
-
-        let controller = EventControllerKey::new();
-        controller.connect_key_pressed(clone!(
-            #[strong]
-            window,
-            move |_, key, _, _| {
-                match key {
-                    Key::Escape => {
-                        window.set_visible(false);
-                        glib::Propagation::Stop
-                    }
-                    _ => glib::Propagation::Proceed,
-                }
-            }
-        ));
-        window.add_controller(controller);
-
         window
     }
 
-    fn start_app(name: &str) -> io::Result<Child> {
+    fn start_app(name: impl AsRef<OsStr>) -> io::Result<Child> {
         Command::new("sh")
             .arg("-c")
             .arg(name)

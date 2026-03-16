@@ -50,7 +50,6 @@ impl Clock {
 
     pub fn new(formatted_time: &Rc<State<String>>) -> Self {
         let label = StatefullLabel::new(formatted_time);
-        println!("{}", formatted_time.get());
 
         let icon = Image::from_icon_name("appointment-symbolic");
         icon.set_size_request(24, 24);

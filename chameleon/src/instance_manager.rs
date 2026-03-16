@@ -14,7 +14,7 @@ use grapes::{
         sync::RwLock,
     },
 };
-use std::{path::Path, sync::LazyLock};
+use std::{path::Path, rc::Rc, sync::LazyLock};
 
 /// Global instance manager
 pub static INSTANCE_MANAGER: LazyLock<InstanceManager> =
@@ -26,7 +26,7 @@ pub static INSTANCE_MANAGER: LazyLock<InstanceManager> =
 pub struct InstanceManager {
     widgets_layers: DashMap<String, WidgetsLayer>,
     panels: DashMap<String, Panel>,
-    launcher: RwLock<Option<Launcher>>,
+    launcher: RwLock<Option<Rc<Launcher>>>,
 }
 
 impl InstanceManager {
@@ -43,7 +43,7 @@ impl InstanceManager {
     }
 
     pub fn toggle_launcher(&self) {
-        if let Some(launcher) = &mut *self.launcher.blocking_write() {
+        if let Some(launcher) = &*self.launcher.blocking_read() {
             launcher.toggle_visibility();
         }
     }
@@ -113,7 +113,7 @@ impl InstanceManager {
         // Удаляем старый сокет
         let path = Path::new(socket_path);
         if path.exists() {
-            let _ = fs::remove_file(socket_path).await;
+            fs::remove_file(socket_path).await.unwrap();
         }
 
         let listener = UnixListener::bind(socket_path).unwrap();
