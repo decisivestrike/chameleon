@@ -33,6 +33,8 @@ pub struct Launcher {
 }
 
 impl Launcher {
+    pub fn create(application: &gtk::Application) -> Rc<Self> {}
+
     pub fn new(application: &gtk::Application) -> Rc<Self> {
         // get locale
         let locales = &["ru".to_string()];
@@ -143,7 +145,8 @@ impl Launcher {
                     _ => return None,
                 };
 
-                let name = group.entry("Name")?.to_string();
+                let name =
+                    Self::remove_field_codes(group.entry("Name")?.to_string());
                 let exec = group.entry("Exec")?.to_string();
 
                 Some((name, exec))
@@ -262,6 +265,23 @@ impl Launcher {
         window
     }
 
+    /// Removes field codes from a desktop entry `Exec` line.
+    ///
+    /// For more details, see
+    /// [here](https://specifications.freedesktop.org/desktop-entry/latest/exec-variables.html)
+    fn remove_field_codes(mut exec: String) -> String {
+        const FIELD_CODES: &[&str] = &[
+            "%f", "%F", "%u", "%U", "%d", "%D", "%n", "%N", "%v", "%m", "%i",
+            "%c", "%k",
+        ];
+
+        for code in FIELD_CODES {
+            exec = exec.replace(code, "");
+        }
+
+        exec.split_whitespace().collect::<Vec<_>>().join(" ")
+    }
+
     fn start_app(name: impl AsRef<OsStr>) -> io::Result<Child> {
         Command::new("sh")
             .arg("-c")
@@ -270,5 +290,28 @@ impl Launcher {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_remove_field_codes() {
+        assert_eq!(
+            Launcher::remove_field_codes("Exec=firefox %u".to_string()),
+            "Exec=firefox"
+        );
+        assert_eq!(
+            Launcher::remove_field_codes("Exec=myapp %f %F %u %U".to_string()),
+            "Exec=myapp"
+        );
+        assert_eq!(
+            Launcher::remove_field_codes(
+                "Exec=app %f arg1 %U arg2".to_string()
+            ),
+            "Exec=app arg1 arg2"
+        );
     }
 }
