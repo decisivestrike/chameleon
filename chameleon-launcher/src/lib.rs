@@ -1,4 +1,5 @@
 use freedesktop_desktop_entry::desktop_entries;
+use grapes::RT;
 use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
@@ -13,13 +14,14 @@ use grapes::prelude::{
     GObjectPropertyExpressionExt, GtkWindowExt, ListItemExt, SorterExt,
     WidgetExt,
 };
+use grapes::tokio::process::Command;
 use grapes::{WindowComponent, gtk::ApplicationWindow};
 use gtk::StringObject;
 use std::cell::Cell;
 use std::collections::HashMap;
-use std::ffi::OsStr;
-use std::io;
-use std::process::{Child, Command, Stdio};
+
+use std::env::home_dir;
+use std::process::Stdio;
 use std::rc::Rc;
 
 #[derive(WindowComponent)]
@@ -33,13 +35,56 @@ pub struct Launcher {
 }
 
 impl Launcher {
-    pub fn create(application: &gtk::Application) -> Rc<Self> {}
-
-    pub fn new(application: &gtk::Application) -> Rc<Self> {
+    pub fn create(application: &gtk::Application) -> Rc<Self> {
         // get locale
         let locales = &["ru".to_string()];
         let entries = Self::find_desktop_entries(locales);
 
+        let launcher = Self::new(application, &entries);
+
+        launcher.entry.connect_activate(clone!(
+            #[weak]
+            launcher,
+            move |_| {
+                let selected_item: StringObject = launcher
+                    .selection_model
+                    .selected_item()
+                    .and_downcast()
+                    .expect("cant cast");
+
+                launcher.toggle_visibility();
+
+                let name = selected_item.string().to_string();
+
+                if let Some(exec) = entries.get(&name) {
+                    Self::start_app(&exec);
+                }
+            }
+        ));
+
+        let controller = EventControllerKey::new();
+        controller.connect_key_pressed(clone!(
+            #[strong]
+            launcher,
+            move |_, key, _, _| {
+                match key {
+                    Key::Escape => {
+                        launcher.toggle_visibility();
+                        glib::Propagation::Stop
+                    }
+                    _ => glib::Propagation::Proceed,
+                }
+            }
+        ));
+        launcher.window.add_controller(controller);
+
+        launcher
+    }
+
+    pub fn new(
+        application: &gtk::Application,
+        entries: &HashMap<String, String>,
+    ) -> Rc<Self> {
         let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let entry = gtk::Entry::builder()
             .placeholder_text("Explore...")
@@ -47,7 +92,7 @@ impl Launcher {
             .build();
 
         let (selection_model, list_view) =
-            Self::setup_list_view(&entry, &entries);
+            Self::setup_list_view(&entry, entries);
 
         let scrolled_window = ScrolledWindow::builder()
             .hscrollbar_policy(PolicyType::Never)
@@ -67,51 +112,13 @@ impl Launcher {
 
         window.set_child(Some(&container));
 
-        let launcher = Rc::new(Self {
-            window: window.clone(),
-            entry: entry.clone(),
+        Rc::new(Self {
+            window,
+            entry,
             selection_model,
             list_view,
             visibility: Cell::new(false),
-        });
-
-        entry.connect_activate(clone!(
-            #[weak]
-            launcher,
-            move |_| {
-                let selected_item: StringObject = launcher
-                    .selection_model
-                    .selected_item()
-                    .and_downcast()
-                    .expect("cant cast");
-
-                let name = selected_item.string().to_string();
-
-                if let Some(exec) = entries.get(&name) {
-                    Self::start_app(&exec).expect("cant run");
-                }
-
-                launcher.toggle_visibility();
-            }
-        ));
-
-        let controller = EventControllerKey::new();
-        controller.connect_key_pressed(clone!(
-            #[strong]
-            launcher,
-            move |_, key, _, _| {
-                match key {
-                    Key::Escape => {
-                        launcher.toggle_visibility();
-                        glib::Propagation::Stop
-                    }
-                    _ => glib::Propagation::Proceed,
-                }
-            }
-        ));
-        window.add_controller(controller);
-
-        launcher
+        })
     }
 
     pub fn toggle_visibility(&self) {
@@ -145,9 +152,9 @@ impl Launcher {
                     _ => return None,
                 };
 
-                let name =
-                    Self::remove_field_codes(group.entry("Name")?.to_string());
-                let exec = group.entry("Exec")?.to_string();
+                let name = group.entry("Name")?.to_string();
+                let exec =
+                    Self::remove_field_codes(group.entry("Exec")?.to_string());
 
                 Some((name, exec))
             })
@@ -251,7 +258,7 @@ impl Launcher {
 
         window.init_layer_shell();
 
-        window.set_size_request(600, 400);
+        window.set_size_request(480, 240);
         window.set_widget_name("launcher");
         window.set_namespace(Some("chameleon-launcher"));
         window.set_exclusive_zone(-1);
@@ -282,14 +289,27 @@ impl Launcher {
         exec.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 
-    fn start_app(name: impl AsRef<OsStr>) -> io::Result<Child> {
-        Command::new("sh")
-            .arg("-c")
-            .arg(name)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
+    fn start_app(name: &str) {
+        let name = name.to_string();
+
+        RT.spawn(async move {
+            log::info!("Spawning '{name}'");
+
+            let child = Command::new("sh")
+                .arg("-c")
+                .arg(&name)
+                .current_dir(home_dir().expect("can get $HOME"))
+                .env_remove("RUST_LOG")
+                .env_remove("RUST_BACKTRACE")
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn();
+
+            if let Err(e) = child {
+                log::error!("Can't spawn '{name}'. Error: {e}");
+            }
+        });
     }
 }
 
@@ -300,18 +320,20 @@ mod tests {
     #[test]
     fn test_remove_field_codes() {
         assert_eq!(
-            Launcher::remove_field_codes("Exec=firefox %u".to_string()),
-            "Exec=firefox"
+            Launcher::remove_field_codes("firefox %u".to_string()),
+            "firefox"
         );
         assert_eq!(
-            Launcher::remove_field_codes("Exec=myapp %f %F %u %U".to_string()),
-            "Exec=myapp"
+            Launcher::remove_field_codes("zeditor %U".to_string()),
+            "zeditor"
         );
         assert_eq!(
-            Launcher::remove_field_codes(
-                "Exec=app %f arg1 %U arg2".to_string()
-            ),
-            "Exec=app arg1 arg2"
+            Launcher::remove_field_codes("myapp %f %F %u %U".to_string()),
+            "myapp"
+        );
+        assert_eq!(
+            Launcher::remove_field_codes("app %f arg1 %U arg2".to_string()),
+            "app arg1 arg2"
         );
     }
 }

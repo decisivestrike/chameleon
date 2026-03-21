@@ -102,7 +102,7 @@ impl InstanceManager {
 
     fn configure_launcher(&self, application: &gtk::Application) {
         log::info!("Setup launcher...");
-        let launcher = Launcher::new(application);
+        let launcher = Launcher::create(application);
 
         *self.launcher.blocking_write() = Some(launcher);
     }
