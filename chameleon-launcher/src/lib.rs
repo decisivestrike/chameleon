@@ -6,7 +6,7 @@ use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
     self, EventControllerKey, FilterChange, FilterListModel, ListItem,
-    ListScrollFlags, ListView, PolicyType, ScrolledWindow,
+    ListScrollFlags, ListView, Orientation, PolicyType, ScrolledWindow,
     SignalListItemFactory, SingleSelection, SortListModel, SorterChange,
 };
 use grapes::layer_shell::{KeyboardMode, Layer, LayerShell};
@@ -55,7 +55,7 @@ impl Launcher {
                     .expect("cant cast");
 
                 launcher.toggle_visibility();
-                launcher.open(&entry_info.name());
+                launcher.open(&entry_info.exec());
             }
         ));
 
@@ -192,10 +192,6 @@ impl Launcher {
         let factory = SignalListItemFactory::new();
 
         factory.connect_setup(move |_, list_item| {
-            let item_container =
-                gtk::Box::new(gtk::Orientation::Horizontal, 12);
-
-            // Иконка
             let icon_image = gtk::Image::builder()
                 .icon_size(gtk::IconSize::Large)
                 .pixel_size(48)
@@ -203,29 +199,35 @@ impl Launcher {
                 .valign(gtk::Align::Start)
                 .build();
 
-            // Контейнер для текста (вертикальный)
-            let text_container = gtk::Box::new(gtk::Orientation::Vertical, 4);
-
-            // Название (жирное)
             let name_label = gtk::Label::builder()
-                .css_classes(vec!["title"])
                 .xalign(0.0)
+                .css_classes(["name"])
                 .build();
 
-            // Описание
             let comment_label = gtk::Label::builder()
-                .css_classes(vec!["dim-label"])
-                .xalign(0.0)
                 .wrap(true)
+                .xalign(0.0)
+                .overflow(gtk::Overflow::Hidden)
+                .css_classes(["comment"])
                 .build();
 
-            // Сборка
+            let text_container = gtk::Box::builder()
+                .orientation(Orientation::Vertical)
+                .spacing(4)
+                .css_classes(["text-container"])
+                .build();
+
             text_container.append(&name_label);
             text_container.append(&comment_label);
 
+            let item_container = gtk::Box::builder()
+                .orientation(Orientation::Horizontal)
+                .spacing(12)
+                .css_classes(["app"])
+                .build();
+
             item_container.append(&icon_image);
             item_container.append(&text_container);
-            item_container.add_css_class("app-row");
 
             list_item
                 .downcast_ref::<ListItem>()
@@ -234,7 +236,6 @@ impl Launcher {
         });
 
         factory.connect_bind(move |_, list_item| {
-            // Получаем EntryInfo из модели
             let entry_info = list_item
                 .downcast_ref::<ListItem>()
                 .expect("Needs to be ListItem")
@@ -242,7 +243,6 @@ impl Launcher {
                 .and_downcast::<EntryInfo>()
                 .expect("The item has to be an EntryInfo");
 
-            // Получаем контейнер
             let container = list_item
                 .downcast_ref::<ListItem>()
                 .expect("Needs to be ListItem")
@@ -250,7 +250,6 @@ impl Launcher {
                 .and_downcast::<gtk::Box>()
                 .expect("The child has to be a Box");
 
-            // Иконка (первый дочерний элемент)
             let icon_image = container
                 .first_child()
                 .expect("Icon should exist")
@@ -259,14 +258,12 @@ impl Launcher {
 
             icon_image.set_icon_name(Some(&entry_info.icon()));
 
-            // Текстовый контейнер (второй дочерний)
             let text_container = container
                 .last_child()
                 .expect("Text container should exist")
                 .downcast::<gtk::Box>()
                 .expect("Second child should be Box");
 
-            // Название
             let name_label = text_container
                 .first_child()
                 .expect("Name label should exist")
@@ -275,7 +272,6 @@ impl Launcher {
 
             name_label.set_text(&entry_info.name());
 
-            // Описание
             let comment_label = text_container
                 .last_child()
                 .expect("Comment label should exist")
@@ -382,8 +378,6 @@ impl Launcher {
         let name = name.to_string();
 
         RT.spawn(async move {
-            log::info!("Spawning '{name}'");
-
             let mut base_command = Command::new("sh");
             let command = base_command
                 .arg("-c")
@@ -406,10 +400,9 @@ impl Launcher {
                 }
             }
 
-            let child = command.spawn();
-
-            if let Err(e) = child {
-                log::error!("Can't spawn '{name}'. Error: {e}");
+            match command.spawn() {
+                Ok(_) => log::info!("App '{name}' spawned"),
+                Err(e) => log::error!("Can't spawn '{name}'. Error: {e}"),
             }
         });
     }
