@@ -351,6 +351,7 @@ dependencies = [
  "freedesktop-desktop-entry",
  "grapes",
  "grapes-components",
+ "libc",
  "log",
 ]
 

@@ -1,28 +1,30 @@
+mod entry_object;
+
 use freedesktop_desktop_entry::desktop_entries;
-use grapes::RT;
+use grapes::gio::ListModel;
 use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
-    self, EventControllerKey, FilterChange, FilterListModel, Label, ListItem,
+    self, EventControllerKey, FilterChange, FilterListModel, ListItem,
     ListScrollFlags, ListView, PolicyType, ScrolledWindow,
     SignalListItemFactory, SingleSelection, SortListModel, SorterChange,
-    StringList, Widget,
 };
 use grapes::layer_shell::{KeyboardMode, Layer, LayerShell};
 use grapes::prelude::{
-    BoxExt, Cast, CastNone, EditableExt, EntryExt, FilterExt,
-    GObjectPropertyExpressionExt, GtkWindowExt, ListItemExt, SorterExt,
-    WidgetExt,
+    BoxExt, Cast, CastNone, EditableExt, EntryExt, FilterExt, GtkWindowExt,
+    ListItemExt, SorterExt, WidgetExt,
 };
 use grapes::tokio::process::Command;
+use grapes::{RT, gio};
 use grapes::{WindowComponent, gtk::ApplicationWindow};
-use gtk::StringObject;
+
 use std::cell::Cell;
 use std::collections::HashMap;
-
 use std::env::home_dir;
 use std::process::Stdio;
 use std::rc::Rc;
+
+use crate::entry_object::EntryInfo;
 
 #[derive(WindowComponent)]
 pub struct Launcher {
@@ -46,19 +48,14 @@ impl Launcher {
             #[weak]
             launcher,
             move |_| {
-                let selected_item: StringObject = launcher
+                let entry_info: EntryInfo = launcher
                     .selection_model
                     .selected_item()
                     .and_downcast()
                     .expect("cant cast");
 
                 launcher.toggle_visibility();
-
-                let name = selected_item.string().to_string();
-
-                if let Some(exec) = entries.get(&name) {
-                    Self::start_app(&exec);
-                }
+                launcher.open(&entry_info.name());
             }
         ));
 
@@ -67,12 +64,11 @@ impl Launcher {
             #[strong]
             launcher,
             move |_, key, _, _| {
-                match key {
-                    Key::Escape => {
-                        launcher.toggle_visibility();
-                        glib::Propagation::Stop
-                    }
-                    _ => glib::Propagation::Proceed,
+                if key == Key::Escape {
+                    launcher.toggle_visibility();
+                    glib::Propagation::Stop
+                } else {
+                    glib::Propagation::Proceed
                 }
             }
         ));
@@ -83,7 +79,7 @@ impl Launcher {
 
     pub fn new(
         application: &gtk::Application,
-        entries: &HashMap<String, String>,
+        entries: &HashMap<String, EntryInfo>,
     ) -> Rc<Self> {
         let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let entry = gtk::Entry::builder()
@@ -136,7 +132,7 @@ impl Launcher {
         self.visibility.set(target_visibility);
     }
 
-    fn find_desktop_entries(locales: &[String]) -> HashMap<String, String> {
+    fn find_desktop_entries(locales: &[String]) -> HashMap<String, EntryInfo> {
         desktop_entries(locales)
             .into_iter()
             .filter_map(|entry| {
@@ -153,21 +149,35 @@ impl Launcher {
                 };
 
                 let name = group.entry("Name")?.to_string();
+
                 let exec =
                     Self::remove_field_codes(group.entry("Exec")?.to_string());
+                let comment = group
+                    .entry("Comment")
+                    .map(String::from)
+                    .unwrap_or(String::new());
+                let icon = group
+                    .entry("Icon")
+                    .map(String::from)
+                    .unwrap_or(String::new());
 
-                Some((name, exec))
+                let entry_info =
+                    EntryInfo::new(name.clone(), exec, comment, icon);
+
+                Some((name, entry_info))
             })
             .collect()
     }
 
     fn setup_list_view(
         entry: &gtk::Entry,
-        entries: &HashMap<String, String>,
+        entries: &HashMap<String, EntryInfo>,
     ) -> (SingleSelection, ListView) {
-        let names = entries.keys().map(|k| k.clone()).collect();
+        let model = gio::ListStore::new::<EntryInfo>();
+        let values: Vec<_> = entries.values().map(Clone::clone).collect();
+        model.extend_from_slice(&values);
 
-        let selection_model = Self::setup_selection_model(entry, names);
+        let selection_model = Self::setup_selection_model(entry, model);
         let item_factory = Self::create_factory();
 
         let list_view = ListView::builder()
@@ -182,18 +192,97 @@ impl Launcher {
         let factory = SignalListItemFactory::new();
 
         factory.connect_setup(move |_, list_item| {
-            let label = Label::new(None);
+            let item_container =
+                gtk::Box::new(gtk::Orientation::Horizontal, 12);
 
-            let list_item = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem");
+            // Иконка
+            let icon_image = gtk::Image::builder()
+                .icon_size(gtk::IconSize::Large)
+                .pixel_size(48)
+                .halign(gtk::Align::Center)
+                .valign(gtk::Align::Start)
+                .build();
+
+            // Контейнер для текста (вертикальный)
+            let text_container = gtk::Box::new(gtk::Orientation::Vertical, 4);
+
+            // Название (жирное)
+            let name_label = gtk::Label::builder()
+                .css_classes(vec!["title"])
+                .xalign(0.0)
+                .build();
+
+            // Описание
+            let comment_label = gtk::Label::builder()
+                .css_classes(vec!["dim-label"])
+                .xalign(0.0)
+                .wrap(true)
+                .build();
+
+            // Сборка
+            text_container.append(&name_label);
+            text_container.append(&comment_label);
+
+            item_container.append(&icon_image);
+            item_container.append(&text_container);
+            item_container.add_css_class("app-row");
 
             list_item
-                .property_expression("item")
-                .chain_property::<StringObject>("string")
-                .bind(&label, "label", Widget::NONE);
+                .downcast_ref::<ListItem>()
+                .expect("Needs to be ListItem")
+                .set_child(Some(&item_container));
+        });
 
-            list_item.set_child(Some(&label));
+        factory.connect_bind(move |_, list_item| {
+            // Получаем EntryInfo из модели
+            let entry_info = list_item
+                .downcast_ref::<ListItem>()
+                .expect("Needs to be ListItem")
+                .item()
+                .and_downcast::<EntryInfo>()
+                .expect("The item has to be an EntryInfo");
+
+            // Получаем контейнер
+            let container = list_item
+                .downcast_ref::<ListItem>()
+                .expect("Needs to be ListItem")
+                .child()
+                .and_downcast::<gtk::Box>()
+                .expect("The child has to be a Box");
+
+            // Иконка (первый дочерний элемент)
+            let icon_image = container
+                .first_child()
+                .expect("Icon should exist")
+                .downcast::<gtk::Image>()
+                .expect("First child should be Image");
+
+            icon_image.set_icon_name(Some(&entry_info.icon()));
+
+            // Текстовый контейнер (второй дочерний)
+            let text_container = container
+                .last_child()
+                .expect("Text container should exist")
+                .downcast::<gtk::Box>()
+                .expect("Second child should be Box");
+
+            // Название
+            let name_label = text_container
+                .first_child()
+                .expect("Name label should exist")
+                .downcast::<gtk::Label>()
+                .expect("First text child should be Label");
+
+            name_label.set_text(&entry_info.name());
+
+            // Описание
+            let comment_label = text_container
+                .last_child()
+                .expect("Comment label should exist")
+                .downcast::<gtk::Label>()
+                .expect("Second text child should be Label");
+
+            comment_label.set_text(&entry_info.comment());
         });
 
         factory
@@ -201,18 +290,18 @@ impl Launcher {
 
     fn setup_selection_model(
         entry: &gtk::Entry,
-        model: StringList,
+        model: gio::ListStore,
     ) -> SingleSelection {
         let filter = gtk::CustomFilter::new(clone!(
             #[strong]
             entry,
             move |obj| {
-                let string_object = obj
-                    .downcast_ref::<StringObject>()
-                    .expect("The object needs to be of type `StringObject`");
+                let entry_info = obj
+                    .downcast_ref::<EntryInfo>()
+                    .expect("The object needs to be of type `EntryInfo`");
 
-                string_object
-                    .string()
+                entry_info
+                    .name()
                     .to_lowercase()
                     .contains(&entry.text().to_string().to_lowercase())
             }
@@ -221,15 +310,15 @@ impl Launcher {
             FilterListModel::new(Some(model), Some(filter.clone()));
 
         let sorter = gtk::CustomSorter::new(move |obj1, obj2| {
-            let string_object_1 = obj1
-                .downcast_ref::<StringObject>()
-                .expect("The object needs to be of type `StringObject`");
-            let string_object_2 = obj2
-                .downcast_ref::<StringObject>()
-                .expect("The object needs to be of type `StringObject`");
+            let entry_info_1 = obj1
+                .downcast_ref::<EntryInfo>()
+                .expect("The object needs to be of type `EntryInfo`");
+            let entry_info_2 = obj2
+                .downcast_ref::<EntryInfo>()
+                .expect("The object needs to be of type `EntryInfo`");
 
-            let str_1 = string_object_1.string();
-            let str_2 = string_object_2.string();
+            let str_1 = entry_info_1.name();
+            let str_2 = entry_info_2.name();
 
             str_1.cmp(&str_2).into()
         });
@@ -289,13 +378,14 @@ impl Launcher {
         exec.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 
-    fn start_app(name: &str) {
+    fn open(&self, name: &str) {
         let name = name.to_string();
 
         RT.spawn(async move {
             log::info!("Spawning '{name}'");
 
-            let child = Command::new("sh")
+            let mut base_command = Command::new("sh");
+            let command = base_command
                 .arg("-c")
                 .arg(&name)
                 .current_dir(home_dir().expect("can get $HOME"))
@@ -303,8 +393,20 @@ impl Launcher {
                 .env_remove("RUST_BACKTRACE")
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .spawn();
+                .stderr(Stdio::null());
+
+            let detach = true;
+
+            if detach {
+                unsafe {
+                    command.pre_exec(|| {
+                        libc::setsid();
+                        Ok(())
+                    });
+                }
+            }
+
+            let child = command.spawn();
 
             if let Err(e) = child {
                 log::error!("Can't spawn '{name}'. Error: {e}");
