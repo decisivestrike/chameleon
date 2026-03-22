@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 #[derive(Properties, Default)]
 #[properties(wrapper_type = super::EntryInfo)]
-pub struct IntegerObject {
+pub struct EntryObject {
     #[property(get, set)]
     name: Rc<RefCell<String>>,
     #[property(get, set)]
@@ -20,10 +20,10 @@ pub struct IntegerObject {
 }
 
 #[glib::object_subclass]
-impl ObjectSubclass for IntegerObject {
+impl ObjectSubclass for EntryObject {
     const NAME: &'static str = "ChameleonDesktopEntryObject";
     type Type = super::EntryInfo;
 }
 
 #[glib::derived_properties]
-impl ObjectImpl for IntegerObject {}
+impl ObjectImpl for EntryObject {}

@@ -4,7 +4,7 @@ use glib::Object;
 use grapes::gtk::glib;
 
 glib::wrapper! {
-    pub struct EntryInfo(ObjectSubclass<imp::IntegerObject>);
+    pub struct EntryInfo(ObjectSubclass<imp::EntryObject>);
 }
 
 impl EntryInfo {
