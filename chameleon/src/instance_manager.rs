@@ -20,6 +20,8 @@ use std::{path::Path, rc::Rc, sync::LazyLock};
 pub static INSTANCE_MANAGER: LazyLock<InstanceManager> =
     LazyLock::new(InstanceManager::default);
 
+const SOCKET_PATH: &str = "/tmp/chameleon-recv.sock";
+
 /// Handles monitors connection/disconnection
 ///
 /// String here is a monitor connector name
@@ -108,16 +110,15 @@ impl InstanceManager {
     }
 
     async fn listen_socket() {
-        let socket_path = &format!("/tmp/chameleon-recv.sock");
+        let path = Path::new(SOCKET_PATH);
 
         // Удаляем старый сокет
-        let path = Path::new(socket_path);
         if path.exists() {
-            fs::remove_file(socket_path).await.unwrap();
+            fs::remove_file(SOCKET_PATH).await.unwrap();
         }
 
-        let listener = UnixListener::bind(socket_path).unwrap();
-        log::info!("Слушаем: {}", socket_path);
+        let listener = UnixListener::bind(SOCKET_PATH).unwrap();
+        log::info!("Listening '{SOCKET_PATH}'");
 
         loop {
             let (stream, _addr) = listener.accept().await.unwrap();

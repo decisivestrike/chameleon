@@ -1,7 +1,7 @@
+mod card;
 mod entry_object;
 
 use freedesktop_desktop_entry::desktop_entries;
-use grapes::gio::ListModel;
 use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
@@ -24,6 +24,7 @@ use std::env::home_dir;
 use std::process::Stdio;
 use std::rc::Rc;
 
+use crate::card::Card;
 use crate::entry_object::EntryInfo;
 
 #[derive(WindowComponent)]
@@ -39,7 +40,7 @@ pub struct Launcher {
 impl Launcher {
     pub fn create(application: &gtk::Application) -> Rc<Self> {
         // get locale
-        let locales = &["ru".to_string()];
+        let locales = &["en".to_string()];
         let entries = Self::find_desktop_entries(locales);
 
         let launcher = Self::new(application, &entries);
@@ -93,10 +94,12 @@ impl Launcher {
         let scrolled_window = ScrolledWindow::builder()
             .hscrollbar_policy(PolicyType::Never)
             .vscrollbar_policy(PolicyType::Automatic)
-            .can_focus(false)
+            .can_focus(true)
             .can_target(false)
             .min_content_width(360)
+            .max_content_width(720)
             .min_content_height(400)
+            .max_content_height(720)
             .overlay_scrolling(true)
             .child(&list_view)
             .build();
@@ -108,13 +111,14 @@ impl Launcher {
 
         window.set_child(Some(&container));
 
-        Rc::new(Self {
+        Self {
             window,
             entry,
             selection_model,
             list_view,
             visibility: Cell::new(false),
-        })
+        }
+        .into()
     }
 
     pub fn toggle_visibility(&self) {
@@ -191,97 +195,53 @@ impl Launcher {
     fn create_factory() -> SignalListItemFactory {
         let factory = SignalListItemFactory::new();
 
+        let on_setup = Self::create_factory_connect_setup_closure();
         factory.connect_setup(move |_, list_item| {
-            let icon_image = gtk::Image::builder()
-                .icon_size(gtk::IconSize::Large)
-                .pixel_size(48)
-                .halign(gtk::Align::Center)
-                .valign(gtk::Align::Start)
-                .build();
+            let list_item = list_item
+                .downcast_ref::<ListItem>()
+                .expect("Needs to be ListItem");
 
-            let name_label = gtk::Label::builder()
-                .xalign(0.0)
-                .css_classes(["name"])
-                .build();
+            on_setup(&list_item);
+        });
 
-            let comment_label = gtk::Label::builder()
-                .wrap(true)
-                .xalign(0.0)
-                .overflow(gtk::Overflow::Hidden)
-                .css_classes(["comment"])
-                .build();
+        let on_bind = Self::create_factory_bind_closure();
+        factory.connect_bind(move |_, list_item| {
+            let list_item = list_item
+                .downcast_ref::<ListItem>()
+                .expect("Needs to be ListItem");
 
-            let text_container = gtk::Box::builder()
-                .orientation(Orientation::Vertical)
-                .spacing(4)
-                .css_classes(["text-container"])
-                .build();
+            on_bind(list_item);
+        });
 
-            text_container.append(&name_label);
-            text_container.append(&comment_label);
+        factory
+    }
 
-            let item_container = gtk::Box::builder()
-                .orientation(Orientation::Horizontal)
-                .spacing(12)
-                .css_classes(["app"])
-                .build();
-
-            item_container.append(&icon_image);
-            item_container.append(&text_container);
+    fn create_factory_connect_setup_closure() -> impl Fn(&ListItem) {
+        |list_item: &ListItem| {
+            let card = Card::new();
 
             list_item
                 .downcast_ref::<ListItem>()
                 .expect("Needs to be ListItem")
-                .set_child(Some(&item_container));
-        });
+                .set_child(Some(card.as_ref()));
+        }
+    }
 
-        factory.connect_bind(move |_, list_item| {
+    fn create_factory_bind_closure() -> impl Fn(&ListItem) {
+        |list_item: &ListItem| {
             let entry_info = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem")
                 .item()
                 .and_downcast::<EntryInfo>()
                 .expect("The item has to be an EntryInfo");
 
             let container = list_item
-                .downcast_ref::<ListItem>()
-                .expect("Needs to be ListItem")
                 .child()
                 .and_downcast::<gtk::Box>()
                 .expect("The child has to be a Box");
 
-            let icon_image = container
-                .first_child()
-                .expect("Icon should exist")
-                .downcast::<gtk::Image>()
-                .expect("First child should be Image");
-
-            icon_image.set_icon_name(Some(&entry_info.icon()));
-
-            let text_container = container
-                .last_child()
-                .expect("Text container should exist")
-                .downcast::<gtk::Box>()
-                .expect("Second child should be Box");
-
-            let name_label = text_container
-                .first_child()
-                .expect("Name label should exist")
-                .downcast::<gtk::Label>()
-                .expect("First text child should be Label");
-
-            name_label.set_text(&entry_info.name());
-
-            let comment_label = text_container
-                .last_child()
-                .expect("Comment label should exist")
-                .downcast::<gtk::Label>()
-                .expect("Second text child should be Label");
-
-            comment_label.set_text(&entry_info.comment());
-        });
-
-        factory
+            let card = Card::from(container);
+            card.setup(&entry_info);
+        }
     }
 
     fn setup_selection_model(
