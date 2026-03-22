@@ -4,6 +4,9 @@ pub use panel::PanelConfig;
 pub mod widgets;
 pub use widgets::WidgetsConfig;
 
+pub mod launcher;
+pub use launcher::LauncherConfig;
+
 use chameleon_cli::ARGS;
 use serde::Deserialize;
 use std::{fmt, path::Path, sync::LazyLock};
@@ -20,6 +23,8 @@ pub struct Config {
     pub widgets: WidgetsConfig,
     #[serde(default, rename = "panel")]
     pub panel: PanelConfig,
+    #[serde(default, rename = "launcher")]
+    pub launcher: LauncherConfig,
 }
 
 impl Config {

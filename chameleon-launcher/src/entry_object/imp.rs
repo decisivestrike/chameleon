@@ -3,6 +3,7 @@ use grapes::gtk::glib;
 use grapes::gtk::prelude::*;
 use grapes::gtk::subclass::prelude::*;
 
+use std::cell::Cell;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -17,6 +18,8 @@ pub struct EntryObject {
     comment: Rc<RefCell<String>>,
     #[property(get, set)]
     icon: Rc<RefCell<String>>,
+    #[property(get, set)]
+    terminal: Cell<bool>,
 }
 
 #[glib::object_subclass]

@@ -1,6 +1,7 @@
 mod card;
 mod entry_object;
 
+use chameleon_config::LauncherConfig;
 use freedesktop_desktop_entry::desktop_entries;
 use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;
@@ -35,15 +36,20 @@ pub struct Launcher {
     selection_model: SingleSelection,
     list_view: ListView,
     visibility: Cell<bool>,
+
+    config: &'static LauncherConfig,
 }
 
 impl Launcher {
-    pub fn create(application: &gtk::Application) -> Rc<Self> {
+    pub fn create(
+        application: &gtk::Application,
+        config: &'static LauncherConfig,
+    ) -> Rc<Self> {
         // get locale
         let locales = &["en".to_string()];
         let entries = Self::find_desktop_entries(locales);
 
-        let launcher = Self::new(application, &entries);
+        let launcher = Self::new(application, &entries, config);
 
         launcher.entry.connect_activate(clone!(
             #[weak]
@@ -56,7 +62,7 @@ impl Launcher {
                     .expect("cant cast");
 
                 launcher.toggle_visibility();
-                launcher.open(&entry_info.exec());
+                launcher.open(&entry_info.exec(), entry_info.terminal());
             }
         ));
 
@@ -81,10 +87,11 @@ impl Launcher {
     pub fn new(
         application: &gtk::Application,
         entries: &HashMap<String, EntryInfo>,
+        config: &'static LauncherConfig,
     ) -> Rc<Self> {
         let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let entry = gtk::Entry::builder()
-            .placeholder_text("Explore...")
+            .placeholder_text(&*config.placeholder)
             .hexpand(true)
             .build();
 
@@ -117,6 +124,7 @@ impl Launcher {
             selection_model,
             list_view,
             visibility: Cell::new(false),
+            config,
         }
         .into()
     }
@@ -165,8 +173,13 @@ impl Launcher {
                     .map(String::from)
                     .unwrap_or(String::new());
 
+                let terminal = group
+                    .entry("Terminal")
+                    .map(|e| if e == "true" { true } else { false })
+                    .unwrap_or(false);
+
                 let entry_info =
-                    EntryInfo::new(name.clone(), exec, comment, icon);
+                    EntryInfo::new(name.clone(), exec, comment, icon, terminal);
 
                 Some((name, entry_info))
             })
@@ -334,14 +347,25 @@ impl Launcher {
         exec.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 
-    fn open(&self, name: &str) {
+    fn open(&self, name: &str, terminal: bool) {
         let name = name.to_string();
+        let config = self.config;
 
         RT.spawn(async move {
-            let mut base_command = Command::new("sh");
-            let command = base_command
-                .arg("-c")
-                .arg(&name)
+            let mut command =
+                if terminal && let Some(cmd) = &config.terminal_cmd {
+                    let mut command = Command::new(&cmd);
+                    command.arg(&name);
+
+                    command
+                } else {
+                    let mut command = Command::new("sh");
+                    command.arg("-c").arg(&name);
+
+                    command
+                };
+
+            let command = command
                 .current_dir(home_dir().expect("can get $HOME"))
                 .env_remove("RUST_LOG")
                 .env_remove("RUST_BACKTRACE")
@@ -349,9 +373,7 @@ impl Launcher {
                 .stdout(Stdio::null())
                 .stderr(Stdio::null());
 
-            let detach = true;
-
-            if detach {
+            if config.detach {
                 unsafe {
                     command.pre_exec(|| {
                         libc::setsid();

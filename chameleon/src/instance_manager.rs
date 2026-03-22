@@ -1,4 +1,4 @@
-use chameleon_config::{Config, PanelConfig, WidgetsConfig};
+use chameleon_config::{Config, LauncherConfig, PanelConfig, WidgetsConfig};
 use chameleon_launcher::Launcher;
 use chameleon_panel::Panel;
 use chameleon_widgets::WidgetsLayer;
@@ -35,11 +35,11 @@ impl InstanceManager {
     pub fn configure_modules(
         &self,
         application: &gtk::Application,
-        config: &Config,
+        config: &'static Config,
     ) {
         self.configure_panels(application, &config.panel);
         self.configure_widgets_layers(application, &config.widgets);
-        self.configure_launcher(application);
+        self.configure_launcher(application, &config.launcher);
 
         log::info!("Modules configured!");
     }
@@ -102,11 +102,17 @@ impl InstanceManager {
         }
     }
 
-    fn configure_launcher(&self, application: &gtk::Application) {
-        log::info!("Setup launcher...");
-        let launcher = Launcher::create(application);
+    fn configure_launcher(
+        &self,
+        application: &gtk::Application,
+        config: &'static LauncherConfig,
+    ) {
+        if config.enabled {
+            log::info!("Setup launcher...");
+            let launcher = Launcher::create(application, config);
 
-        *self.launcher.blocking_write() = Some(launcher);
+            *self.launcher.blocking_write() = Some(launcher);
+        }
     }
 
     async fn listen_socket() {
