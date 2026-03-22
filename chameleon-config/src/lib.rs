@@ -9,7 +9,7 @@ pub use launcher::LauncherConfig;
 
 use chameleon_cli::ARGS;
 use serde::Deserialize;
-use std::{fmt, path::Path, sync::LazyLock};
+use std::{fmt, fs, path::Path, sync::LazyLock};
 
 pub static CONFIG: LazyLock<Config> = LazyLock::new(|| {
     let config_path = &ARGS.config_path;
@@ -32,7 +32,7 @@ impl Config {
     where
         P: AsRef<Path> + fmt::Debug,
     {
-        let toml_str = match std::fs::read_to_string(&config_path) {
+        let toml_str = match fs::read_to_string(&config_path) {
             Ok(file) => file,
             Err(e) => {
                 log::error!(
