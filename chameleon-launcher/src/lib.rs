@@ -18,7 +18,7 @@ use grapes::prelude::{
 use grapes::tokio::process::Command;
 use grapes::{RT, gio};
 use grapes::{WindowComponent, gtk::ApplicationWindow};
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::env::home_dir;
 use std::process::Stdio;
@@ -26,6 +26,8 @@ use std::rc::Rc;
 
 use crate::card::Card;
 use crate::entry_object::ApplicationEntry;
+
+use nucleo::{Config, Matcher, Utf32Str};
 
 #[derive(WindowComponent)]
 pub struct Launcher {
@@ -231,18 +233,26 @@ impl Launcher {
         entry: &gtk::Entry,
         model: gio::ListStore,
     ) -> SingleSelection {
+        let matcher = RefCell::new(Matcher::new(Config::DEFAULT));
+
         let filter = gtk::CustomFilter::new(clone!(
             #[strong]
             entry,
             move |obj| {
-                let entry_info = obj
+                let app_entry = obj
                     .downcast_ref::<ApplicationEntry>()
                     .expect("The object needs to be of type `EntryInfo`");
 
-                entry_info
-                    .name()
-                    .to_lowercase()
-                    .contains(&entry.text().to_string().to_lowercase())
+                let search_query = &entry.text().to_string().to_lowercase();
+                let app_name = app_entry.name().to_lowercase();
+
+                matcher
+                    .borrow_mut()
+                    .fuzzy_match(
+                        Utf32Str::Ascii(app_name.as_bytes()),
+                        Utf32Str::Ascii(search_query.as_bytes()),
+                    )
+                    .is_some()
             }
         ));
         let filter_model =
