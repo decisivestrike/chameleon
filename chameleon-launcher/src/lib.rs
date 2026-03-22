@@ -7,7 +7,7 @@ use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
     self, EventControllerKey, FilterChange, FilterListModel, ListItem,
-    ListScrollFlags, ListView, Orientation, PolicyType, ScrolledWindow,
+    ListScrollFlags, ListView, PolicyType, ScrolledWindow,
     SignalListItemFactory, SingleSelection, SortListModel, SorterChange,
 };
 use grapes::layer_shell::{KeyboardMode, Layer, LayerShell};
@@ -18,7 +18,6 @@ use grapes::prelude::{
 use grapes::tokio::process::Command;
 use grapes::{RT, gio};
 use grapes::{WindowComponent, gtk::ApplicationWindow};
-
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::env::home_dir;
@@ -26,7 +25,7 @@ use std::process::Stdio;
 use std::rc::Rc;
 
 use crate::card::Card;
-use crate::entry_object::EntryInfo;
+use crate::entry_object::ApplicationEntry;
 
 #[derive(WindowComponent)]
 pub struct Launcher {
@@ -55,7 +54,7 @@ impl Launcher {
             #[weak]
             launcher,
             move |_| {
-                let entry_info: EntryInfo = launcher
+                let entry_info: ApplicationEntry = launcher
                     .selection_model
                     .selected_item()
                     .and_downcast()
@@ -86,7 +85,7 @@ impl Launcher {
 
     pub fn new(
         application: &gtk::Application,
-        entries: &HashMap<String, EntryInfo>,
+        entries: &HashMap<String, ApplicationEntry>,
         config: &'static LauncherConfig,
     ) -> Rc<Self> {
         let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -144,53 +143,24 @@ impl Launcher {
         self.visibility.set(target_visibility);
     }
 
-    fn find_desktop_entries(locales: &[String]) -> HashMap<String, EntryInfo> {
+    fn find_desktop_entries(
+        locales: &[String],
+    ) -> HashMap<String, ApplicationEntry> {
         desktop_entries(locales)
             .into_iter()
-            .filter_map(|entry| {
-                let group = entry.groups.desktop_entry()?;
-
-                match group.entry("NoDisplay") {
-                    None | Some("false") => (),
-                    _ => return None,
-                };
-
-                match group.entry("Hidden") {
-                    None | Some("false") => (),
-                    _ => return None,
-                };
-
-                let name = group.entry("Name")?.to_string();
-
-                let exec =
-                    Self::remove_field_codes(group.entry("Exec")?.to_string());
-                let comment = group
-                    .entry("Comment")
-                    .map(String::from)
-                    .unwrap_or(String::new());
-                let icon = group
-                    .entry("Icon")
-                    .map(String::from)
-                    .unwrap_or(String::new());
-
-                let terminal = group
-                    .entry("Terminal")
-                    .map(|e| if e == "true" { true } else { false })
-                    .unwrap_or(false);
-
-                let entry_info =
-                    EntryInfo::new(name.clone(), exec, comment, icon, terminal);
-
-                Some((name, entry_info))
+            .filter_map(|desktop_entry| {
+                ApplicationEntry::try_from(desktop_entry)
+                    .ok()
+                    .map(|entry| (entry.name(), entry))
             })
             .collect()
     }
 
     fn setup_list_view(
         entry: &gtk::Entry,
-        entries: &HashMap<String, EntryInfo>,
+        entries: &HashMap<String, ApplicationEntry>,
     ) -> (SingleSelection, ListView) {
-        let model = gio::ListStore::new::<EntryInfo>();
+        let model = gio::ListStore::new::<ApplicationEntry>();
         let values: Vec<_> = entries.values().map(Clone::clone).collect();
         model.extend_from_slice(&values);
 
@@ -244,7 +214,7 @@ impl Launcher {
         |list_item: &ListItem| {
             let entry_info = list_item
                 .item()
-                .and_downcast::<EntryInfo>()
+                .and_downcast::<ApplicationEntry>()
                 .expect("The item has to be an EntryInfo");
 
             let container = list_item
@@ -266,7 +236,7 @@ impl Launcher {
             entry,
             move |obj| {
                 let entry_info = obj
-                    .downcast_ref::<EntryInfo>()
+                    .downcast_ref::<ApplicationEntry>()
                     .expect("The object needs to be of type `EntryInfo`");
 
                 entry_info
@@ -280,10 +250,10 @@ impl Launcher {
 
         let sorter = gtk::CustomSorter::new(move |obj1, obj2| {
             let entry_info_1 = obj1
-                .downcast_ref::<EntryInfo>()
+                .downcast_ref::<ApplicationEntry>()
                 .expect("The object needs to be of type `EntryInfo`");
             let entry_info_2 = obj2
-                .downcast_ref::<EntryInfo>()
+                .downcast_ref::<ApplicationEntry>()
                 .expect("The object needs to be of type `EntryInfo`");
 
             let str_1 = entry_info_1.name();
@@ -330,23 +300,6 @@ impl Launcher {
         window
     }
 
-    /// Removes field codes from a desktop entry `Exec` line.
-    ///
-    /// For more details, see
-    /// [here](https://specifications.freedesktop.org/desktop-entry/latest/exec-variables.html)
-    fn remove_field_codes(mut exec: String) -> String {
-        const FIELD_CODES: &[&str] = &[
-            "%f", "%F", "%u", "%U", "%d", "%D", "%n", "%N", "%v", "%m", "%i",
-            "%c", "%k",
-        ];
-
-        for code in FIELD_CODES {
-            exec = exec.replace(code, "");
-        }
-
-        exec.split_whitespace().collect::<Vec<_>>().join(" ")
-    }
-
     fn open(&self, name: &str, terminal: bool) {
         let name = name.to_string();
         let config = self.config;
@@ -387,30 +340,5 @@ impl Launcher {
                 Err(e) => log::error!("Can't spawn '{name}'. Error: {e}"),
             }
         });
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_remove_field_codes() {
-        assert_eq!(
-            Launcher::remove_field_codes("firefox %u".to_string()),
-            "firefox"
-        );
-        assert_eq!(
-            Launcher::remove_field_codes("zeditor %U".to_string()),
-            "zeditor"
-        );
-        assert_eq!(
-            Launcher::remove_field_codes("myapp %f %F %u %U".to_string()),
-            "myapp"
-        );
-        assert_eq!(
-            Launcher::remove_field_codes("app %f arg1 %U arg2".to_string()),
-            "app arg1 arg2"
-        );
     }
 }

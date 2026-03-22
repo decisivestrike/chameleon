@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 #[derive(Properties, Default)]
-#[properties(wrapper_type = super::EntryInfo)]
+#[properties(wrapper_type = super::ApplicationEntry)]
 pub struct EntryObject {
     #[property(get, set)]
     name: Rc<RefCell<String>>,
@@ -25,7 +25,7 @@ pub struct EntryObject {
 #[glib::object_subclass]
 impl ObjectSubclass for EntryObject {
     const NAME: &'static str = "ChameleonDesktopEntryObject";
-    type Type = super::EntryInfo;
+    type Type = super::ApplicationEntry;
 }
 
 #[glib::derived_properties]

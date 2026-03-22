@@ -353,6 +353,7 @@ dependencies = [
  "grapes-components",
  "libc",
  "log",
+ "thiserror",
 ]
 
 [[package]]

@@ -4,7 +4,7 @@ use grapes::{
     prelude::{BoxExt, Cast, WidgetExt},
 };
 
-use crate::entry_object::EntryInfo;
+use crate::entry_object::ApplicationEntry;
 
 #[derive(Debug, Component)]
 pub struct Card {
@@ -63,7 +63,7 @@ impl Card {
         }
     }
 
-    pub fn setup(&self, entry: &EntryInfo) {
+    pub fn setup(&self, entry: &ApplicationEntry) {
         self.icon.set_icon_name(Some(&entry.icon()));
         self.name.set_text(&entry.name());
         self.comment.set_text(&entry.comment());

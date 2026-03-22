@@ -12,3 +12,4 @@ chameleon-core = { path = "../chameleon-core" }
 freedesktop-desktop-entry = "0.8.1"
 log = "0.4.29"
 libc = "0.2.183"
+thiserror = "2.0.18"
