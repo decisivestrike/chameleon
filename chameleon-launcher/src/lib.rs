@@ -14,7 +14,7 @@ use grapes::gtk::{
 use grapes::layer_shell::{KeyboardMode, Layer, LayerShell};
 use grapes::prelude::{
     BoxExt, Cast, CastNone, EditableExt, EntryExt, GtkWindowExt, ListItemExt,
-    ListModelExt, SelectionModelExt, WidgetExt,
+    ListModelExt, WidgetExt,
 };
 use grapes::tokio::process::Command;
 use grapes::{RT, gio};
@@ -82,56 +82,18 @@ impl Launcher {
 
         // Sort + filter
         let matcher = RefCell::new(Matcher::new(Config::DEFAULT));
+
+        let query = launcher.searchbar.text().to_string();
+        launcher.filter_and_sort(&matcher, &query);
+
         launcher.searchbar.connect_changed(clone!(
             #[strong]
             launcher,
             move |searchbar| {
                 let query = searchbar.text().to_string();
-
-                let mut updated_store: Vec<_> = launcher
-                    .apps
-                    .iter()
-                    .filter_map(|app| {
-                        let score = matcher.borrow_mut().fuzzy_match(
-                            Utf32Str::Ascii(app.name().as_bytes()),
-                            Utf32Str::Ascii(query.as_bytes()),
-                        )?;
-
-                        Some((app.clone(), score))
-                    })
-                    .collect();
-
-                updated_store.sort_by(|first, second| {
-                    let first_score = first.1;
-                    let second_score = second.1;
-
-                    let score_cmp = second_score.cmp(&first_score);
-
-                    let first_name = first.0.name();
-                    let second_name = second.0.name();
-
-                    match score_cmp {
-                        Ordering::Equal => first_name.cmp(&second_name),
-                        _ => score_cmp,
-                    }
-                });
-
-                let updated_store: Vec<_> =
-                    updated_store.into_iter().map(|e| e.0).collect();
-
-                launcher.list_store.splice(
-                    0,
-                    launcher.list_store.n_items(),
-                    &updated_store,
-                );
-
-                launcher
-                    .list_view
-                    .scroll_to(0, ListScrollFlags::SELECT, None);
+                launcher.filter_and_sort(&matcher, &query);
             }
         ));
-
-        launcher.searchbar.set_text("");
 
         launcher
     }
@@ -189,6 +151,44 @@ impl Launcher {
             config,
         }
         .into()
+    }
+
+    fn filter_and_sort(&self, matcher: &RefCell<Matcher>, query: &String) {
+        let mut updated_store: Vec<_> = self
+            .apps
+            .iter()
+            .filter_map(|app| {
+                let score = matcher.borrow_mut().fuzzy_match(
+                    Utf32Str::Ascii(app.name().as_bytes()),
+                    Utf32Str::Ascii(query.as_bytes()),
+                )?;
+
+                Some((app.clone(), score))
+            })
+            .collect();
+
+        updated_store.sort_by(|first, second| {
+            let first_score = first.1;
+            let second_score = second.1;
+
+            let score_cmp = second_score.cmp(&first_score);
+
+            let first_name = first.0.name();
+            let second_name = second.0.name();
+
+            match score_cmp {
+                Ordering::Equal => first_name.cmp(&second_name),
+                _ => score_cmp,
+            }
+        });
+
+        let updated_store: Vec<_> =
+            updated_store.into_iter().map(|e| e.0).collect();
+
+        let len = self.list_store.n_items();
+        self.list_store.splice(0, len, &updated_store);
+
+        self.list_view.scroll_to(0, ListScrollFlags::SELECT, None);
     }
 
     pub fn toggle_visibility(&self) {
