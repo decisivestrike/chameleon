@@ -1,41 +1,41 @@
 mod card;
 mod entry_object;
 
+use crate::card::Card;
+use crate::entry_object::ApplicationEntry;
 use chameleon_config::LauncherConfig;
 use freedesktop_desktop_entry::desktop_entries;
 use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
-    self, EventControllerKey, FilterChange, FilterListModel, ListItem,
-    ListScrollFlags, ListView, PolicyType, ScrolledWindow,
-    SignalListItemFactory, SingleSelection, SortListModel, SorterChange,
+    self, EventControllerKey, ListItem, ListScrollFlags, ListView, PolicyType,
+    ScrolledWindow, SignalListItemFactory, SingleSelection,
 };
 use grapes::layer_shell::{KeyboardMode, Layer, LayerShell};
 use grapes::prelude::{
-    BoxExt, Cast, CastNone, EditableExt, EntryExt, FilterExt, GtkWindowExt,
-    ListItemExt, SorterExt, WidgetExt,
+    BoxExt, Cast, CastNone, EditableExt, EntryExt, GtkWindowExt, ListItemExt,
+    ListModelExt, SelectionModelExt, WidgetExt,
 };
 use grapes::tokio::process::Command;
 use grapes::{RT, gio};
 use grapes::{WindowComponent, gtk::ApplicationWindow};
+use nucleo::{Config, Matcher, Utf32Str};
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
+use std::cmp::Ordering;
 use std::env::home_dir;
 use std::process::Stdio;
 use std::rc::Rc;
-
-use crate::card::Card;
-use crate::entry_object::ApplicationEntry;
-
-use nucleo::{Config, Matcher, Utf32Str};
 
 #[derive(WindowComponent)]
 pub struct Launcher {
     #[root]
     window: ApplicationWindow,
-    entry: gtk::Entry,
+
+    apps: Vec<ApplicationEntry>,
+    searchbar: gtk::Entry,
     selection_model: SingleSelection,
     list_view: ListView,
+    list_store: gio::ListStore,
     visibility: Cell<bool>,
 
     config: &'static LauncherConfig,
@@ -46,14 +46,11 @@ impl Launcher {
         application: &gtk::Application,
         config: &'static LauncherConfig,
     ) -> Rc<Self> {
-        // get locale
-        let locales = &["en".to_string()];
-        let entries = Self::find_desktop_entries(locales);
+        let launcher = Self::new(application, config);
 
-        let launcher = Self::new(application, &entries, config);
-
-        launcher.entry.connect_activate(clone!(
-            #[weak]
+        // On enter hit
+        launcher.searchbar.connect_activate(clone!(
+            #[strong]
             launcher,
             move |_| {
                 let entry_info: ApplicationEntry = launcher
@@ -67,6 +64,7 @@ impl Launcher {
             }
         ));
 
+        // Exit on esc
         let controller = EventControllerKey::new();
         controller.connect_key_pressed(clone!(
             #[strong]
@@ -82,27 +80,88 @@ impl Launcher {
         ));
         launcher.window.add_controller(controller);
 
+        // Sort + filter
+        let matcher = RefCell::new(Matcher::new(Config::DEFAULT));
+        launcher.searchbar.connect_changed(clone!(
+            #[strong]
+            launcher,
+            move |searchbar| {
+                let query = searchbar.text().to_string();
+
+                let mut updated_store: Vec<_> = launcher
+                    .apps
+                    .iter()
+                    .filter_map(|app| {
+                        let score = matcher.borrow_mut().fuzzy_match(
+                            Utf32Str::Ascii(app.name().as_bytes()),
+                            Utf32Str::Ascii(query.as_bytes()),
+                        )?;
+
+                        Some((app.clone(), score))
+                    })
+                    .collect();
+
+                updated_store.sort_by(|first, second| {
+                    let first_score = first.1;
+                    let second_score = second.1;
+
+                    let score_cmp = second_score.cmp(&first_score);
+
+                    let first_name = first.0.name();
+                    let second_name = second.0.name();
+
+                    match score_cmp {
+                        Ordering::Equal => first_name.cmp(&second_name),
+                        _ => score_cmp,
+                    }
+                });
+
+                let updated_store: Vec<_> =
+                    updated_store.into_iter().map(|e| e.0).collect();
+
+                launcher.list_store.splice(
+                    0,
+                    launcher.list_store.n_items(),
+                    &updated_store,
+                );
+
+                launcher
+                    .list_view
+                    .scroll_to(0, ListScrollFlags::SELECT, None);
+            }
+        ));
+
+        launcher.searchbar.set_text("");
+
         launcher
     }
 
-    pub fn new(
+    fn new(
         application: &gtk::Application,
-        entries: &HashMap<String, ApplicationEntry>,
         config: &'static LauncherConfig,
     ) -> Rc<Self> {
-        let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        let entry = gtk::Entry::builder()
+        // get locale
+        let locales = &["en".to_string()];
+        let apps = Self::find_apps(locales);
+
+        let searchbar = gtk::Entry::builder()
             .placeholder_text(&*config.placeholder)
             .hexpand(true)
             .build();
 
-        let (selection_model, list_view) =
-            Self::setup_list_view(&entry, entries);
+        let list_store = gio::ListStore::new::<ApplicationEntry>();
+        let selection_model = SingleSelection::new(Some(list_store.clone()));
+        let item_factory = Self::create_factory();
+
+        let list_view = ListView::builder()
+            .model(&selection_model)
+            .factory(&item_factory)
+            .build();
 
         let scrolled_window = ScrolledWindow::builder()
             .hscrollbar_policy(PolicyType::Never)
             .vscrollbar_policy(PolicyType::Automatic)
-            .can_focus(true)
+            .can_focus(false)
             .can_target(false)
             .min_content_width(360)
             .max_content_width(720)
@@ -112,19 +171,21 @@ impl Launcher {
             .child(&list_view)
             .build();
 
-        let window = Self::create_application_window(application);
-
-        container.append(&entry);
+        let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        container.append(&searchbar);
         container.append(&scrolled_window);
 
+        let window = Self::create_application_window(application);
         window.set_child(Some(&container));
 
         Self {
             window,
-            entry,
+            apps,
+            searchbar,
             selection_model,
             list_view,
             visibility: Cell::new(false),
+            list_store,
             config,
         }
         .into()
@@ -137,7 +198,7 @@ impl Launcher {
             self.window.present();
         } else {
             self.window.set_visible(target_visibility);
-            self.entry.set_text("");
+            self.searchbar.set_text("");
             self.selection_model.set_selected(0);
             self.list_view.scroll_to(0, ListScrollFlags::FOCUS, None);
         }
@@ -145,36 +206,13 @@ impl Launcher {
         self.visibility.set(target_visibility);
     }
 
-    fn find_desktop_entries(
-        locales: &[String],
-    ) -> HashMap<String, ApplicationEntry> {
+    fn find_apps(locales: &[String]) -> Vec<ApplicationEntry> {
         desktop_entries(locales)
             .into_iter()
             .filter_map(|desktop_entry| {
-                ApplicationEntry::try_from(desktop_entry)
-                    .ok()
-                    .map(|entry| (entry.name(), entry))
+                ApplicationEntry::try_from(desktop_entry).ok()
             })
             .collect()
-    }
-
-    fn setup_list_view(
-        entry: &gtk::Entry,
-        entries: &HashMap<String, ApplicationEntry>,
-    ) -> (SingleSelection, ListView) {
-        let model = gio::ListStore::new::<ApplicationEntry>();
-        let values: Vec<_> = entries.values().map(Clone::clone).collect();
-        model.extend_from_slice(&values);
-
-        let selection_model = Self::setup_selection_model(entry, model);
-        let item_factory = Self::create_factory();
-
-        let list_view = ListView::builder()
-            .model(&selection_model)
-            .factory(&item_factory)
-            .build();
-
-        (selection_model, list_view)
     }
 
     fn create_factory() -> SignalListItemFactory {
@@ -229,66 +267,6 @@ impl Launcher {
         }
     }
 
-    fn setup_selection_model(
-        entry: &gtk::Entry,
-        model: gio::ListStore,
-    ) -> SingleSelection {
-        let matcher = RefCell::new(Matcher::new(Config::DEFAULT));
-
-        let filter = gtk::CustomFilter::new(clone!(
-            #[strong]
-            entry,
-            move |obj| {
-                let app_entry = obj
-                    .downcast_ref::<ApplicationEntry>()
-                    .expect("The object needs to be of type `EntryInfo`");
-
-                let search_query = &entry.text().to_string().to_lowercase();
-                let app_name = app_entry.name().to_lowercase();
-
-                matcher
-                    .borrow_mut()
-                    .fuzzy_match(
-                        Utf32Str::Ascii(app_name.as_bytes()),
-                        Utf32Str::Ascii(search_query.as_bytes()),
-                    )
-                    .is_some()
-            }
-        ));
-        let filter_model =
-            FilterListModel::new(Some(model), Some(filter.clone()));
-
-        let sorter = gtk::CustomSorter::new(move |obj1, obj2| {
-            let entry_info_1 = obj1
-                .downcast_ref::<ApplicationEntry>()
-                .expect("The object needs to be of type `EntryInfo`");
-            let entry_info_2 = obj2
-                .downcast_ref::<ApplicationEntry>()
-                .expect("The object needs to be of type `EntryInfo`");
-
-            let str_1 = entry_info_1.name();
-            let str_2 = entry_info_2.name();
-
-            str_1.cmp(&str_2).into()
-        });
-
-        let filter_and_sort_model =
-            SortListModel::new(Some(filter_model), Some(sorter.clone()));
-
-        entry.connect_changed(clone!(
-            #[strong]
-            filter,
-            #[strong]
-            sorter,
-            move |_| {
-                filter.changed(FilterChange::Different);
-                sorter.changed(SorterChange::Different);
-            }
-        ));
-
-        SingleSelection::new(Some(filter_and_sort_model))
-    }
-
     fn create_application_window(
         application: &gtk::Application,
     ) -> gtk::ApplicationWindow {
@@ -339,7 +317,10 @@ impl Launcher {
             if config.detach {
                 unsafe {
                     command.pre_exec(|| {
-                        libc::setsid();
+                        if libc::setsid() == -1 {
+                            log::error!("setsid")
+                        }
+
                         Ok(())
                     });
                 }
