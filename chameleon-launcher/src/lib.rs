@@ -188,7 +188,9 @@ impl Launcher {
         let len = self.list_store.n_items();
         self.list_store.splice(0, len, &updated_store);
 
-        self.list_view.scroll_to(0, ListScrollFlags::SELECT, None);
+        if updated_store.len() > 0 {
+            self.list_view.scroll_to(0, ListScrollFlags::SELECT, None);
+        }
     }
 
     pub fn toggle_visibility(&self) {
