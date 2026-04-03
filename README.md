@@ -21,8 +21,12 @@ detach = true
 To use it in hyprland:
 
 ```bash
-exec-once = chameleon -c ~/.config/chameleon/stable-config.toml
+# Add to autostart
+exec-once = chameleon
 
+# Create alias
 $launcher = chameleon -t
+
+# Bind keyboard shortcut
 bind = $mainMod, RETURN, exec, $launcher
 ```
