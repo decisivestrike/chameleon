@@ -14,6 +14,16 @@ if [ ! -f "$TARGET_BIN" ]; then
     exit 1
 fi
 
+if pgrep -x "$BINARY_NAME" > /dev/null; then
+    echo "Process $BINARY_NAME is running. Killing it..."
+    pkill -x "$BINARY_NAME"
+    sleep 1
+    if pgrep -x "$BINARY_NAME" > /dev/null; then
+        echo "Force killing $BINARY_NAME..."
+        pkill -9 -x "$BINARY_NAME"
+    fi
+fi
+
 if [ -f "$INSTALL_PATH" ]; then
     echo "File $INSTALL_PATH already exists. Overwrite? (y/N)"
     read -r response
