@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-log = "0.4.28"
-
-grapes = { path = "../../grapes/grapes" }
 chameleon-config = { path = "../chameleon-config" }
+
+grapes.workspace = true
+
+log = "0.4.28"

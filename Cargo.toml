@@ -1,6 +1,13 @@
 [workspace]
 resolver = "3"
-members = ["chameleon", "chameleon-cli", "chameleon-config", "chameleon-core", "chameleon-ipc", "chameleon-launcher", "chameleon-panel", "chameleon-widgets"]
+members = ["crates/*"]
+
+[workspace.dependencies]
+chameleon-cli = { path = "crates/chameleon-cli", version = "0.1.0" }
+
+grapes = { git = "https://github.com/decisivestrike/grapes" }
+
+argh = "0.1.13"
 
 [profile.release]
 lto = true

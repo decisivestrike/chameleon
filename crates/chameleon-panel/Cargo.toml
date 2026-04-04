@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-grapes = { path = "../../grapes/grapes" }
-grapes-components = { path = "../../grapes/grapes-components" }
 chameleon-config = { path = "../chameleon-config" }
 chameleon-ipc = { path = "../chameleon-ipc" }
 chameleon-core = { path = "../chameleon-core" }
+
+grapes.workspace = true
 
 chrono = "0.4.42"
 log = "0.4.28"

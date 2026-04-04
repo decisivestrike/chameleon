@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-grapes = { path = "../../grapes/grapes" }
-chameleon-cli = { path = "../chameleon-cli" }
+chameleon-cli.workspace = true
+
+grapes.workspace = true
 
 anyhow = "1.0.100"
 inotify = "0.11.0"

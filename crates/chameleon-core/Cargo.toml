@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-grapes = { path = "../../grapes/grapes" }
+grapes.workspace = true
+
 thiserror = "2.0.18"

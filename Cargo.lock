@@ -350,7 +350,6 @@ dependencies = [
  "chameleon-ipc",
  "freedesktop-desktop-entry",
  "grapes",
- "grapes-components",
  "libc",
  "log",
  "nucleo",
@@ -368,7 +367,6 @@ dependencies = [
  "chrono",
  "dashmap",
  "grapes",
- "grapes-components",
  "log",
  "tokio-util",
  "uuid",
@@ -854,6 +852,7 @@ dependencies = [
 [[package]]
 name = "grapes"
 version = "0.1.0"
+source = "git+https://github.com/decisivestrike/grapes#b25395c9f0479c991a8e1167ca0830790e8a0864"
 dependencies = [
  "grapes-macros",
  "gtk4",
@@ -863,15 +862,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "grapes-components"
-version = "0.1.0"
-dependencies = [
- "grapes",
-]
-
-[[package]]
 name = "grapes-macros"
 version = "0.1.0"
+source = "git+https://github.com/decisivestrike/grapes#b25395c9f0479c991a8e1167ca0830790e8a0864"
 dependencies = [
  "proc-macro2",
  "quote",
