@@ -1,4 +1,4 @@
-use crate::modules::workspaces::event::WorkspaceEvent;
+use crate::modules::workspaces::{SPECIAL_WORKSPACE_ID, event::WorkspaceEvent};
 use chameleon_core::errors::MonitorError;
 use chameleon_ipc::{
     compositor::Compositor,
@@ -94,14 +94,18 @@ impl WorkspacesManager {
                 )
                 .await;
             }
-            HyprEvent::CreateWorkspaceV2 { id, name: _ } => {
+            HyprEvent::CreateWorkspaceV2 { id, name: _ }
+                if id != SPECIAL_WORKSPACE_ID =>
+            {
                 Self::send_event(
                     &active_workspace.monitor,
                     WorkspaceEvent::Create(id),
                 )
                 .await;
             }
-            HyprEvent::DestroyWorkspaceV2 { id, name: _ } => {
+            HyprEvent::DestroyWorkspaceV2 { id, name: _ }
+                if id != SPECIAL_WORKSPACE_ID =>
+            {
                 Self::send_event(
                     &active_workspace.monitor,
                     WorkspaceEvent::Destroy(id),

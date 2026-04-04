@@ -34,8 +34,8 @@ impl ModuleFactory for Keymap {
     type Config = ();
 
     fn create(
-        config: &Self::Config,
-        meta: &Metadata,
+        _config: &Self::Config,
+        _meta: &Metadata,
     ) -> Result<Rc<dyn Component>> {
         if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
             let (sender, recv) = oneshot::channel();

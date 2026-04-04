@@ -22,6 +22,8 @@ use grapes::{
 };
 use std::rc::Rc;
 
+const SPECIAL_WORKSPACE_ID: i32 = -98;
+
 #[derive(Debug, Component)]
 pub struct Workspaces {
     #[root]
@@ -58,7 +60,7 @@ impl ModuleFactory for Workspaces {
 
 impl Workspaces {
     fn new(
-        config: &WorkspacesConfig,
+        _config: &WorkspacesConfig,
         meta: &Metadata,
         receiver: mpsc::Receiver<WorkspaceEvent>,
         hyprland: &'static Hyprland,
@@ -72,7 +74,9 @@ impl Workspaces {
             for ws in
                 hyprland.workspaces_on_monitor(&meta.monitor).await.unwrap()
             {
-                workspaces.add_workspace_button(ws.id);
+                if ws.id != SPECIAL_WORKSPACE_ID {
+                    workspaces.add_workspace_button(ws.id);
+                }
             }
 
             let active_workspace = hyprland.active_workspace().await.unwrap();
