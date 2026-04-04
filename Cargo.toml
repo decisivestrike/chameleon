@@ -4,10 +4,33 @@ members = ["crates/*"]
 
 [workspace.dependencies]
 chameleon-cli = { path = "crates/chameleon-cli", version = "0.1.0" }
+chameleon-config = { path = "crates/chameleon-config", version = "0.1.0" }
+chameleon-core = { path = "crates/chameleon-core", version = "0.1.0" }
+chameleon-ipc = { path = "crates/chameleon-ipc", version = "0.1.0" }
+chameleon-panel = { path = "crates/chameleon-panel", version = "0.1.0" }
+chameleon-widgets = { path = "crates/chameleon-widgets", version = "0.1.0" }
 
 grapes = { git = "https://github.com/decisivestrike/grapes" }
+grapes_components = { git = "https://github.com/decisivestrike/grapes" }
 
 argh = "0.1.13"
+anyhow = "1.0.100"
+inotify = "0.11.0"
+log = "0.4.28"
+serde = "1.0.228"
+toml = "0.9.8"
+thiserror = "2.0.18"
+serde_json = "1.0.145"
+freedesktop-desktop-entry = "0.8.1"
+libc = "0.2.183"
+nucleo = "0.5.0"
+chrono = "0.4.42"
+dashmap = "6.1.0"
+uuid = "1.20.0"
+tokio-util = "0.7.18"
+env_logger = "0.11.8"
+futures-util = "0.3.31"
+console-subscriber = "0.5.0"
 
 [profile.release]
 lto = true

@@ -4,14 +4,14 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-chameleon-config = { path = "../chameleon-config" }
-chameleon-ipc = { path = "../chameleon-ipc" }
-chameleon-core = { path = "../chameleon-core" }
+chameleon-config.workspace = true
+chameleon-ipc.workspace = true
+chameleon-core.workspace = true
 
 grapes.workspace = true
 
-freedesktop-desktop-entry = "0.8.1"
-log = "0.4.29"
-libc = "0.2.183"
-thiserror = "2.0.18"
-nucleo = "0.5.0"
+freedesktop-desktop-entry.workspace = true
+log.workspace = true
+libc.workspace = true
+thiserror.workspace = true
+nucleo.workspace = true

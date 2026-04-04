@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-chameleon-config = { path = "../chameleon-config" }
+chameleon-config.workspace = true
 
 grapes.workspace = true
 
-log = "0.4.28"
+log.workspace = true

@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 grapes.workspace = true
 
-thiserror = "2.0.18"
+thiserror.workspace = true

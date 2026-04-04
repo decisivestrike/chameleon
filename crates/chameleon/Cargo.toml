@@ -5,19 +5,19 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-chameleon-cli = { path = "../chameleon-cli" }
-chameleon-launcher = { path = "../chameleon-launcher" }
-chameleon-config = { path = "../chameleon-config" }
-chameleon-ipc = { path = "../chameleon-ipc" }
-chameleon-panel = { path = "../chameleon-panel" }
-chameleon-widgets = { path = "../chameleon-widgets" }
+chameleon-cli.workspace = true
+chameleon-launcher.workspace = true
+chameleon-config.workspace = true
+chameleon-ipc.workspace = true
+chameleon-panel.workspace = true
+chameleon-widgets.workspace = true
 
 grapes.workspace = true
 
-anyhow = "1.0.100"
-env_logger = "0.11.8"
-log = "0.4.28"
-inotify = "0.11.0"
-futures-util = "0.3.31"
-console-subscriber = "0.5.0"
-dashmap = "6.1.0"
+anyhow.workspace = true
+env_logger.workspace = true
+log.workspace = true
+inotify.workspace = true
+futures-util.workspace = true
+console-subscriber.workspace = true
+dashmap.workspace = true
