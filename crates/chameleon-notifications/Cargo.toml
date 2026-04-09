@@ -1,0 +1,10 @@
+[package]
+name = "chameleon-notifications"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+grapes.workspace = true
+serde.workspace = true
+zbus = { workspace = true, features = ["tokio"] }

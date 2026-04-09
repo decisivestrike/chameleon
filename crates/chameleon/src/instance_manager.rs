@@ -8,7 +8,7 @@ use grapes::{
     gtk::{self, gdk::Monitor},
     prelude::{MonitorExt, monitor::GrapesMonitorExt},
     tokio::{
-        fs,
+        self, fs,
         io::{AsyncBufReadExt, BufReader},
         net::UnixListener,
         sync::RwLock,
@@ -34,12 +34,20 @@ pub struct InstanceManager {
 impl InstanceManager {
     pub fn configure_modules(
         &self,
-        application: &gtk::Application,
+        app: &gtk::Application,
         config: &'static Config,
     ) {
-        self.configure_panels(application, &config.panel);
-        self.configure_widgets_layers(application, &config.widgets);
-        self.configure_launcher(application, &config.launcher);
+        self.configure_panels(app, &config.panel);
+        self.configure_widgets_layers(app, &config.widgets);
+        self.configure_launcher(app, &config.launcher);
+
+        if true {
+            let notifications = chameleon_notifications::setup(app);
+            RT.spawn(async move {
+                let _connection = notifications.connection().await;
+                tokio::signal::ctrl_c().await
+            });
+        }
 
         log::info!("Modules configured!");
     }
@@ -118,7 +126,6 @@ impl InstanceManager {
     async fn listen_socket() {
         let path = Path::new(SOCKET_PATH);
 
-        // Удаляем старый сокет
         if path.exists() {
             fs::remove_file(SOCKET_PATH).await.unwrap();
         }
