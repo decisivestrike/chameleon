@@ -3,8 +3,8 @@ use chameleon_config::{CONFIG, panel::ClockConfig};
 use chrono::Local;
 use grapes::{
     Component, RT, State,
-    gtk::{self, Image, prelude::WidgetExt},
-    prelude::{BoxExt, containers::GrapesBoxExt},
+    gtk::{self, prelude::WidgetExt},
+    prelude::containers::GrapesBoxExt,
     state,
     tokio::{
         sync::broadcast::{self, Sender},
@@ -51,11 +51,7 @@ impl Clock {
     pub fn new(formatted_time: &Rc<State<String>>) -> Self {
         let label = StatefullLabel::new(formatted_time);
 
-        let icon = Image::from_icon_name("appointment-symbolic");
-        icon.set_size_request(24, 24);
-
         let container = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-        container.append(&icon);
         container.append_ref(&label);
 
         label.as_ref().set_widget_name(Self::NAME);
