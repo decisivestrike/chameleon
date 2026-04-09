@@ -25,10 +25,13 @@ pub fn setup(app: &gtk::Application) -> Notifications {
                     let window = NotificationWindow::new(&app_clone, data);
                     window.present();
                 }
-                Err(e) => match e {
-                    RecvError::Closed => std::process::exit(-1),
-                    RecvError::Lagged(i) => println!("{i}"),
-                },
+                Err(e) => {
+                    log::error!("{e}");
+
+                    if let RecvError::Closed = e {
+                        std::process::exit(-1);
+                    }
+                }
             }
         }
     });

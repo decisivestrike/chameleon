@@ -5,8 +5,11 @@ use std::time::Duration;
 use zbus::connection::Builder as ConnectionBuilder;
 use zbus::{Connection, interface};
 
+static DEFAULT_TIMEOUT: Duration = Duration::from_millis(5000);
+
 #[derive(Clone)]
 pub struct NotificationData {
+    pub title: String,
     pub body: String,
     pub timeout: Duration,
 }
@@ -42,19 +45,23 @@ impl Notifications {
         _app_name: &str,
         _replaces_id: u32,
         _app_icon: &str,
-        _summary: &str,
+        summary: &str,
         body: &str,
         _actions: Vec<String>,
         _hints: HashMap<String, zbus::zvariant::Value<'_>>,
         expire_timeout: i32,
     ) -> u32 {
         let data = NotificationData {
+            title: summary.to_string(),
             body: body.to_string(),
-            timeout: Duration::from_millis(expire_timeout as u64),
+            timeout: match expire_timeout {
+                timeout if timeout < 0 => DEFAULT_TIMEOUT,
+                timeout => Duration::from_millis(timeout as u64),
+            },
         };
 
         if let Err(e) = self.sender.send(data) {
-            println!("{e}");
+            log::error!("{e}");
         }
 
         0
