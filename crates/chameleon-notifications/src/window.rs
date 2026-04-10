@@ -18,6 +18,7 @@ impl NotificationWindow {
         let window = ApplicationWindow::new(app);
 
         window.init_layer_shell();
+        window.set_namespace(Some("chameleon-notifications"));
 
         window.set_anchor(Edge::Top, true);
         window.set_margin(Edge::Top, GAP);
@@ -26,13 +27,18 @@ impl NotificationWindow {
         window.set_margin(Edge::Right, GAP);
 
         let title = gtk::Label::new(Some(&data.title));
+        title.set_widget_name("title");
+
         let body = gtk::Label::new(Some(&data.body));
+        body.set_widget_name("body");
 
         let container = gtk::Box::new(Orientation::Vertical, 10);
         container.append(&title);
         container.append(&body);
+        container.set_widget_name("notification");
 
         window.set_child(Some(&container));
+        window.set_widget_name("notification-window");
 
         window.connect_destroy(move |window| {
             let ptr = window.as_ptr();
