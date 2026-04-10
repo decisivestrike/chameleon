@@ -1,5 +1,5 @@
 use crate::ServerInformation;
-use grapes::tokio::sync::broadcast::{self, Sender};
+use grapes::tokio::sync::broadcast;
 use std::collections::HashMap;
 use std::time::Duration;
 use zbus::connection::Builder as ConnectionBuilder;
@@ -14,15 +14,16 @@ pub struct NotificationData {
     pub timeout: Duration,
 }
 
+#[derive(Clone)]
 pub struct Notifications {
-    sender: Sender<NotificationData>,
+    sender: broadcast::Sender<NotificationData>,
 }
 
 impl Notifications {
     pub fn new() -> Self {
-        let sender = broadcast::Sender::new(64);
-
-        Self { sender }
+        Self {
+            sender: broadcast::Sender::new(64),
+        }
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<NotificationData> {

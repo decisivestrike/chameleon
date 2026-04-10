@@ -1,9 +1,10 @@
 mod app;
 mod instance_manager;
+mod panic_hook;
 
 use std::{io::Write, os::unix::net::UnixStream};
 
-use crate::app::Chameleon;
+use crate::{app::Chameleon, panic_hook::set_custom_panic_hook};
 use chameleon_cli::ARGS;
 use grapes::glib::{self};
 
@@ -14,6 +15,10 @@ fn init_logger() {
 }
 
 fn main() -> glib::ExitCode {
+    if !cfg!(debug_assertions) {
+        set_custom_panic_hook();
+    }
+
     // console_subscriber::init();
 
     if ARGS.toggle_launcher {
