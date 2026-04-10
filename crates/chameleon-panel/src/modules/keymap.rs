@@ -52,7 +52,9 @@ impl ModuleFactory for Keymap {
                     .unwrap()
                     .active_keymap;
 
-                if let Err(e) = sender.send(active_keymap) {
+                let short_name = Self::shrink_layout_name(&active_keymap);
+
+                if let Err(e) = sender.send(short_name) {
                     log::error!("{e:?}");
                 };
             });
@@ -85,6 +87,13 @@ impl Keymap {
         Self { label }
     }
 
+    pub fn shrink_layout_name(name: &String) -> String {
+        name.chars()
+            .take(2)
+            .flat_map(|c| c.to_uppercase())
+            .collect()
+    }
+
     async fn background_task(sender: Sender<String>) {
         if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
             let mut receiver = hyprland.subscribe();
@@ -93,7 +102,9 @@ impl Keymap {
                 if let Ok(event) = receiver.recv().await
                     && let HyprEvent::ActiveLayout { layout_name, .. } = event
                 {
-                    sender.send(layout_name).unwrap();
+                    let short_name = Self::shrink_layout_name(&layout_name);
+
+                    sender.send(short_name).unwrap();
                 }
             }
         }
