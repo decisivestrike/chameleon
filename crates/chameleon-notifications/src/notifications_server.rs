@@ -1,27 +1,19 @@
 use crate::ServerInformation;
+use crate::notification_data::NotificationData;
 use grapes::tokio::sync::broadcast;
 use std::collections::HashMap;
-use std::time::Duration;
 use zbus::connection::Builder as ConnectionBuilder;
 use zbus::{Connection, interface};
 
-static DEFAULT_TIMEOUT: Duration = Duration::from_millis(5000);
-
-#[derive(Clone)]
-pub struct NotificationData {
-    pub title: String,
-    pub body: String,
-    pub timeout: Duration,
-}
-
-#[derive(Clone)]
-pub struct Notifications {
+pub struct NotificationsServer {
+    notification_id: u32,
     sender: broadcast::Sender<NotificationData>,
 }
 
-impl Notifications {
+impl NotificationsServer {
     pub fn new() -> Self {
         Self {
+            notification_id: 1,
             sender: broadcast::Sender::new(64),
         }
     }
@@ -37,35 +29,50 @@ impl Notifications {
             .build()
             .await
     }
+
+    fn generate_id(&mut self, replaces_id: u32) -> u32 {
+        if replaces_id == 0 {
+            let id = self.notification_id;
+            self.notification_id = id.wrapping_add(1);
+
+            id
+        } else {
+            replaces_id
+        }
+    }
 }
 
 #[interface(name = "org.freedesktop.Notifications")]
-impl Notifications {
+impl NotificationsServer {
     fn notify(
-        &self,
-        _app_name: &str,
-        _replaces_id: u32,
-        _app_icon: &str,
+        &mut self,
+        app_name: &str,
+        replaces_id: u32,
+        app_icon: &str,
         summary: &str,
         body: &str,
-        _actions: Vec<String>,
-        _hints: HashMap<String, zbus::zvariant::Value<'_>>,
+        actions: Vec<String>,
+        hints: HashMap<String, zbus::zvariant::Value<'_>>,
         expire_timeout: i32,
     ) -> u32 {
-        let data = NotificationData {
-            title: summary.to_string(),
-            body: body.to_string(),
-            timeout: match expire_timeout {
-                timeout if timeout < 0 => DEFAULT_TIMEOUT,
-                timeout => Duration::from_millis(timeout as u64),
-            },
-        };
+        let id = self.generate_id(replaces_id);
+
+        let data = NotificationData::new(
+            id,
+            app_name,
+            app_icon,
+            summary,
+            body,
+            actions,
+            hints,
+            expire_timeout,
+        );
 
         if let Err(e) = self.sender.send(data) {
             log::error!("{e}");
         }
 
-        0
+        id
     }
 
     fn get_server_information(&self) -> ServerInformation {

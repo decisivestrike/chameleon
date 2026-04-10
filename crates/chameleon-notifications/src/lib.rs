@@ -1,8 +1,11 @@
+pub mod notification_data;
 pub mod notification_list;
 pub mod window;
 
-mod notifications;
-pub use notifications::Notifications;
+mod notifications_server;
+use std::time::Duration;
+
+pub use notifications_server::NotificationsServer;
 
 mod server_information;
 pub use server_information::ServerInformation;
@@ -14,8 +17,12 @@ use grapes::{
     WindowComponent, glib, gtk, tokio::sync::broadcast::error::RecvError,
 };
 
-pub fn setup(app: &gtk::Application) -> Notifications {
-    let notifications = Notifications::new();
+pub static DEFAULT_TIMEOUT: Duration = Duration::from_millis(5000);
+pub static MAX_NOTIFICATIONS: usize = 5;
+pub static GAP: i32 = 10;
+
+pub fn setup(app: &gtk::Application) -> NotificationsServer {
+    let notifications = NotificationsServer::new();
     let mut receiver = notifications.subscribe();
 
     let app_clone = app.clone();
@@ -23,7 +30,7 @@ pub fn setup(app: &gtk::Application) -> Notifications {
         loop {
             match receiver.recv().await {
                 Ok(data) => {
-                    let window = NotificationWindow::new(&app_clone, data);
+                    let window = NotificationWindow::new(&app_clone, &data);
                     window.present();
 
                     NOTIFICATION_WINDOWS.append(window).await;

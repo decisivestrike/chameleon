@@ -1,32 +1,36 @@
-use crate::notification_list::{GAP, NOTIFICATION_WINDOWS};
-use crate::notifications::NotificationData;
+use crate::GAP;
+use crate::notification_data::NotificationData;
+use crate::notification_list::NOTIFICATION_WINDOWS;
 use grapes::gtk::Orientation;
-use grapes::gtk::ffi::GtkApplicationWindow;
 use grapes::layer_shell::{Edge, LayerShell};
-use grapes::prelude::{BoxExt, GtkWindowExt, ObjectType, WidgetExt};
+use grapes::prelude::{BoxExt, GtkWindowExt, WidgetExt};
 use grapes::{WindowComponent, gtk::ApplicationWindow};
 use grapes::{glib, gtk};
 
 #[derive(WindowComponent)]
 pub struct NotificationWindow {
+    id: u32,
+
     #[root]
     pub window: ApplicationWindow,
 }
 
 impl NotificationWindow {
-    pub fn new(app: &gtk::Application, data: NotificationData) -> Self {
+    pub fn new(app: &gtk::Application, data: &NotificationData) -> Self {
         let window = ApplicationWindow::new(app);
         Self::setup_layershell(&window);
 
         let root = Self::build_ui(&data);
         window.set_child(Some(&root));
         window.set_widget_name("notification-window");
-        window.connect_destroy(move |window| {
-            let ptr = window.as_ptr();
-            glib::spawn_future_local(NOTIFICATION_WINDOWS.remove(ptr as usize));
+        window.connect_destroy({
+            let id = data.id;
+            move |_| {
+                glib::spawn_future_local(NOTIFICATION_WINDOWS.remove(id));
+            }
         });
 
-        glib::timeout_add_local_once(data.timeout, {
+        glib::timeout_add_local_once(data.lifetime, {
             let title = data.title.clone();
             let window_clone = window.clone();
 
@@ -36,10 +40,21 @@ impl NotificationWindow {
             }
         });
 
-        Self { window }
+        Self {
+            id: data.id,
+            window,
+        }
     }
 
-    pub fn setup_layershell(window: &ApplicationWindow) {
+    pub fn id(&self) -> u32 {
+        self.id
+    }
+
+    pub fn update(&self, data: &NotificationData) {
+        todo!("update logic")
+    }
+
+    fn setup_layershell(window: &ApplicationWindow) {
         window.init_layer_shell();
         window.set_namespace(Some("chameleon-notifications"));
 
@@ -50,7 +65,7 @@ impl NotificationWindow {
         window.set_margin(Edge::Right, GAP);
     }
 
-    pub fn build_ui(data: &NotificationData) -> gtk::Box {
+    fn build_ui(data: &NotificationData) -> gtk::Box {
         let title = gtk::Label::builder()
             .label(&data.title)
             .name("title")
@@ -68,9 +83,5 @@ impl NotificationWindow {
         container.append(&body);
 
         container
-    }
-
-    pub fn as_ptr(&self) -> *mut GtkApplicationWindow {
-        self.window.as_ptr()
     }
 }

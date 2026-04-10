@@ -1,4 +1,4 @@
-use crate::window::NotificationWindow;
+use crate::{GAP, MAX_NOTIFICATIONS, window::NotificationWindow};
 use grapes::{
     WindowComponent,
     layer_shell::{Edge, LayerShell},
@@ -7,12 +7,8 @@ use grapes::{
 };
 use std::collections::LinkedList;
 
-static MAX_NOTIFICATIONS: usize = 5;
-
 pub static NOTIFICATION_WINDOWS: NotificationList =
     NotificationList::const_new();
-
-pub static GAP: i32 = 10;
 
 pub struct NotificationList(Mutex<LinkedList<NotificationWindow>>);
 
@@ -47,12 +43,11 @@ impl NotificationList {
         notification_windows.push_back(new_window);
     }
 
-    pub async fn remove(&self, pointer: usize) {
+    pub async fn remove(&self, id: u32) {
         let mut notification_windows = self.0.lock().await;
 
-        let maybe_index = notification_windows
-            .iter()
-            .position(|w| w.as_ptr() as usize == pointer);
+        let maybe_index =
+            notification_windows.iter().position(|w| w.id() == id);
 
         if let Some(index) = maybe_index {
             let mut tail = notification_windows.split_off(index);
