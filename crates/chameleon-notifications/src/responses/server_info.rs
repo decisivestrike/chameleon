@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use zbus::zvariant::Type;
 
-#[derive(Debug, Type, Serialize, Deserialize)]
-pub struct ServerInformation {
+#[derive(Debug, Serialize, Type)]
+pub struct ServerInfo {
     /// The product name of the server.
     pub name: String,
 

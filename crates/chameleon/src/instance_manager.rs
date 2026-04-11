@@ -1,5 +1,6 @@
 use chameleon_config::{Config, LauncherConfig, PanelConfig, WidgetsConfig};
 use chameleon_launcher::Launcher;
+use chameleon_notifications::NotificationServer;
 use chameleon_panel::Panel;
 use chameleon_widgets::WidgetsLayer;
 use dashmap::DashMap;
@@ -8,7 +9,7 @@ use grapes::{
     gtk::{self, gdk::Monitor},
     prelude::{MonitorExt, monitor::GrapesMonitorExt},
     tokio::{
-        self, fs,
+        fs,
         io::{AsyncBufReadExt, BufReader},
         net::UnixListener,
         sync::RwLock,
@@ -42,11 +43,8 @@ impl InstanceManager {
         self.configure_launcher(app, &config.launcher);
 
         if true {
-            let notifications = chameleon_notifications::setup(app);
-            RT.spawn(async move {
-                let _connection = notifications.connection().await;
-                tokio::signal::ctrl_c().await
-            });
+            let server = NotificationServer::new();
+            server.run(app);
         }
 
         log::info!("Modules configured!");
