@@ -17,3 +17,4 @@ dashmap.workspace = true
 uuid = { workspace = true, features = ['v4'] }
 anyhow.workspace = true
 tokio-util.workspace = true
+suukon = "0.2.0"

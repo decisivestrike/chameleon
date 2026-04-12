@@ -21,6 +21,7 @@ use grapes::{
     tokio::sync::mpsc::{self},
 };
 use std::rc::Rc;
+use suukon::{Numeral, NumeralSystem, Setting};
 
 const SPECIAL_WORKSPACE_ID: i32 = -98;
 
@@ -29,6 +30,7 @@ pub struct Workspaces {
     #[root]
     root: gtk::Box,
     hyprland: &'static Hyprland,
+    config: WorkspacesConfig,
 }
 
 impl ModuleFactory for Workspaces {
@@ -60,7 +62,7 @@ impl ModuleFactory for Workspaces {
 
 impl Workspaces {
     fn new(
-        _config: &WorkspacesConfig,
+        config: &WorkspacesConfig,
         meta: &Metadata,
         receiver: mpsc::Receiver<WorkspaceEvent>,
         hyprland: &'static Hyprland,
@@ -68,7 +70,11 @@ impl Workspaces {
         let root = gtk::Box::new(meta.orientation, 0);
         root.set_widget_name("workspaces");
 
-        let workspaces = Rc::new(Self { root, hyprland });
+        let workspaces = Rc::new(Self {
+            root,
+            hyprland,
+            config: config.clone(),
+        });
 
         RT.block_on(async {
             for ws in
@@ -106,7 +112,16 @@ impl Workspaces {
     }
 
     fn create_button(&self, id: i32) -> Label {
-        let button = Label::new(Some(&id.to_string()));
+        let WorkspacesConfig {
+            numeral_system,
+            numeral_variant,
+        } = self.config;
+
+        let label = id
+            .to_numeral(numeral_system.into(), vec![numeral_variant.into()])
+            .unwrap();
+
+        let button = Label::new(Some(&label));
         let event_controller = GestureClick::new();
 
         let hyprland = self.hyprland;
@@ -115,7 +130,7 @@ impl Workspaces {
             // On click
             RT.spawn(async move {
                 let command = format!("dispatch workspace {}", id);
-                let _ = hyprland.command(command.as_bytes()).await;
+                hyprland.command(command.as_bytes()).await.expect("hm");
             });
         });
 

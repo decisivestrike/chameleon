@@ -343,6 +343,7 @@ dependencies = [
  "inotify",
  "log",
  "serde",
+ "suukon",
  "toml",
 ]
 
@@ -409,6 +410,7 @@ dependencies = [
  "grapes",
  "grapes-components",
  "log",
+ "suukon",
  "tokio-util",
  "uuid",
 ]
@@ -434,6 +436,46 @@ dependencies = [
  "wasm-bindgen",
  "windows-link",
 ]
+
+[[package]]
+name = "clap"
+version = "4.4.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e578d6ec4194633722ccf9544794b71b1385c3c027efe0c55db226fc880865c"
+dependencies = [
+ "clap_builder",
+ "clap_derive",
+]
+
+[[package]]
+name = "clap_builder"
+version = "4.4.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4df4df40ec50c46000231c914968278b1eb05098cf8f1b3a518a95030e71d1c7"
+dependencies = [
+ "anstream",
+ "anstyle",
+ "clap_lex",
+ "strsim",
+]
+
+[[package]]
+name = "clap_derive"
+version = "4.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf9804afaaf59a91e75b022a30fb7229a7901f60c755489cc61c9b423b836442"
+dependencies = [
+ "heck 0.4.1",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "clap_lex"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "702fc72eb24e5a1e48ce58027a675bc24edd52096d5397d4aea7c6dd9eca0bd1"
 
 [[package]]
 name = "colorchoice"
@@ -948,7 +990,7 @@ version = "0.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "880e524e0085f3546cfb38532b2c202c0d64741d9977a6e4aa24704bfc9f19fb"
 dependencies = [
- "heck",
+ "heck 0.5.0",
  "proc-macro-crate",
  "proc-macro2",
  "quote",
@@ -1183,6 +1225,12 @@ dependencies = [
  "nom",
  "num-traits",
 ]
+
+[[package]]
+name = "heck"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
 name = "heck"
@@ -1567,6 +1615,70 @@ checksum = "bf33f538733d1a5a3494b836ba913207f14d9d4a1d3cd67030c5061bdd2cac85"
 dependencies = [
  "memchr",
  "unicode-segmentation",
+]
+
+[[package]]
+name = "num"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35bd024e8b2ff75562e5f34e7f4905839deb4b22955ef5e73d2fea1b9813cb23"
+dependencies = [
+ "num-bigint",
+ "num-complex",
+ "num-integer",
+ "num-iter",
+ "num-rational",
+ "num-traits",
+]
+
+[[package]]
+name = "num-bigint"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5e44f723f1133c9deac646763579fdb3ac745e418f2a7af9cd0c431da1f20b9"
+dependencies = [
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
+name = "num-complex"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
+name = "num-integer"
+version = "0.1.46"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7969661fd2958a5cb096e56c8e1ad0444ac2bbcd0061bd28660485a44879858f"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
+name = "num-iter"
+version = "0.1.45"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1429034a0490724d0075ebb2bc9e875d6503c3cf69e235a8941aa757d83ef5bf"
+dependencies = [
+ "autocfg",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
+name = "num-rational"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f83d14da390562dca69fc84082e73e548e1ad308d24accdedd2720017cb37824"
+dependencies = [
+ "num-bigint",
+ "num-integer",
+ "num-traits",
 ]
 
 [[package]]
@@ -2032,6 +2144,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "strsim"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
+name = "suukon"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5494b654bd2feccd321044b34fdf4c2d76418eacbc1b475fe168f5d6fcaa7cb1"
+dependencies = [
+ "clap",
+ "num",
+]
+
+[[package]]
 name = "syn"
 version = "2.0.111"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2055,7 +2183,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48c8f33736f986f16d69b6cb8b03f55ddcad5c41acc4ccc39dd88e84aa805e7f"
 dependencies = [
  "cfg-expr",
- "heck",
+ "heck 0.5.0",
  "pkg-config",
  "toml",
  "version-compare",

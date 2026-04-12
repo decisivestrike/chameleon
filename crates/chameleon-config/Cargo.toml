@@ -13,3 +13,4 @@ inotify.workspace = true
 log.workspace = true
 serde = { workspace = true, features = ["derive", "rc"] }
 toml.workspace = true
+suukon = "0.2.0"
