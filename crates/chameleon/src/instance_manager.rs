@@ -1,6 +1,8 @@
 use chameleon_config::{Config, LauncherConfig, PanelConfig, WidgetsConfig};
 use chameleon_launcher::Launcher;
-use chameleon_notifications::NotificationServer;
+use chameleon_notifications::{
+    NotificationServer, manager::NotificationManager,
+};
 use chameleon_panel::Panel;
 use chameleon_widgets::WidgetsLayer;
 use dashmap::DashMap;
@@ -43,8 +45,8 @@ impl InstanceManager {
         self.configure_launcher(app, &config.launcher);
 
         if true {
-            let server = NotificationServer::new();
-            server.run(app);
+            let manager = NotificationManager::new(&app);
+            manager.run();
         }
 
         log::info!("Modules configured!");

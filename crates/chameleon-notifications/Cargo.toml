@@ -5,7 +5,12 @@ edition = "2024"
 
 [dependencies]
 anyhow.workspace = true
+tokio.workspace = true
+gtk.workspace = true
+layer_shell.workspace = true
 log.workspace = true
 grapes.workspace = true
 serde.workspace = true
-zbus = { workspace = true, features = ["tokio"] }
+zbus = { version = "5.14.0", default-features = false, features = ["tokio"] }
+indexmap = "2.14.0"
+thiserror.workspace = true

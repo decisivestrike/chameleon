@@ -1,10 +1,7 @@
 use crate::GAP;
-use grapes::glib;
-use grapes::gtk;
-use grapes::gtk::Orientation;
-use grapes::layer_shell::{Edge, LayerShell};
-use grapes::prelude::{BoxExt, GtkWindowExt, WidgetExt};
-use grapes::{WindowComponent, gtk::ApplicationWindow};
+use grapes::WindowComponent;
+use gtk::{self, ApplicationWindow, Orientation, glib, prelude::*};
+use layer_shell::{Edge, LayerShell};
 
 #[derive(Clone, glib::Downgrade, WindowComponent)]
 pub struct NotificationWindow {
