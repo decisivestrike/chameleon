@@ -1,4 +1,7 @@
-use crate::{DEFAULT_TIMEOUT, requests::NotificationData};
+use crate::{
+    DEFAULT_TIMEOUT, requests::NotificationData,
+    server::hints::NotificationHints,
+};
 use std::time::Duration;
 
 pub enum NotificationCommand {
@@ -10,6 +13,8 @@ pub struct PushCommand {
     pub id: u32,
     pub summary: String,
     pub body: String,
+    pub icon_path: String,
+    pub hints: NotificationHints,
     pub lifetime: Duration,
 }
 
@@ -46,6 +51,8 @@ impl NotificationCommand {
             id,
             summary,
             body,
+            icon_path: app_icon,
+            hints: NotificationHints::from(hints),
             lifetime,
         };
 

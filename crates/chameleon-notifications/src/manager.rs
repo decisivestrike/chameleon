@@ -36,6 +36,8 @@ impl NotificationManager {
     async fn handle_command(&self, command: NotificationCommand) {
         match command {
             NotificationCommand::Push(push_command) => {
+                log::debug!("PUSH!");
+
                 let id = push_command.id;
                 let notification = Notification::new(&self.app, push_command);
                 notification.show();
@@ -45,10 +47,12 @@ impl NotificationManager {
                 }
             }
             NotificationCommand::Replace(replace_command) => {
+                log::debug!("REPLACE!");
+
                 let ReplaceCommand { id, summary, body } = replace_command;
                 self.queue
                     .modify(id, |notification| {
-                        notification.update(&summary, &body);
+                        notification.update(None, &summary, &body);
                     })
                     .await;
             }

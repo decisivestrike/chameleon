@@ -5,6 +5,7 @@ use layer_shell::{Edge, LayerShell};
 
 #[derive(Clone, glib::Downgrade, WindowComponent)]
 pub struct NotificationWindow {
+    pub icon: gtk::Image,
     pub summary: gtk::Label,
     pub body: gtk::Label,
     #[root]
@@ -16,6 +17,7 @@ impl NotificationWindow {
         let window = ApplicationWindow::new(app);
         Self::setup_layershell(&window);
 
+        let icon = gtk::Image::new();
         let title = gtk::Label::builder().name("summary").build();
         let body = gtk::Label::builder().name("body").build();
 
@@ -25,6 +27,7 @@ impl NotificationWindow {
             .name("notification")
             .build();
 
+        container.append(&icon);
         container.append(&title);
         container.append(&body);
 
@@ -33,6 +36,7 @@ impl NotificationWindow {
 
         Self {
             summary: title,
+            icon,
             body,
             window,
         }

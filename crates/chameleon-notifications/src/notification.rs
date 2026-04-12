@@ -19,7 +19,9 @@ impl Notification {
             id,
             summary,
             body,
+            icon_path,
             lifetime,
+            hints,
         } = data;
 
         let window = NotificationWindow::new(&app);
@@ -39,14 +41,25 @@ impl Notification {
             lifetime,
         };
 
-        notification.update(&summary, &body);
+        notification.update(Some(&icon_path), &summary, &body);
 
         notification
     }
 
-    pub fn update(&self, summary: &String, body: &String) {
+    pub fn update(
+        &self,
+        icon_path: Option<&String>,
+        summary: &String,
+        body: &String,
+    ) {
         let window = &self.window;
 
+        if let Some(i) = icon_path
+            && !i.is_empty()
+        {
+            println!("{}", i);
+            window.icon.set_from_file(Some(&i));
+        }
         window.summary.set_label(&summary);
         window.body.set_label(&body)
     }

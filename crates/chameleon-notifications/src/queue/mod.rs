@@ -9,12 +9,9 @@ use grapes::{
     prelude::WidgetExt,
     tokio::sync::Mutex,
 };
-use gtk::glib::{self, clone};
 use indexmap::IndexMap;
-use std::sync::Arc;
 
-#[derive(Clone)]
-pub struct NotificationQueue(Arc<Mutex<IndexMap<u32, Notification>>>);
+pub struct NotificationQueue(Mutex<IndexMap<u32, Notification>>);
 
 impl NotificationQueue {
     pub fn new() -> Self {

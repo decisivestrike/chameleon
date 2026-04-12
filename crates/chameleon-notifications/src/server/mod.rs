@@ -2,6 +2,8 @@
 pub mod command;
 pub use command::NotificationCommand;
 
+pub mod hints;
+
 use crate::{requests::NotificationData, responses::ServerInfo};
 use grapes::RT;
 use std::future::{self};
@@ -49,6 +51,8 @@ impl NotificationServer {
     }
 
     fn define_id(&mut self, replaces_id: u32) -> (u32, bool) {
+        dbg!(replaces_id);
+
         if replaces_id == 0 {
             let id = self.current_notification_id;
             self.current_notification_id = id.wrapping_add(1);
@@ -63,6 +67,8 @@ impl NotificationServer {
 #[interface(name = "org.freedesktop.Notifications")]
 impl NotificationServer {
     async fn notify(&mut self, data: NotificationData) -> u32 {
+        log::debug!("NOTIFY!");
+
         let (id, replace) = self.define_id(data.replaces_id);
         let command = NotificationCommand::new(id, data, replace);
 
