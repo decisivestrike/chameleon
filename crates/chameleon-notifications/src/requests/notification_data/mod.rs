@@ -1,4 +1,6 @@
 //! https://specifications.freedesktop.org/notification/latest/protocol.html#command-notify
+pub mod hints;
+pub mod urgency;
 
 use crate::server::hints::NotificationHints;
 use serde::Deserialize;

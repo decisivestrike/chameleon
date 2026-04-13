@@ -393,6 +393,7 @@ dependencies = [
  "indexmap",
  "log",
  "serde",
+ "serde_repr",
  "thiserror",
  "tokio",
  "zbus",
