@@ -14,3 +14,4 @@ serde.workspace = true
 zbus = { version = "5.14.0", default-features = false, features = ["tokio"] }
 indexmap = "2.14.0"
 thiserror.workspace = true
+gdk-pixbuf = "0.22.0"

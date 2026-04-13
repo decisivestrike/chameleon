@@ -1,4 +1,4 @@
-use crate::{server::command::PushCommand, window::NotificationWindow};
+use crate::{server::NotificationCommand, window::NotificationWindow};
 use grapes::{
     WindowComponent,
     glib::{self, clone},
@@ -14,54 +14,40 @@ pub struct Notification {
 }
 
 impl Notification {
-    pub fn new(app: &gtk::Application, data: PushCommand) -> Self {
-        let PushCommand {
-            id,
-            summary,
-            body,
-            icon_path,
-            lifetime,
-            hints,
-        } = data;
-
-        let window = NotificationWindow::new(&app);
+    pub fn new(app: &gtk::Application, data: NotificationCommand) -> Self {
+        let NotificationCommand { id, lifetime, .. } = data;
+        let window = NotificationWindow::new(&app, data.hints.urgency);
 
         glib::timeout_add_local_once(
             lifetime,
             clone!(
-                #[weak]
+                #[strong]
                 window,
                 move || window.destroy()
             ),
         );
 
-        let notification = Self {
+        let mut notification = Self {
             id,
             window,
             lifetime,
         };
 
-        notification.update(Some(&icon_path), &summary, &body);
+        notification.update(data);
 
         notification
     }
 
-    pub fn update(
-        &self,
-        icon_path: Option<&String>,
-        summary: &String,
-        body: &String,
-    ) {
-        let window = &self.window;
+    pub fn update(&mut self, data: NotificationCommand) {
+        let window = &mut self.window;
 
-        if let Some(i) = icon_path
-            && !i.is_empty()
-        {
-            println!("{}", i);
-            window.icon.set_from_file(Some(&i));
+        if let Some(image_data) = data.hints.image_data {
+            let texture = image_data.to_texture();
+            window.add_icon(texture);
         }
-        window.summary.set_label(&summary);
-        window.body.set_label(&body)
+
+        window.summary.set_label(&data.summary);
+        window.body.set_label(&data.body)
     }
 
     pub fn show(&self) {

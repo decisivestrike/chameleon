@@ -1,8 +1,6 @@
 use chameleon_config::{Config, LauncherConfig, PanelConfig, WidgetsConfig};
 use chameleon_launcher::Launcher;
-use chameleon_notifications::{
-    NotificationServer, manager::NotificationManager,
-};
+use chameleon_notifications::manager::NotificationManager;
 use chameleon_panel::Panel;
 use chameleon_widgets::WidgetsLayer;
 use dashmap::DashMap;

@@ -1,6 +1,12 @@
-use std::collections::HashMap;
-use zbus::zvariant::OwnedValue;
+use gtk::{
+    gdk::{self, MemoryTexture},
+    glib,
+};
+use serde::Deserialize;
+use std::{collections::HashMap, fmt};
+use zbus::zvariant::{DeserializeDict, OwnedValue, Type};
 
+#[derive(Debug, DeserializeDict)]
 pub struct NotificationHints {
     pub action_icons: Option<bool>,
     pub category: Option<String>,
@@ -17,7 +23,8 @@ pub struct NotificationHints {
     pub urgency: Option<u8>,
 }
 
-#[derive(Debug)]
+#[derive(Type, Deserialize, OwnedValue)]
+#[zvariant(signature = "(iiibiiay)")]
 pub struct ImageData {
     pub width: i32,
     pub height: i32,
@@ -28,8 +35,40 @@ pub struct ImageData {
     pub data: Vec<u8>,
 }
 
+impl fmt::Debug for ImageData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ImageData")
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .field("rowstride", &self.rowstride)
+            .field("has_alpha", &self.has_alpha)
+            .field("bits_per_sample", &self.bits_per_sample)
+            .field("channels", &self.channels)
+            .field("data (len)", &self.data.len())
+            .finish()
+    }
+}
+
+impl ImageData {
+    pub fn to_texture(&self) -> MemoryTexture {
+        let format = if self.has_alpha {
+            gdk::MemoryFormat::R8g8b8a8
+        } else {
+            gdk::MemoryFormat::R8g8b8
+        };
+
+        gdk::MemoryTexture::new(
+            self.width,
+            self.height,
+            format,
+            &glib::Bytes::from(self.data.as_slice()),
+            self.rowstride as usize,
+        )
+    }
+}
+
 impl From<HashMap<String, OwnedValue>> for NotificationHints {
-    fn from(map: HashMap<String, OwnedValue>) -> Self {
+    fn from(mut map: HashMap<String, OwnedValue>) -> Self {
         fn get_bool(
             map: &HashMap<String, OwnedValue>,
             key: &str,
@@ -56,20 +95,17 @@ impl From<HashMap<String, OwnedValue>> for NotificationHints {
         }
 
         fn get_image_data(
-            map: &HashMap<String, OwnedValue>,
+            map: &mut HashMap<String, OwnedValue>,
             key: &str,
         ) -> Option<ImageData> {
-            let value = map.get(key)?;
-            println!("{}", value.value_signature());
-
-            panic!("fuck it")
+            ImageData::try_from(map.remove(key)?).ok()
         }
 
         Self {
             action_icons: get_bool(&map, "action-icons"),
             category: get_string(&map, "category"),
             desktop_entry: get_string(&map, "desktop-entry"),
-            image_data: get_image_data(&map, "image-data"),
+            image_data: get_image_data(&mut map, "image-data"),
             image_path: get_string(&map, "image-path"),
             resident: get_bool(&map, "resident"),
             sound_file: get_string(&map, "sound-file"),

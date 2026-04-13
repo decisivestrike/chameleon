@@ -50,16 +50,14 @@ impl NotificationServer {
         })
     }
 
-    fn define_id(&mut self, replaces_id: u32) -> (u32, bool) {
-        dbg!(replaces_id);
-
+    fn define_id(&mut self, replaces_id: u32) -> u32 {
         if replaces_id == 0 {
             let id = self.current_notification_id;
             self.current_notification_id = id.wrapping_add(1);
 
-            (id, false)
+            id
         } else {
-            (replaces_id, true)
+            replaces_id
         }
     }
 }
@@ -67,10 +65,10 @@ impl NotificationServer {
 #[interface(name = "org.freedesktop.Notifications")]
 impl NotificationServer {
     async fn notify(&mut self, data: NotificationData) -> u32 {
-        log::debug!("NOTIFY!");
+        let id = self.define_id(data.replaces_id);
+        let command = NotificationCommand::new(id, data);
 
-        let (id, replace) = self.define_id(data.replaces_id);
-        let command = NotificationCommand::new(id, data, replace);
+        dbg!(&command);
 
         if let Err(e) = self.sender.send(command).await {
             log::error!("{e}");
@@ -80,11 +78,6 @@ impl NotificationServer {
     }
 
     fn get_server_information(&self) -> ServerInfo {
-        ServerInfo {
-            name: "Chameleon Notifications".to_string(),
-            vendor: "decisivestrike".to_string(),
-            version: "1.0".to_string(),
-            spec_version: "1.2".to_string(),
-        }
+        ServerInfo::default()
     }
 }

@@ -1,6 +1,8 @@
 use serde::Serialize;
 use zbus::zvariant::Type;
 
+use crate::SPECIFICATION_VERSION;
+
 #[derive(Debug, Serialize, Type)]
 pub struct ServerInfo {
     /// The product name of the server.
@@ -14,4 +16,15 @@ pub struct ServerInfo {
 
     /// The specification version the server is compliant with.
     pub spec_version: String,
+}
+
+impl Default for ServerInfo {
+    fn default() -> Self {
+        Self {
+            name: env!("CARGO_PKG_NAME").to_string(),
+            vendor: env!("CARGO_PKG_AUTHORS").to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            spec_version: SPECIFICATION_VERSION.to_string(),
+        }
+    }
 }

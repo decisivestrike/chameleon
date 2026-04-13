@@ -21,7 +21,7 @@ use grapes::{
     tokio::sync::mpsc::{self},
 };
 use std::rc::Rc;
-use suukon::{Numeral, NumeralSystem, Setting};
+use suukon::Numeral;
 
 const SPECIAL_WORKSPACE_ID: i32 = -98;
 
