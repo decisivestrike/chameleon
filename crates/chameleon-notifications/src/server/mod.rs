@@ -3,6 +3,7 @@ pub mod command;
 pub use command::NotificationCommand;
 
 pub mod hints;
+pub mod image_data;
 
 use crate::{requests::NotificationData, responses::ServerInfo};
 use grapes::RT;
@@ -68,7 +69,7 @@ impl NotificationServer {
         let id = self.define_id(data.replaces_id);
         let command = NotificationCommand::new(id, data);
 
-        dbg!(&command);
+        log::debug!("{command:#?}");
 
         if let Err(e) = self.sender.send(command).await {
             log::error!("{e}");

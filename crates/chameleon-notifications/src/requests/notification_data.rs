@@ -1,8 +1,8 @@
 //! https://specifications.freedesktop.org/notification/latest/protocol.html#command-notify
 
+use crate::server::hints::NotificationHints;
 use serde::Deserialize;
-use std::collections::HashMap;
-use zbus::zvariant::{self, Type};
+use zbus::zvariant::Type;
 
 #[derive(Debug, Deserialize, Type)]
 pub struct NotificationData {
@@ -35,7 +35,7 @@ pub struct NotificationData {
     /// Although clients and servers should never assume each other supports any specific hints,
     /// they can be used to pass along information, such as the process PID or window ID,
     /// that the server may be able to make use of. See Hints. Can be empty.
-    pub hints: HashMap<String, zvariant::OwnedValue>,
+    pub hints: NotificationHints,
 
     /// The timeout time in milliseconds since the display of the notification at
     /// which the notification should automatically close.

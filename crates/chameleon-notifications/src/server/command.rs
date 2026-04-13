@@ -32,7 +32,7 @@ impl NotificationCommand {
             summary,
             body,
             icon_path: app_icon,
-            hints: NotificationHints::from(hints),
+            hints,
             lifetime,
         }
     }

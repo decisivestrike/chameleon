@@ -5,6 +5,7 @@ use grapes::{
     gtk::{self, ApplicationWindow},
     prelude::GtkWindowExt,
 };
+use gtk::gdk::MemoryTexture;
 use std::time::Duration;
 
 pub struct Notification {
@@ -41,8 +42,8 @@ impl Notification {
     pub fn update(&mut self, data: NotificationCommand) {
         let window = &mut self.window;
 
-        if let Some(image_data) = data.hints.image_data {
-            let texture = image_data.to_texture();
+        if let Some(ref image_data) = data.hints.image_data {
+            let texture = MemoryTexture::from(image_data);
             window.add_icon(texture);
         }
 
