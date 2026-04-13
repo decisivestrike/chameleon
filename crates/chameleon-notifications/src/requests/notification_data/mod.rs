@@ -1,8 +1,10 @@
 //! https://specifications.freedesktop.org/notification/latest/protocol.html#command-notify
 pub mod hints;
-pub mod urgency;
+pub use hints::NotificationHints;
 
-use crate::server::hints::NotificationHints;
+pub mod urgency;
+pub use urgency::Urgency;
+
 use serde::Deserialize;
 use zbus::zvariant::Type;
 

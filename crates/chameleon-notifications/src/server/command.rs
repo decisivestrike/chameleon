@@ -1,6 +1,6 @@
 use crate::{
-    DEFAULT_TIMEOUT, requests::NotificationData,
-    server::hints::NotificationHints,
+    DEFAULT_TIMEOUT,
+    requests::{NotificationData, notification_data::hints::NotificationHints},
 };
 use std::time::Duration;
 

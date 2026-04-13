@@ -6,7 +6,7 @@ use zbus::zvariant::Type;
 /// "Joe Bob signed on" would be a low urgency. "You have new mail" or "A USB device was unplugged"
 /// would be a normal urgency. "Your computer is on fire" would be a critical urgency.
 #[repr(u8)]
-#[derive(Debug, Deserialize_repr, PartialEq, PartialOrd, Type)]
+#[derive(Clone, Copy, Debug, Deserialize_repr, PartialEq, PartialOrd, Type)]
 pub enum Urgency {
     Low = 0,
     Normal = 1,

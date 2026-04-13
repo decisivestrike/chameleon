@@ -2,7 +2,6 @@
 pub mod command;
 pub use command::NotificationCommand;
 
-pub mod hints;
 pub mod image_data;
 
 use crate::{requests::NotificationData, responses::ServerInfo};

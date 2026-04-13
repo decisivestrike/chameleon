@@ -1,4 +1,4 @@
-use crate::{GAP, ICON_SIZE};
+use crate::{GAP, ICON_SIZE, requests::notification_data::urgency::Urgency};
 use grapes::WindowComponent;
 use gtk::{
     self, ApplicationWindow, Orientation, gdk::MemoryTexture, prelude::*,
@@ -18,25 +18,15 @@ pub struct NotificationWindow {
 }
 
 impl NotificationWindow {
-    pub fn new(app: &gtk::Application, urgency: Option<u8>) -> Self {
+    pub fn new(app: &gtk::Application, urgency: Option<Urgency>) -> Self {
         let window = ApplicationWindow::new(app);
         Self::setup_layershell(&window);
 
         let title = gtk::Label::builder().name("summary").build();
         let body = gtk::Label::builder().name("body").build();
 
-        let urgency_class = match urgency {
-            Some(level) => match level {
-                1 => "low",
-                2 => "normal",
-                3 => "critical",
-                another_level => {
-                    log::error!("Uncorrect urgency level: {another_level}");
-                    "low"
-                }
-            },
-            None => "low",
-        };
+        let urgency = urgency.unwrap_or(Urgency::Low);
+        let urgency_class = urgency.as_ref();
 
         let text_container = gtk::Box::builder()
             .orientation(Orientation::Vertical)
