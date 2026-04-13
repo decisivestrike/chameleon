@@ -3,8 +3,7 @@ use grapes::gtk::glib;
 use grapes::gtk::prelude::*;
 use grapes::gtk::subclass::prelude::*;
 
-use std::cell::Cell;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 #[derive(Properties, Default)]

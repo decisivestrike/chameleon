@@ -1,18 +1,17 @@
-use crate::{common::Metadata, modules::ModuleFactory};
+use crate::common::Metadata;
+use crate::modules::ModuleFactory;
 use anyhow::bail;
-use chameleon_config::{CONFIG, panel::BatteryConfig};
-use grapes::{
-    Component, RT, State,
-    gtk::prelude::WidgetExt,
-    state,
-    tokio::{
-        self,
-        sync::broadcast::{self},
-        time::sleep,
-    },
-};
+use chameleon_config::CONFIG;
+use chameleon_config::panel::BatteryConfig;
+use grapes::gtk::prelude::WidgetExt;
+use grapes::tokio::sync::broadcast::{self};
+use grapes::tokio::time::sleep;
+use grapes::tokio::{self};
+use grapes::{Component, RT, State, state};
 use grapes_components::StatefullLabel;
-use std::{rc::Rc, sync::LazyLock, time::Duration};
+use std::rc::Rc;
+use std::sync::LazyLock;
+use std::time::Duration;
 
 pub static CHARGE_SENDER: LazyLock<broadcast::Sender<String>> =
     LazyLock::new(|| {

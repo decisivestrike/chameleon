@@ -2,14 +2,12 @@ use crate::instance_manager::INSTANCE_MANAGER;
 use chameleon_cli::Args;
 use chameleon_config::CONFIG;
 use futures_util::StreamExt;
-use grapes::{
-    Css, RT,
-    css::StylePriority,
-    gio::ApplicationFlags,
-    glib::{self, ExitCode},
-    gtk::{self},
-    prelude::{ApplicationExt, ApplicationExtManual},
-};
+use grapes::css::StylePriority;
+use grapes::gio::ApplicationFlags;
+use grapes::glib::{self, ExitCode};
+use grapes::gtk::{self};
+use grapes::prelude::{ApplicationExt, ApplicationExtManual};
+use grapes::{Css, RT};
 use inotify::{Inotify, WatchMask};
 use std::path::PathBuf;
 

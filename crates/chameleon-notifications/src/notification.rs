@@ -1,10 +1,9 @@
-use crate::{server::NotificationCommand, window::NotificationWindow};
-use grapes::{
-    WindowComponent,
-    glib::{self, clone},
-    gtk::{self, ApplicationWindow},
-    prelude::GtkWindowExt,
-};
+use crate::server::NotificationCommand;
+use crate::window::NotificationWindow;
+use grapes::WindowComponent;
+use grapes::glib::{self, clone};
+use grapes::gtk::{self, ApplicationWindow};
+use grapes::prelude::GtkWindowExt;
 use gtk::gdk::MemoryTexture;
 use std::time::Duration;
 

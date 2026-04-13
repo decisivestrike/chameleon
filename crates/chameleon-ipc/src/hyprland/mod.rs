@@ -7,23 +7,19 @@ pub use workspace::*;
 
 mod device;
 
-use crate::{
-    COMPOSITOR, CompositorVariant,
-    compositor::Compositor,
-    hyprland::{device::Devices, listener::EventListener},
-};
+use crate::compositor::Compositor;
+use crate::hyprland::device::Devices;
+use crate::hyprland::listener::EventListener;
+use crate::{COMPOSITOR, CompositorVariant};
 use anyhow::Result;
-use grapes::{
-    RT,
-    gtk::gdk::Monitor,
-    prelude::MonitorExt,
-    tokio::{
-        io::{AsyncReadExt, AsyncWriteExt},
-        net::UnixStream,
-        sync::broadcast,
-    },
-};
-use std::{env::var, path::PathBuf};
+use grapes::RT;
+use grapes::gtk::gdk::Monitor;
+use grapes::prelude::MonitorExt;
+use grapes::tokio::io::{AsyncReadExt, AsyncWriteExt};
+use grapes::tokio::net::UnixStream;
+use grapes::tokio::sync::broadcast;
+use std::env::var;
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct Hyprland {

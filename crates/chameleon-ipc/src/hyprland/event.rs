@@ -1,8 +1,6 @@
 use anyhow::{anyhow, bail};
-use std::{
-    fmt::{self, Debug},
-    str::FromStr,
-};
+use std::fmt::{self, Debug};
+use std::str::FromStr;
 
 /// (&str, HyprEvent variant, variant fields) -> HyprEvent
 macro_rules! event {

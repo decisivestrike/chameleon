@@ -8,8 +8,9 @@ use freedesktop_desktop_entry::desktop_entries;
 use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;
 use grapes::gtk::{
-    self, EventControllerKey, ListItem, ListScrollFlags, ListView, PolicyType,
-    ScrolledWindow, SignalListItemFactory, SingleSelection,
+    self, ApplicationWindow, EventControllerKey, ListItem, ListScrollFlags,
+    ListView, PolicyType, ScrolledWindow, SignalListItemFactory,
+    SingleSelection,
 };
 use grapes::layer_shell::{KeyboardMode, Layer, LayerShell};
 use grapes::prelude::{
@@ -17,8 +18,7 @@ use grapes::prelude::{
     ListModelExt, WidgetExt,
 };
 use grapes::tokio::process::Command;
-use grapes::{RT, gio};
-use grapes::{WindowComponent, gtk::ApplicationWindow};
+use grapes::{RT, WindowComponent, gio};
 use nucleo::{Config, Matcher, Utf32Str};
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;

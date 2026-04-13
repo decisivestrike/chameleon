@@ -1,6 +1,5 @@
 use serde::Deserialize;
-use suukon::NumeralSystem as SuukonNumeralSystem;
-use suukon::Setting as SuukonSetting;
+use suukon::{NumeralSystem as SuukonNumeralSystem, Setting as SuukonSetting};
 
 #[derive(Debug, Clone, Copy, Default, Deserialize)]
 #[serde(default)]

@@ -9,7 +9,9 @@ pub use launcher::LauncherConfig;
 
 use chameleon_cli::ARGS;
 use serde::Deserialize;
-use std::{fmt, fs, path::Path, sync::LazyLock};
+use std::path::Path;
+use std::sync::LazyLock;
+use std::{fmt, fs};
 
 pub static CONFIG: LazyLock<Config> = LazyLock::new(|| {
     let config_path = &ARGS.config_path;

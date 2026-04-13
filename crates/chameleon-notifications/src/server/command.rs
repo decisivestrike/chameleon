@@ -1,7 +1,6 @@
-use crate::{
-    DEFAULT_TIMEOUT,
-    requests::{NotificationData, notification_data::hints::NotificationHints},
-};
+use crate::DEFAULT_TIMEOUT;
+use crate::requests::NotificationData;
+use crate::requests::notification_data::hints::NotificationHints;
 use std::time::Duration;
 
 #[derive(Debug)]

@@ -1,5 +1,7 @@
 use argh::FromArgs;
-use std::{env::home_dir, path::PathBuf, sync::LazyLock};
+use std::env::home_dir;
+use std::path::PathBuf;
+use std::sync::LazyLock;
 
 pub static ARGS: LazyLock<Args> = LazyLock::new(|| argh::from_env());
 

@@ -2,9 +2,11 @@ mod app;
 mod instance_manager;
 mod panic_hook;
 
-use std::{io::Write, os::unix::net::UnixStream};
+use std::io::Write;
+use std::os::unix::net::UnixStream;
 
-use crate::{app::Chameleon, panic_hook::set_custom_panic_hook};
+use crate::app::Chameleon;
+use crate::panic_hook::set_custom_panic_hook;
 use chameleon_cli::ARGS;
 use grapes::glib::{self};
 

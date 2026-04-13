@@ -1,18 +1,18 @@
-use crate::{common::Metadata, modules::ModuleFactory};
-use chameleon_config::{CONFIG, panel::ClockConfig};
+use crate::common::Metadata;
+use crate::modules::ModuleFactory;
+use chameleon_config::CONFIG;
+use chameleon_config::panel::ClockConfig;
 use chrono::Local;
-use grapes::{
-    Component, RT, State,
-    gtk::{self, prelude::WidgetExt},
-    prelude::containers::GrapesBoxExt,
-    state,
-    tokio::{
-        sync::broadcast::{self, Sender},
-        time::sleep,
-    },
-};
+use grapes::gtk::prelude::WidgetExt;
+use grapes::gtk::{self};
+use grapes::prelude::containers::GrapesBoxExt;
+use grapes::tokio::sync::broadcast::{self, Sender};
+use grapes::tokio::time::sleep;
+use grapes::{Component, RT, State, state};
 use grapes_components::StatefullLabel;
-use std::{rc::Rc, sync::LazyLock, time::Duration};
+use std::rc::Rc;
+use std::sync::LazyLock;
+use std::time::Duration;
 
 pub static TIME_SENDER: LazyLock<broadcast::Sender<String>> =
     LazyLock::new(|| {

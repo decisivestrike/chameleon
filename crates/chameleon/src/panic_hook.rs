@@ -1,8 +1,6 @@
-use std::{
-    fs::OpenOptions,
-    io::Write,
-    panic::{self, PanicHookInfo},
-};
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::panic::{self, PanicHookInfo};
 
 pub fn set_custom_panic_hook() {
     panic::set_hook(Box::new(write_to_file));

@@ -2,7 +2,8 @@ pub mod compositor;
 pub mod hyprland;
 
 use crate::hyprland::Hyprland;
-use std::{env::var, sync::LazyLock};
+use std::env::var;
+use std::sync::LazyLock;
 
 pub static COMPOSITOR: LazyLock<CompositorVariant> =
     LazyLock::new(CompositorVariant::define);

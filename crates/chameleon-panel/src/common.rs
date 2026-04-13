@@ -1,5 +1,6 @@
 use chameleon_ipc::CompositorVariant;
-use grapes::gtk::{Orientation, gdk::Monitor};
+use grapes::gtk::Orientation;
+use grapes::gtk::gdk::Monitor;
 
 #[derive(Debug, Clone)]
 pub struct Metadata {

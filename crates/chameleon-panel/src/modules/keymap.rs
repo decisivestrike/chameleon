@@ -1,19 +1,16 @@
-use crate::{common::Metadata, modules::ModuleFactory};
+use crate::common::Metadata;
+use crate::modules::ModuleFactory;
 use anyhow::Result;
-use chameleon_ipc::{
-    COMPOSITOR, CompositorVariant, compositor::Compositor, hyprland::HyprEvent,
-};
-use grapes::{
-    Component, RT, State, glib,
-    prelude::WidgetExt,
-    state,
-    tokio::sync::{
-        broadcast::{self, Sender},
-        oneshot,
-    },
-};
+use chameleon_ipc::compositor::Compositor;
+use chameleon_ipc::hyprland::HyprEvent;
+use chameleon_ipc::{COMPOSITOR, CompositorVariant};
+use grapes::prelude::WidgetExt;
+use grapes::tokio::sync::broadcast::{self, Sender};
+use grapes::tokio::sync::oneshot;
+use grapes::{Component, RT, State, glib, state};
 use grapes_components::StatefullLabel;
-use std::{rc::Rc, sync::LazyLock};
+use std::rc::Rc;
+use std::sync::LazyLock;
 
 pub static EVENT_LISTENER: LazyLock<broadcast::Sender<String>> =
     LazyLock::new(|| {

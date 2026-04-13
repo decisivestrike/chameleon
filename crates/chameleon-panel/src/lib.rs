@@ -3,23 +3,19 @@ pub mod modules;
 
 use std::rc::Rc;
 
-use crate::{
-    common::Metadata,
-    modules::{Battery, Clock, Keymap, ModuleFactory, Workspaces},
-};
+use crate::common::Metadata;
+use crate::modules::{Battery, Clock, Keymap, ModuleFactory, Workspaces};
 use chameleon_config::{self as config, PanelConfig};
 use chameleon_ipc::COMPOSITOR;
 use config::panel::{Layer as PanelLayer, Module, ModulePlacement, Position};
-use grapes::{
-    Component, WindowComponent,
-    gtk::{
-        self, ApplicationWindow, Orientation,
-        gdk::{self, prelude::MonitorExt},
-        prelude::{GtkWindowExt, WidgetExt},
-    },
-    layer_shell::{Edge, KeyboardMode, Layer, LayerShell},
-    prelude::{OrientableExt, containers::GrapesBoxExt},
-};
+use grapes::gtk::gdk::prelude::MonitorExt;
+use grapes::gtk::gdk::{self};
+use grapes::gtk::prelude::{GtkWindowExt, WidgetExt};
+use grapes::gtk::{self, ApplicationWindow, Orientation};
+use grapes::layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
+use grapes::prelude::OrientableExt;
+use grapes::prelude::containers::GrapesBoxExt;
+use grapes::{Component, WindowComponent};
 
 #[derive(WindowComponent)]
 pub struct Panel {

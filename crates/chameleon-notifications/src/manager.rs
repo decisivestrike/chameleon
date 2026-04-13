@@ -1,6 +1,6 @@
-use crate::{
-    NotificationServer, queue::NotificationQueue, server::NotificationCommand,
-};
+use crate::NotificationServer;
+use crate::queue::NotificationQueue;
+use crate::server::NotificationCommand;
 use gtk::glib;
 
 pub struct NotificationManager {

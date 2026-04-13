@@ -1,13 +1,10 @@
-use crate::{
-    GAP, MAX_NOTIFICATIONS, notification::Notification,
-    server::NotificationCommand,
-};
-use grapes::{
-    layer_shell::{Edge, LayerShell},
-    prelude::WidgetExt,
-    tokio::sync::Mutex,
-};
+use crate::notification::Notification;
+use crate::server::NotificationCommand;
+use crate::{GAP, MAX_NOTIFICATIONS};
+use grapes::prelude::WidgetExt;
 use indexmap::IndexMap;
+use layer_shell::{Edge, LayerShell};
+use tokio::sync::Mutex;
 
 pub struct NotificationQueue {
     app: gtk::Application,

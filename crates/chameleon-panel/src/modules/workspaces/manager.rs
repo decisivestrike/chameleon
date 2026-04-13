@@ -1,11 +1,13 @@
-use crate::modules::workspaces::{SPECIAL_WORKSPACE_ID, event::WorkspaceEvent};
+use crate::modules::workspaces::SPECIAL_WORKSPACE_ID;
+use crate::modules::workspaces::event::WorkspaceEvent;
 use chameleon_core::errors::MonitorError;
-use chameleon_ipc::{
-    compositor::Compositor,
-    hyprland::{HyprEvent, Hyprland, Workspace},
-};
+use chameleon_ipc::compositor::Compositor;
+use chameleon_ipc::hyprland::{HyprEvent, Hyprland, Workspace};
 use dashmap::DashMap;
-use grapes::{RT, gtk::gdk, prelude::MonitorExt, tokio::sync::mpsc};
+use grapes::RT;
+use grapes::gtk::gdk;
+use grapes::prelude::MonitorExt;
+use grapes::tokio::sync::mpsc;
 use std::sync::OnceLock;
 
 pub(super) static MANAGER: OnceLock<WorkspacesManager> = OnceLock::new();

@@ -4,11 +4,14 @@ pub use command::NotificationCommand;
 
 pub mod image_data;
 
-use crate::{requests::NotificationData, responses::ServerInfo};
+use crate::requests::NotificationData;
+use crate::responses::ServerInfo;
 use grapes::RT;
 use std::future::{self};
-use tokio::{sync::mpsc, task::JoinHandle};
-use zbus::{connection::Builder as ConnectionBuilder, interface};
+use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
+use zbus::connection::Builder as ConnectionBuilder;
+use zbus::interface;
 
 pub struct NotificationServer {
     current_notification_id: u32,

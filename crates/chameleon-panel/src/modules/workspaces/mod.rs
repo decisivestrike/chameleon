@@ -1,25 +1,19 @@
 mod event;
 mod manager;
 
-use crate::{
-    common::Metadata,
-    modules::{
-        ModuleFactory,
-        workspaces::{
-            event::WorkspaceEvent,
-            manager::{MANAGER, WorkspacesManager},
-        },
-    },
-};
+use crate::common::Metadata;
+use crate::modules::ModuleFactory;
+use crate::modules::workspaces::event::WorkspaceEvent;
+use crate::modules::workspaces::manager::{MANAGER, WorkspacesManager};
 use anyhow::{Result, bail};
 use chameleon_config::panel::WorkspacesConfig;
-use chameleon_ipc::{COMPOSITOR, CompositorVariant, hyprland::Hyprland};
-use grapes::{
-    glib::clone::Downgrade,
-    gtk::{GestureClick, Label, Widget},
-    prelude::{containers::GrapesBoxExt, *},
-    tokio::sync::mpsc::{self},
-};
+use chameleon_ipc::hyprland::Hyprland;
+use chameleon_ipc::{COMPOSITOR, CompositorVariant};
+use grapes::glib::clone::Downgrade;
+use grapes::gtk::{GestureClick, Label, Widget};
+use grapes::prelude::containers::GrapesBoxExt;
+use grapes::prelude::*;
+use grapes::tokio::sync::mpsc::{self};
 use std::rc::Rc;
 use suukon::Numeral;
 

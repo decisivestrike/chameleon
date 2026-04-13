@@ -1,8 +1,9 @@
-use crate::{GAP, ICON_SIZE, requests::notification_data::urgency::Urgency};
+use crate::requests::notification_data::urgency::Urgency;
+use crate::{GAP, ICON_SIZE};
 use grapes::WindowComponent;
-use gtk::{
-    self, ApplicationWindow, Orientation, gdk::MemoryTexture, prelude::*,
-};
+use gtk::gdk::MemoryTexture;
+use gtk::prelude::*;
+use gtk::{self, ApplicationWindow, Orientation};
 use layer_shell::{Edge, LayerShell};
 
 #[derive(Clone, WindowComponent)]

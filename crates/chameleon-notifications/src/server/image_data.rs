@@ -1,7 +1,5 @@
-use gtk::{
-    gdk::{self, MemoryTexture},
-    glib,
-};
+use gtk::gdk::{self, MemoryTexture};
+use gtk::glib;
 use serde::Deserialize;
 use std::fmt;
 use zbus::zvariant::{OwnedValue, Type};

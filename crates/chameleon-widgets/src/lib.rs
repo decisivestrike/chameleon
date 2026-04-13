@@ -1,22 +1,18 @@
 use chameleon_config::WidgetsConfig;
-use grapes::{
-    Css, WindowComponent,
-    css::StylePriority,
-    gtk::{
-        self, ApplicationWindow, EventControllerKey, EventControllerMotion,
-        Fixed, Orientation, Widget,
-        gdk::{self, Key},
-        glib::clone,
-        prelude::{GtkWindowExt, *},
-    },
-    layer_shell::{self, Edge},
+use grapes::css::StylePriority;
+use grapes::gtk::gdk::{self, Key};
+use grapes::gtk::glib::clone;
+use grapes::gtk::prelude::{GtkWindowExt, *};
+use grapes::gtk::{
+    self, ApplicationWindow, EventControllerKey, EventControllerMotion, Fixed,
+    Orientation, Widget,
 };
+use grapes::layer_shell::{self, Edge};
+use grapes::{Css, WindowComponent};
 use layer_shell::{KeyboardMode, Layer, LayerShell};
 use log::{Level, info, log_enabled};
-use std::{
-    cell::{Cell, RefCell},
-    rc::Rc,
-};
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 
 #[derive(Clone, WindowComponent)]
 pub struct WidgetsLayer {

@@ -1,10 +1,7 @@
-use grapes::{
-    Component,
-    gtk::{self, Orientation},
-    prelude::{BoxExt, Cast, WidgetExt},
-};
-
 use crate::entry_object::ApplicationEntry;
+use grapes::Component;
+use grapes::gtk::{self, Orientation};
+use grapes::prelude::{BoxExt, Cast, WidgetExt};
 
 #[derive(Debug, Component)]
 pub struct Card {

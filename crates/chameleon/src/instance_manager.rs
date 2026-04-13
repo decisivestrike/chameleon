@@ -4,18 +4,18 @@ use chameleon_notifications::manager::NotificationManager;
 use chameleon_panel::Panel;
 use chameleon_widgets::WidgetsLayer;
 use dashmap::DashMap;
-use grapes::{
-    RT, WindowComponent, glib,
-    gtk::{self, gdk::Monitor},
-    prelude::{MonitorExt, monitor::GrapesMonitorExt},
-    tokio::{
-        fs,
-        io::{AsyncBufReadExt, BufReader},
-        net::UnixListener,
-        sync::RwLock,
-    },
-};
-use std::{path::Path, rc::Rc, sync::LazyLock};
+use grapes::gtk::gdk::Monitor;
+use grapes::gtk::{self};
+use grapes::prelude::MonitorExt;
+use grapes::prelude::monitor::GrapesMonitorExt;
+use grapes::tokio::fs;
+use grapes::tokio::io::{AsyncBufReadExt, BufReader};
+use grapes::tokio::net::UnixListener;
+use grapes::tokio::sync::RwLock;
+use grapes::{RT, WindowComponent, glib};
+use std::path::Path;
+use std::rc::Rc;
+use std::sync::LazyLock;
 
 /// Global instance manager
 pub static INSTANCE_MANAGER: LazyLock<InstanceManager> =

@@ -1,10 +1,10 @@
 use crate::hyprland::{HyprEvent, Hyprland};
-use grapes::tokio::{
-    io::{AsyncBufReadExt, BufReader},
-    net::UnixStream,
-    time::sleep,
-};
-use std::{cmp::min, path::PathBuf, time::Duration};
+use grapes::tokio::io::{AsyncBufReadExt, BufReader};
+use grapes::tokio::net::UnixStream;
+use grapes::tokio::time::sleep;
+use std::cmp::min;
+use std::path::PathBuf;
+use std::time::Duration;
 
 /// Hyprland event listener
 pub struct EventListener;
