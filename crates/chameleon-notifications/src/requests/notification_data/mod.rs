@@ -5,6 +5,9 @@ pub use hints::NotificationHints;
 pub mod urgency;
 pub use urgency::Urgency;
 
+pub mod image_data;
+pub use image_data::ImageData;
+
 use serde::Deserialize;
 use zbus::zvariant::Type;
 

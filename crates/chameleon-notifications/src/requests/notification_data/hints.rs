@@ -1,5 +1,4 @@
-use crate::requests::notification_data::Urgency;
-use crate::server::image_data::ImageData;
+use crate::requests::notification_data::{ImageData, Urgency};
 use zbus::zvariant::{DeserializeDict, Type};
 
 /// Hints are a way to provide extra data to a notification server that the
