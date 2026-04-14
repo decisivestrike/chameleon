@@ -4,7 +4,7 @@ set -e
 
 # Group 1: No replace (10 separate notifications)
 for i in {1..10}; do
-    notify-send --icon=dialog-information \
+    notify-send --icon=dialog-information -h "string:desktop-entry:firefox" \
         "No Replace $i" "Separate notification #$i" -t 2000
     sleep 0.3
 done

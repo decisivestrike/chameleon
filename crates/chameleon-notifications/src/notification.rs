@@ -46,7 +46,12 @@ impl Notification {
             window.add_icon(texture);
         }
 
-        window.summary.set_label(&data.summary);
+        let summary = match data.hints.desktop_entry {
+            Some(entry_name) => format!("[{entry_name}] {}", data.summary),
+            None => data.summary,
+        };
+
+        window.summary.set_label(&summary);
         window.body.set_label(&data.body)
     }
 

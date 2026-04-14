@@ -5,7 +5,7 @@ use zbus::zvariant::{DeserializeDict, Type};
 /// Hints are a way to provide extra data to a notification server that the
 /// server may be able to make use of.
 #[derive(Debug, DeserializeDict, Type)]
-#[zvariant(signature = "a{sv}")]
+#[zvariant(signature = "a{sv}", rename_all = "kebab-case")]
 pub struct NotificationHints {
     /// When set, a server that has the "action-icons" capability will attempt
     /// to interpret any action identifier as a named icon. The localized
