@@ -352,7 +352,10 @@ name = "chameleon-core"
 version = "0.1.0"
 dependencies = [
  "grapes",
+ "log",
+ "serde",
  "thiserror",
+ "toml",
 ]
 
 [[package]]
@@ -386,6 +389,7 @@ name = "chameleon-notifications"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chameleon-core",
  "gdk-pixbuf 0.22.0",
  "grapes",
  "gtk4",

@@ -1,5 +1,5 @@
 //! https://specifications.freedesktop.org/notification/latest/protocol.html
-pub mod command;
+mod command;
 pub use command::NotificationCommand;
 
 use crate::requests::NotificationData;
