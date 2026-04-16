@@ -3,14 +3,14 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.dependencies]
-chameleon-cli = { path = "crates/chameleon-cli", version = "0.1.0" }
-chameleon-config = { path = "crates/chameleon-config", version = "0.1.0" }
-chameleon-core = { path = "crates/chameleon-core", version = "0.1.0" }
-chameleon-ipc = { path = "crates/chameleon-ipc", version = "0.1.0" }
-chameleon-launcher = { path = "crates/chameleon-launcher", version = "0.1.0" }
-chameleon-panel = { path = "crates/chameleon-panel", version = "0.1.0" }
-chameleon-widgets = { path = "crates/chameleon-widgets", version = "0.1.0" }
-chameleon-notifications = { path = "crates/chameleon-notifications", version = "0.1.0" }
+chameleon-cli = { path = "crates/chameleon-cli" }
+chameleon-config = { path = "crates/chameleon-config" }
+chameleon-core = { path = "crates/chameleon-core" }
+chameleon-ipc = { path = "crates/chameleon-ipc" }
+chameleon-launcher = { path = "crates/chameleon-launcher" }
+chameleon-panel = { path = "crates/chameleon-panel" }
+chameleon-widgets = { path = "crates/chameleon-widgets" }
+chameleon-notifications = { path = "crates/chameleon-notifications" }
 
 grapes = { git = "https://github.com/decisivestrike/grapes" }
 grapes_components = { git = "https://github.com/decisivestrike/grapes", package = "grapes-components" }
