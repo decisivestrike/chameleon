@@ -1,6 +1,6 @@
 use crate::NotificationServer;
 use crate::queue::NotificationQueue;
-use crate::server::NotificationCommand;
+use crate::requests::NotificationData;
 use gtk::glib;
 
 pub struct NotificationManager {
@@ -28,7 +28,7 @@ impl NotificationManager {
         server.serve();
     }
 
-    async fn handle_command(&self, command: NotificationCommand) {
-        self.queue.push_or_replace(command).await;
+    async fn handle_command(&self, data: NotificationData) {
+        self.queue.push_or_replace(data).await;
     }
 }

@@ -1,25 +1,27 @@
-use crate::server::NotificationCommand;
+use crate::requests::NotificationData;
 use crate::window::NotificationWindow;
 use grapes::WindowComponent;
 use grapes::glib::{self, clone};
 use grapes::gtk::{self, ApplicationWindow};
 use grapes::prelude::GtkWindowExt;
 use gtk::gdk::MemoryTexture;
-use std::time::Duration;
 
 pub struct Notification {
     id: u32,
-    lifetime: Duration,
     window: NotificationWindow,
 }
 
 impl Notification {
-    pub fn new(app: &gtk::Application, data: NotificationCommand) -> Self {
-        let NotificationCommand { id, lifetime, .. } = data;
+    pub fn new(app: &gtk::Application, data: NotificationData) -> Self {
+        let NotificationData {
+            replaces_id,
+            expire_timeout,
+            ..
+        } = data;
         let window = NotificationWindow::new(&app, data.hints.urgency);
 
         glib::timeout_add_local_once(
-            lifetime,
+            expire_timeout.into(),
             clone!(
                 #[strong]
                 window,
@@ -28,9 +30,8 @@ impl Notification {
         );
 
         let mut notification = Self {
-            id,
+            id: replaces_id,
             window,
-            lifetime,
         };
 
         notification.update(data);
@@ -38,7 +39,7 @@ impl Notification {
         notification
     }
 
-    pub fn update(&mut self, data: NotificationCommand) {
+    pub fn update(&mut self, data: NotificationData) {
         let window = &mut self.window;
 
         if let Some(ref image_data) = data.hints.image_data {
@@ -61,10 +62,6 @@ impl Notification {
 
     pub fn id(&self) -> u32 {
         self.id
-    }
-
-    pub fn lifetime(&self) -> Duration {
-        self.lifetime
     }
 
     pub fn window(&self) -> ApplicationWindow {

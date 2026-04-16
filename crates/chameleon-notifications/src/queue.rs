@@ -1,5 +1,5 @@
 use crate::notification::Notification;
-use crate::server::NotificationCommand;
+use crate::requests::NotificationData;
 use crate::{GAP, MAX_NOTIFICATIONS};
 use grapes::prelude::WidgetExt;
 use indexmap::IndexMap;
@@ -21,15 +21,15 @@ impl NotificationQueue {
         }
     }
 
-    pub async fn push_or_replace(&self, new_notification: NotificationCommand) {
+    pub async fn push_or_replace(&self, data: NotificationData) {
         let mut notifications = self.notifications.lock().await;
-        let maybe_notification = notifications.get_mut(&new_notification.id);
+        let maybe_notification = notifications.get_mut(&data.replaces_id);
 
         if let Some(old_notification) = maybe_notification {
-            self.replace(old_notification, new_notification).await
+            self.replace(old_notification, data).await
         } else {
             drop(notifications);
-            self.push(new_notification).await;
+            self.push(data).await;
         }
     }
 
@@ -38,7 +38,7 @@ impl NotificationQueue {
         notifications.shift_remove(&id);
     }
 
-    async fn push(&self, command: NotificationCommand) {
+    async fn push(&self, data: NotificationData) {
         let mut notifications = self.notifications.lock().await;
         let mut notifications_count = notifications.len();
 
@@ -60,19 +60,15 @@ impl NotificationQueue {
             notification.window().set_margin(Edge::Top, margin_top);
         }
 
-        let id = command.id;
-        let notification = Notification::new(&self.app, command);
+        let id = data.replaces_id;
+        let notification = Notification::new(&self.app, data);
         notification.show();
 
         notifications.insert(id, notification);
     }
 
-    async fn replace(
-        &self,
-        old: &mut Notification,
-        command: NotificationCommand,
-    ) {
-        old.update(command);
+    async fn replace(&self, old: &mut Notification, data: NotificationData) {
+        old.update(data);
     }
 }
 
