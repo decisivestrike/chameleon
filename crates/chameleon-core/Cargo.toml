@@ -5,5 +5,7 @@ edition = "2024"
 
 [dependencies]
 grapes.workspace = true
-
+log.workspace = true
+serde = { workspace = true, features = ["derive", "rc"] }
+toml.workspace = true
 thiserror.workspace = true
