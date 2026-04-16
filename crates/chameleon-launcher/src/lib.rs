@@ -53,14 +53,15 @@ impl Launcher {
             #[strong]
             launcher,
             move |_| {
-                let entry_info: ApplicationEntry = launcher
+                let maybe_entry = launcher
                     .selection_model
                     .selected_item()
-                    .and_downcast()
-                    .expect("cant cast");
+                    .and_downcast::<ApplicationEntry>();
 
-                launcher.toggle_visibility();
-                launcher.open(&entry_info.exec(), entry_info.terminal());
+                if let Some(entry) = maybe_entry {
+                    launcher.toggle_visibility();
+                    launcher.open(&entry.exec(), entry.terminal());
+                }
             }
         ));
 
