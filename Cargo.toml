@@ -39,4 +39,4 @@ console-subscriber = "0.5.0"
 zbus = "5.14.0"
 
 [profile.release]
-lto = true
+lto = "thin"
