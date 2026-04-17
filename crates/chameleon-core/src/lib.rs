@@ -18,18 +18,22 @@ pub static DEFAULT_CONFIG_FOLDER: LazyLock<PathBuf> = LazyLock::new(|| {
 
 pub fn read_config<Config, P>(config_path: P) -> Config
 where
-    Config: DeserializeOwned,
+    Config: Default + DeserializeOwned,
     P: AsRef<Path> + fmt::Debug,
 {
-    let toml_str = match fs::read_to_string(&config_path) {
-        Ok(file) => file,
+    match fs::read_to_string(&config_path) {
+        Ok(str) => parse_config(&str),
         Err(e) => {
-            log::error!("Failed to open config file at {config_path:?}. {e}");
-            std::process::exit(-1);
+            log::warn!(
+                "Failed to open config file at {config_path:?}. {e}. The default configuration will be used."
+            );
+            Config::default()
         }
-    };
+    }
+}
 
-    match toml::from_str(&toml_str) {
+fn parse_config<Config: DeserializeOwned>(input: &str) -> Config {
+    match toml::from_str(&input) {
         Ok(config) => config,
         Err(e) => {
             log::error!("{e}");

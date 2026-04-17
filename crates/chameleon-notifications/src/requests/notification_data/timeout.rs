@@ -16,10 +16,13 @@ impl Default for Timeout {
 
 impl Into<Duration> for Timeout {
     fn into(self) -> Duration {
-        match self.0.try_into() {
-            Ok(0) => Duration::MAX,
-            Ok(ms) => Duration::from_millis(ms),
-            _ => Self::default().into(),
+        if let Ok(ms) = self.0.try_into() {
+            match ms {
+                0 => Duration::MAX,
+                ms => Duration::from_millis(ms),
+            }
+        } else {
+            Self::default().into()
         }
     }
 }

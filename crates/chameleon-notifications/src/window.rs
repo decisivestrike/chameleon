@@ -1,5 +1,5 @@
+use crate::CONFIG;
 use crate::requests::notification_data::urgency::Urgency;
-use crate::{GAP, ICON_SIZE};
 use grapes::WindowComponent;
 use gtk::gdk::MemoryTexture;
 use gtk::prelude::*;
@@ -65,7 +65,7 @@ impl NotificationWindow {
         } else {
             let icon = gtk::Image::builder()
                 .paintable(&texture)
-                .pixel_size(ICON_SIZE)
+                .pixel_size(CONFIG.icon_size.into())
                 .build();
 
             self.container.prepend(&icon);
@@ -74,13 +74,15 @@ impl NotificationWindow {
     }
 
     fn setup_layershell(window: &ApplicationWindow) {
+        let gap = CONFIG.gaps.into();
+
         window.init_layer_shell();
         window.set_namespace(Some("chameleon-notifications"));
 
         window.set_anchor(Edge::Top, true);
-        window.set_margin(Edge::Top, GAP);
+        window.set_margin(Edge::Top, gap);
 
         window.set_anchor(Edge::Right, true);
-        window.set_margin(Edge::Right, GAP);
+        window.set_margin(Edge::Right, 10);
     }
 }

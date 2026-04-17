@@ -1,6 +1,6 @@
+use crate::CONFIG;
 use crate::notification::Notification;
 use crate::requests::NotificationData;
-use crate::{GAP, MAX_NOTIFICATIONS};
 use grapes::prelude::WidgetExt;
 use indexmap::IndexMap;
 use layer_shell::{Edge, LayerShell};
@@ -9,6 +9,7 @@ use tokio::sync::Mutex;
 pub struct NotificationQueue {
     app: gtk::Application,
     notifications: Mutex<IndexMap<u32, Notification>>,
+    max_notifications: usize,
 }
 
 impl NotificationQueue {
@@ -18,6 +19,7 @@ impl NotificationQueue {
         Self {
             app: app.clone(),
             notifications: Mutex::new(map).into(),
+            max_notifications: CONFIG.max_notifications.get().into(),
         }
     }
 
@@ -42,7 +44,7 @@ impl NotificationQueue {
         let mut notifications = self.notifications.lock().await;
         let mut notifications_count = notifications.len();
 
-        if notifications_count >= MAX_NOTIFICATIONS {
+        if notifications_count >= self.max_notifications.into() {
             notifications.shift_remove_index(0).expect("should exists");
             notifications_count -= 1;
         }
@@ -53,7 +55,7 @@ impl NotificationQueue {
             let height = notification.window().height();
             let count = (notifications_count + 1 - index) as i32;
 
-            let gaps = GAP * count;
+            let gaps = CONFIG.gaps as i32 * count;
             let heights = height * (count - 1);
             let margin_top = gaps + heights;
 
