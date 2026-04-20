@@ -1,11 +1,12 @@
 //! https://specifications.freedesktop.org/notification/latest/protocol.html
 use crate::requests::NotificationData;
-use crate::responses::ServerInfo;
+use crate::responses::{Capability, ServerInfo};
 use grapes::RT;
 use std::future::{self};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use zbus::connection::Builder as ConnectionBuilder;
+use zbus::object_server::SignalEmitter;
 use zbus::{Connection, interface};
 
 pub struct NotificationServer {
@@ -69,6 +70,11 @@ impl NotificationServer {
 
 #[interface(name = "org.freedesktop.Notifications")]
 impl NotificationServer {
+    /// Returns the server's capabilities.
+    async fn get_capabilities(&self) -> Vec<Capability> {
+        vec![Capability::Body, Capability::BodyMarkup]
+    }
+
     async fn notify(&mut self, mut data: NotificationData) -> u32 {
         let id = self.set_id_if_zero(&mut data);
 
@@ -81,7 +87,30 @@ impl NotificationServer {
         id
     }
 
+    async fn close_notification(&self, id: u32) {}
+
     fn get_server_information(&self) -> ServerInfo {
         ServerInfo::default()
     }
+
+    #[zbus(signal)]
+    async fn notification_closed(
+        signal_emitter: &SignalEmitter<'_>,
+        id: u32,
+        reason: u32,
+    ) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn action_invoked(
+        emitter: &SignalEmitter<'_>,
+        id: u32,
+        action_key: &str,
+    ) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn activation_token(
+        emitter: &SignalEmitter<'_>,
+        id: u32,
+        action_key: &str,
+    ) -> zbus::Result<()>;
 }

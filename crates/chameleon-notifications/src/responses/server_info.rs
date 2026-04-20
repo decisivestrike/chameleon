@@ -28,3 +28,15 @@ impl Default for ServerInfo {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::responses::ServerInfo;
+    use zbus::zvariant::Type;
+
+    #[test]
+    fn check_signature() {
+        // Array of strings
+        assert_eq!(ServerInfo::SIGNATURE, "(ssss)");
+    }
+}
