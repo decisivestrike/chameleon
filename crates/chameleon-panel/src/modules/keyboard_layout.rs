@@ -1,44 +1,24 @@
 use crate::common::Metadata;
-use crate::modules::ModuleFactory;
+use crate::modules::{BaseModule, ModuleFactory};
 use anyhow::Result;
 use chameleon_ipc::compositor::Compositor;
 use chameleon_ipc::hyprland::HyprEvent;
 use chameleon_ipc::{COMPOSITOR, CompositorVariant};
 use grapes::prelude::WidgetExt;
-use grapes::tokio::sync::broadcast::{self, Sender};
 use grapes::tokio::sync::oneshot;
-use grapes::{Component, RT, State, glib, state};
-use grapes_components::StatefullLabel;
+use grapes::{Component, RT, glib};
 use std::rc::Rc;
 use std::sync::LazyLock;
+use tokio::sync::watch;
 
-pub static EVENT_LISTENER: LazyLock<broadcast::Sender<String>> =
+pub static LAYOUT_SENDER: LazyLock<watch::Sender<String>> =
     LazyLock::new(|| {
-        let sender = broadcast::Sender::new(64);
+        let watch_sender = watch::Sender::new(String::new());
 
-        RT.spawn(Keymap::background_task(sender.clone()));
+        RT.spawn(KeyboardLayout::background_task(watch_sender.clone()));
 
-        sender
-    });
-
-#[derive(Debug, Component)]
-pub struct Keymap {
-    #[root]
-    label: StatefullLabel<String>,
-}
-
-impl ModuleFactory for Keymap {
-    type Config = ();
-
-    fn create(
-        _config: &Self::Config,
-        _meta: &Metadata,
-    ) -> Result<Rc<dyn Component>> {
         if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
             let (sender, recv) = oneshot::channel();
-
-            let layout = state(String::new());
-            layout.track(&*EVENT_LISTENER);
 
             RT.spawn(async move {
                 let devices = hyprland.devices().await.unwrap();
@@ -49,7 +29,8 @@ impl ModuleFactory for Keymap {
                     .unwrap()
                     .active_keymap;
 
-                let short_name = Self::shrink_layout_name(&active_keymap);
+                let short_name =
+                    KeyboardLayout::shrink_layout_name(&active_keymap);
 
                 if let Err(e) = sender.send(short_name) {
                     log::error!("{e:?}");
@@ -57,31 +38,50 @@ impl ModuleFactory for Keymap {
             });
 
             glib::spawn_future_local({
-                let state_clone = layout.clone();
+                let watch_sender = watch_sender.clone();
                 async move {
                     let active_keymap = recv.await.unwrap();
-                    state_clone.set(active_keymap)
+
+                    if let Err(e) = watch_sender.send(active_keymap) {
+                        log::error!("{e}");
+                    }
                 }
             });
-
-            let keyboard_layout = Keymap::new(&layout);
-            Ok(Rc::new(keyboard_layout))
-        } else {
-            panic!()
         }
+
+        watch_sender
+    });
+
+#[derive(Debug, Component)]
+pub struct KeyboardLayout {
+    #[root]
+    base: BaseModule,
+}
+
+impl ModuleFactory for KeyboardLayout {
+    type Config = ();
+
+    fn create(
+        _config: &Self::Config,
+        _meta: &Metadata,
+    ) -> Result<Rc<dyn Component>> {
+        let kb_layout = KeyboardLayout::new();
+
+        Ok(Rc::new(kb_layout))
     }
 }
 
-impl Keymap {
+impl KeyboardLayout {
     const NAME: &str = "keyboard-layout";
 
-    pub fn new(layout: &Rc<State<String>>) -> Self {
-        let label = StatefullLabel::new(layout);
+    pub fn new() -> Self {
+        let state = LAYOUT_SENDER.subscribe();
+        let base = BaseModule::new(state);
 
-        label.as_ref().set_widget_name(Self::NAME);
-        label.as_ref().add_css_class("module");
+        base.set_widget_name(Self::NAME);
+        base.add_css_class("module");
 
-        Self { label }
+        Self { base }
     }
 
     pub fn shrink_layout_name(name: &String) -> String {
@@ -91,7 +91,7 @@ impl Keymap {
             .collect()
     }
 
-    async fn background_task(sender: Sender<String>) {
+    async fn background_task(sender: watch::Sender<String>) {
         if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
             let mut receiver = hyprland.subscribe();
 
