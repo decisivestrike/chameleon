@@ -6,15 +6,13 @@ use std::fmt;
 
 /// All panel modules
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Module {
-    #[serde(rename = "clock")]
     Clock,
-    #[serde(rename = "battery")]
     Battery,
-    #[serde(rename = "workspaces")]
     Workspaces,
-    #[serde(rename = "keymap")]
-    Keymap,
+    KeyboardLayout,
+    Pulseaudio,
 }
 
 impl fmt::Display for Module {
@@ -26,7 +24,8 @@ impl fmt::Display for Module {
                 Module::Clock => "clock",
                 Module::Battery => "battery",
                 Module::Workspaces => "workspaces",
-                Module::Keymap => "layout",
+                Module::KeyboardLayout => "keyboard layout",
+                Module::Pulseaudio => "pulseaudio",
             }
         )
     }
