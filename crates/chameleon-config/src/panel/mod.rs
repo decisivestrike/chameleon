@@ -54,53 +54,37 @@ impl fmt::Display for ModulePlacement {
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Position {
-    #[serde(rename = "top")]
     #[default]
     Top,
-    #[serde(rename = "right")]
     Right,
-    #[serde(rename = "bottom")]
     Bottom,
-    #[serde(rename = "left")]
     Left,
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Layer {
-    #[serde(rename = "background")]
     Background,
-    #[serde(rename = "bottom")]
     Bottom,
-    #[serde(rename = "top")]
     #[default]
     Top,
-    #[serde(rename = "overlay")]
     Overlay,
 }
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct PanelConfig {
-    #[serde(default)]
     pub enabled: bool,
-    #[serde(default)]
     pub position: Position,
     pub thickness: Option<i32>,
-    #[serde(default)]
     pub spacing: i32,
-    #[serde(default)]
     pub layer: Layer,
-    #[serde(default)]
     pub modules_left: Vec<Module>,
-    #[serde(default)]
     pub modules_center: Vec<Module>,
-    #[serde(default)]
     pub modules_right: Vec<Module>,
-    #[serde(default, rename = "clock")]
     pub clock: ClockConfig,
-    #[serde(default, rename = "battery")]
     pub battery: BatteryConfig,
-    #[serde(default, rename = "workspaces")]
     pub workspaces: WorkspacesConfig,
 }

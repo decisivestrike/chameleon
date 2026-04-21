@@ -18,14 +18,11 @@ pub static CONFIG: LazyLock<Config> = LazyLock::new(|| {
     Config::init(config_path)
 });
 
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct Config {
-    #[serde(default, rename = "widgets")]
     pub widgets: WidgetsConfig,
-    #[serde(default, rename = "panel")]
     pub panel: PanelConfig,
-    #[serde(default, rename = "launcher")]
     pub launcher: LauncherConfig,
 }
 
