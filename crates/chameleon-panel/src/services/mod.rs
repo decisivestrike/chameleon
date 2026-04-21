@@ -4,6 +4,7 @@ use pulse::context::subscribe::{Facility, InterestMaskSet, Operation};
 use pulse::context::{Context, State};
 use pulse::mainloop::standard::{IterateResult, Mainloop};
 use pulse::proplist::Proplist;
+use pulse::volume::Volume;
 use std::sync::LazyLock;
 use std::thread;
 use tokio::sync::watch;
@@ -119,7 +120,7 @@ fn create_result_handler(
 
             let sink_info = CurrentSink {
                 name,
-                volume: (info.volume.avg().0 * 100 / 65536) as u8,
+                volume: volume_to_u8(info.volume.max()),
                 muted: info.mute,
             };
 
@@ -128,4 +129,8 @@ fn create_result_handler(
             }
         }
     }
+}
+
+fn volume_to_u8(volume: Volume) -> u8 {
+    (volume.0 as f32 * 100.0 / 65536.0).round() as u8
 }
