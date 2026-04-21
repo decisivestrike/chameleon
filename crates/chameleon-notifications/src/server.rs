@@ -87,7 +87,7 @@ impl NotificationServer {
         id
     }
 
-    async fn close_notification(&self, id: u32) {}
+    async fn close_notification(&self, _id: u32) {}
 
     fn get_server_information(&self) -> ServerInfo {
         ServerInfo::default()

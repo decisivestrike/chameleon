@@ -1,4 +1,3 @@
-use grapes::RT;
 use pulse::callbacks::ListResult;
 use pulse::context::introspect::{Introspector, SinkInfo};
 use pulse::context::subscribe::{Facility, InterestMaskSet, Operation};

@@ -30,7 +30,7 @@ impl ModuleFactory for Clock {
     type Config = ClockConfig;
 
     fn create(
-        config: &Self::Config,
+        _config: &Self::Config,
         _meta: &Metadata,
     ) -> anyhow::Result<Rc<dyn Component>> {
         let clock = Clock::new();
