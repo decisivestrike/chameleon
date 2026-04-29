@@ -2,8 +2,9 @@ use crate::requests::NotificationData;
 use crate::window::NotificationWindow;
 use grapes::WindowComponent;
 use grapes::glib::{self, clone};
-use grapes::gtk::{self, ApplicationWindow};
+use grapes::gtk::{self};
 use grapes::prelude::GtkWindowExt;
+use gtk::Window;
 use gtk::gdk::MemoryTexture;
 
 pub struct Notification {
@@ -12,13 +13,13 @@ pub struct Notification {
 }
 
 impl Notification {
-    pub fn new(app: &gtk::Application, data: NotificationData) -> Self {
+    pub fn new(data: NotificationData) -> Self {
         let NotificationData {
             replaces_id,
             expire_timeout,
             ..
         } = data;
-        let window = NotificationWindow::new(&app, data.hints.urgency);
+        let window = NotificationWindow::new(data.hints.urgency);
 
         glib::timeout_add_local_once(
             expire_timeout.into(),
@@ -64,7 +65,7 @@ impl Notification {
         self.id
     }
 
-    pub fn window(&self) -> ApplicationWindow {
+    pub fn window(&self) -> Window {
         self.window.window.clone()
     }
 }

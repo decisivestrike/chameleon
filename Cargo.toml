@@ -10,7 +10,9 @@ chameleon-ipc = { path = "crates/chameleon-ipc" }
 chameleon-launcher = { path = "crates/chameleon-launcher" }
 chameleon-panel = { path = "crates/chameleon-panel" }
 chameleon-widgets = { path = "crates/chameleon-widgets" }
-chameleon-notifications = { path = "crates/chameleon-notifications" }
+notifications = { path = "crates/notifications" }
+
+gtkio = { path = "crates/gtkio" }
 
 grapes = { git = "https://github.com/decisivestrike/grapes" }
 grapes_components = { git = "https://github.com/decisivestrike/grapes", package = "grapes-components" }
@@ -36,7 +38,6 @@ tokio-util = "0.7.18"
 env_logger = "0.11.8"
 futures-util = "0.3.31"
 console-subscriber = "0.5.0"
-zbus = "5.14.0"
 
 [profile.release]
 lto = "thin"

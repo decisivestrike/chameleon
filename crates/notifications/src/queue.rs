@@ -7,17 +7,15 @@ use layer_shell::{Edge, LayerShell};
 use tokio::sync::Mutex;
 
 pub struct NotificationQueue {
-    app: gtk::Application,
     notifications: Mutex<IndexMap<u32, Notification>>,
     max_notifications: usize,
 }
 
 impl NotificationQueue {
-    pub fn new(app: &gtk::Application) -> Self {
+    pub fn new() -> Self {
         let map = IndexMap::new();
 
         Self {
-            app: app.clone(),
             notifications: Mutex::new(map).into(),
             max_notifications: CONFIG.max_notifications.get().into(),
         }
@@ -63,7 +61,7 @@ impl NotificationQueue {
         }
 
         let id = data.replaces_id;
-        let notification = Notification::new(&self.app, data);
+        let notification = Notification::new(data);
         notification.show();
 
         notifications.insert(id, notification);

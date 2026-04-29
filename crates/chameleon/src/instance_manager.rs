@@ -1,6 +1,5 @@
 use chameleon_config::{Config, LauncherConfig, PanelConfig, WidgetsConfig};
 use chameleon_launcher::Launcher;
-use chameleon_notifications::manager::NotificationManager;
 use chameleon_panel::Panel;
 use chameleon_widgets::WidgetsLayer;
 use dashmap::DashMap;
@@ -13,6 +12,7 @@ use grapes::tokio::io::{AsyncBufReadExt, BufReader};
 use grapes::tokio::net::UnixListener;
 use grapes::tokio::sync::RwLock;
 use grapes::{RT, WindowComponent, glib};
+use notifications::manager::NotificationManager;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::LazyLock;
@@ -43,7 +43,7 @@ impl InstanceManager {
         self.configure_launcher(app, &config.launcher);
 
         if true {
-            let manager = NotificationManager::new(&app);
+            let manager = NotificationManager::new();
             manager.run();
         }
 

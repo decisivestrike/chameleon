@@ -3,7 +3,7 @@ use crate::requests::notification_data::urgency::Urgency;
 use grapes::WindowComponent;
 use gtk::gdk::MemoryTexture;
 use gtk::prelude::*;
-use gtk::{self, ApplicationWindow, Orientation};
+use gtk::{self, Orientation, Window};
 use layer_shell::{Edge, LayerShell};
 
 #[derive(Clone, WindowComponent)]
@@ -15,12 +15,12 @@ pub struct NotificationWindow {
     pub text_container: gtk::Box,
     pub container: gtk::Box,
     #[root]
-    pub window: ApplicationWindow,
+    pub window: Window,
 }
 
 impl NotificationWindow {
-    pub fn new(app: &gtk::Application, urgency: Option<Urgency>) -> Self {
-        let window = ApplicationWindow::new(app);
+    pub fn new(urgency: Option<Urgency>) -> Self {
+        let window = Window::new();
         Self::setup_layershell(&window);
 
         let title = gtk::Label::builder().name("summary").build();
@@ -73,7 +73,7 @@ impl NotificationWindow {
         }
     }
 
-    fn setup_layershell(window: &ApplicationWindow) {
+    fn setup_layershell(window: &Window) {
         let gap = CONFIG.gaps.into();
 
         window.init_layer_shell();

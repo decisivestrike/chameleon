@@ -1,145 +1,125 @@
+use futures::channel::oneshot;
+use glib::{JoinHandle as GlibHandle, SourceId};
+use std::fmt;
 use std::sync::LazyLock;
+use std::time::Duration;
 use tokio::runtime::Runtime;
+use tokio::sync::broadcast::error::RecvError;
+use tokio::sync::{broadcast, mpsc};
+use tokio::task::JoinHandle as TokioHandle;
 
 static RUNTIME: LazyLock<Runtime> =
     LazyLock::new(|| Runtime::new().expect("cant create runtime"));
 
-use glib::JoinHandle as GlibHandle;
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use tokio::sync::broadcast;
-use tokio::task::JoinHandle as TokioHandle;
-
-// pub trait JoinHandle<T>: Future<Output = T> {}
-
-// impl<T> JoinHandle<T> for TokioHandle<T> {}
-
-enum Handle<T> {
-    Tokio(TokioHandle<T>),
-    Glib(GlibHandle<T>),
-}
-
-impl<T: 'static> Future for Handle<T> {
-    type Output = T;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
-        match &mut *self {
-            Handle::Tokio(handle) => Pin::new(handle)
-                .poll(cx)
-                .map(|value| value.expect("panic in task")),
-            Handle::Glib(handle) => Pin::new(handle)
-                .poll(cx)
-                .map(|value| value.expect("panic in task")),
-        }
-    }
-}
-
-pub struct Task<T> {
-    handle: Handle<T>,
-}
-
-impl<T> Task<T> {
-    pub fn then<O>(self, f: impl FnOnce(T) -> O + Send + 'static) -> Task<O>
-    where
-        T: Send + 'static,
-        O: Send + 'static,
-    {
-        let handle = self.handle;
-        spawn(async move { f(handle.await) })
-    }
-
-    /// This can be called only from the thread where the main context is
-    /// running
-    pub fn then_local<O>(self, f: impl FnOnce(T) -> O + 'static) -> Task<O>
-    where
-        T: 'static,
-        O: 'static,
-    {
-        let handle = self.handle;
-        spawn_local(async move { f(handle.await) })
-    }
-
-    pub fn perform() {}
-}
-
-pub fn spawn<F>(future: F) -> Task<F::Output>
+pub fn spawn<F>(future: F) -> TokioHandle<F::Output>
 where
     F: Future + Send + 'static,
     F::Output: Send + 'static,
 {
-    Task {
-        handle: Handle::Tokio(RUNTIME.spawn(future)),
-    }
+    RUNTIME.spawn(future)
 }
 
 /// This can be called only from the thread where the main context is running
-pub fn spawn_local<F>(future: F) -> Task<F::Output>
+pub fn spawn_local<F>(future: F) -> GlibHandle<F::Output>
 where
     F: Future + 'static,
     F::Output: 'static,
 {
-    Task {
-        handle: Handle::Glib(glib::spawn_future_local(future)),
-    }
+    glib::spawn_future_local(future)
+}
+
+/// For ui updates
+pub fn spawn_with_local_callback<T>(
+    f: impl Future<Output = T> + Send + 'static,
+    callback: impl FnOnce(T) + 'static,
+) -> GlibHandle<()>
+where
+    T: fmt::Debug + Send + 'static,
+{
+    let (sender, receiver) = oneshot::channel();
+
+    spawn(async move {
+        let value = f.await;
+        sender.send(value).unwrap();
+    });
+
+    spawn_local(async move {
+        let value = receiver.await.unwrap();
+        callback(value);
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use crate::*;
-    use glib::MainLoop;
-
-    fn mainloop() -> MainLoop {
-        let context = glib::MainContext::new();
-        glib::MainLoop::new(Some(&context), true)
-    }
 
     #[test]
-    fn mytest() {
-        let _ = mainloop();
-
-        spawn_local(async { 2 + 2 })
-            .then_local(|sum| sum * 2)
-            .then_local(|mul| assert_eq!(mul, 8));
-    }
-
-    #[test]
-    fn tokio_chain() {
-        spawn(async { 2 + 2 })
-            .then(|sum| sum * 2)
-            .then(|mul| assert_eq!(mul, 8));
+    fn sum_callback() {
+        spawn_with_local_callback(async { 2 + 2 }, |sum| assert_eq!(sum, 4));
     }
 }
 
-pub struct BroadcastWorker<T> {
+pub fn worker<T, F>(
+    buffer: usize,
+    f: impl FnOnce(mpsc::Sender<T>) -> F,
+) -> mpsc::Receiver<T>
+where
+    T: Clone + 'static,
+    F: Future<Output = ()> + Send + 'static,
+{
+    let (sender, receiver) = mpsc::channel(buffer);
+
+    spawn(f(sender));
+
+    receiver
+}
+
+pub struct BroadcastWorker<T>
+where
+    T: Clone + 'static,
+{
     sender: broadcast::Sender<T>,
+    #[allow(dead_code)]
     handle: TokioHandle<()>,
 }
 
-impl<T> BroadcastWorker<T> {
-    pub fn listen_local<F>(&self, f: impl FnOnce(broadcast::Receiver<T>) -> F)
-    where
+impl<T: Clone + 'static> BroadcastWorker<T> {
+    pub fn listen_local<F>(
+        &self,
+        mut f: impl FnMut(Result<T, RecvError>) -> F + 'static,
+    ) where
         F: Future<Output = ()> + Send + 'static,
     {
-        let recv = self.sender.subscribe();
-        spawn_local(f(recv));
-    }
+        let mut receiver = self.sender.subscribe();
 
-    // pub fn lazy<F>(f: impl FnOnce(broadcast::Sender<T>) -> F) ->
-    // LazyLock<Self> where
-    //     F: Future<Output = ()> + Send + 'static,
-    // {
-    //     LazyLock::new(|| broadcast_worker(f))
-    // }
+        spawn_local(async move {
+            loop {
+                let message = receiver.recv().await;
+                f(message).await;
+            }
+        });
+    }
 }
 
 pub fn broadcast_worker<T, F>(
+    capacity: usize,
     f: impl FnOnce(broadcast::Sender<T>) -> F,
 ) -> BroadcastWorker<T>
 where
+    T: Clone + 'static,
     F: Future<Output = ()> + Send + 'static,
 {
-    let sender = broadcast::Sender::new(64);
-    let handle = RUNTIME.spawn(f(sender.clone()));
+    let sender = broadcast::Sender::new(capacity);
+    let handle = spawn(f(sender.clone()));
 
     BroadcastWorker { sender, handle }
+}
+
+pub fn timeout_local(delay: Duration, f: impl FnOnce() + 'static) -> SourceId {
+    if delay.subsec_nanos() == 0 {
+        let secs = delay.as_secs() as u32;
+        glib::timeout_add_seconds_local_once(secs, f)
+    } else {
+        glib::timeout_add_local_once(delay, f)
+    }
 }

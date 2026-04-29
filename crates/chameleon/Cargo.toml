@@ -11,7 +11,7 @@ chameleon-config.workspace = true
 chameleon-ipc.workspace = true
 chameleon-panel.workspace = true
 chameleon-widgets.workspace = true
-chameleon-notifications.workspace = true
+notifications.workspace = true
 
 grapes.workspace = true
 

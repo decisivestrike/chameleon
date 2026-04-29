@@ -1,23 +1,23 @@
 use crate::NotificationServer;
 use crate::queue::NotificationQueue;
 use crate::requests::NotificationData;
-use gtk::glib;
+use gtkio::spawn_local;
 
 pub struct NotificationManager {
     queue: NotificationQueue,
 }
 
 impl NotificationManager {
-    pub fn new(app: &gtk::Application) -> Self {
+    pub fn new() -> Self {
         Self {
-            queue: NotificationQueue::new(app),
+            queue: NotificationQueue::new(),
         }
     }
 
     pub fn run(self) {
-        let (server, mut receiver) = NotificationServer::new();
+        let (server, mut receiver) = NotificationServer::create();
 
-        glib::spawn_future_local(async move {
+        spawn_local(async move {
             loop {
                 if let Some(message) = receiver.recv().await {
                     self.handle_command(message).await;

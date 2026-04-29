@@ -1,5 +1,5 @@
 [package]
-name = "chameleon-notifications"
+name = "notifications"
 version = "0.1.0"
 edition = "2024"
 
@@ -10,7 +10,7 @@ anyhow.workspace = true
 tokio.workspace = true
 gtk.workspace = true
 layer_shell.workspace = true
-log.workspace = true
+gtkio.workspace = true
 grapes.workspace = true
 serde.workspace = true
 zbus = { version = "5.14.0", default-features = false, features = ["tokio"] }
@@ -18,3 +18,5 @@ indexmap = "2.14.0"
 thiserror.workspace = true
 gdk-pixbuf = "0.22.0"
 serde_repr = "0.1.20"
+tracing = "0.1.44"
+tracing-subscriber = "0.3.23"

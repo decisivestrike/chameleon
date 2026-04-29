@@ -5,6 +5,7 @@ use grapes::RT;
 use std::future::{self};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
+use tracing::{debug, error, warn};
 use zbus::connection::Builder as ConnectionBuilder;
 use zbus::object_server::SignalEmitter;
 use zbus::{Connection, interface};
@@ -18,12 +19,9 @@ impl NotificationServer {
     const SERVICE_NAME: &str = "org.freedesktop.Notifications";
     const OBJECT_PATH: &str = "/org/freedesktop/Notifications";
 
-    pub fn new() -> (Self, mpsc::Receiver<NotificationData>) {
+    pub fn create() -> (Self, mpsc::Receiver<NotificationData>) {
         let (sender, receiver) = mpsc::channel(64);
-        let server = Self {
-            notification_id: 1,
-            sender,
-        };
+        let server = Self::new(sender);
 
         (server, receiver)
     }
@@ -33,11 +31,18 @@ impl NotificationServer {
             let connection = self.create_connection().await;
 
             if let Err(e) = connection {
-                log::error!("{e}");
+                error!("{e}");
             }
 
             future::pending::<()>().await;
         })
+    }
+
+    fn new(sender: mpsc::Sender<NotificationData>) -> Self {
+        Self {
+            notification_id: 1,
+            sender,
+        }
     }
 
     async fn create_connection(self) -> zbus::Result<Connection> {
@@ -78,16 +83,18 @@ impl NotificationServer {
     async fn notify(&mut self, mut data: NotificationData) -> u32 {
         let id = self.set_id_if_zero(&mut data);
 
-        log::debug!("{data:#?}");
+        debug!("{data:#?}");
 
         if let Err(e) = self.sender.send(data).await {
-            log::error!("{e}");
+            error!("{e}");
         }
 
         id
     }
 
-    async fn close_notification(&self, _id: u32) {}
+    async fn close_notification(&self, _id: u32) {
+        warn!("I can't close notifications yet.");
+    }
 
     fn get_server_information(&self) -> ServerInfo {
         ServerInfo::default()
