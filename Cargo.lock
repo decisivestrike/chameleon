@@ -397,6 +397,7 @@ dependencies = [
  "grapes",
  "grapes-components",
  "gtk4",
+ "gtkio",
  "libpulse-binding",
  "log",
  "suukon",

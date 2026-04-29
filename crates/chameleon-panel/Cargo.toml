@@ -9,6 +9,7 @@ chameleon-ipc.workspace = true
 chameleon-core.workspace = true
 
 gtk.workspace = true
+gtkio.workspace = true
 tokio.workspace = true
 
 grapes.workspace = true

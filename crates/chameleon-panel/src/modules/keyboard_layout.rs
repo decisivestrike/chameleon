@@ -4,9 +4,10 @@ use anyhow::Result;
 use chameleon_ipc::compositor::Compositor;
 use chameleon_ipc::hyprland::HyprEvent;
 use chameleon_ipc::{COMPOSITOR, CompositorVariant};
+use grapes::Component;
 use grapes::prelude::WidgetExt;
-use grapes::tokio::sync::oneshot;
-use grapes::{Component, RT, glib};
+use gtk::glib::clone;
+use gtkio::future::{spawn, spawn_with_local_callback};
 use std::rc::Rc;
 use std::sync::LazyLock;
 use tokio::sync::watch;
@@ -14,39 +15,34 @@ use tokio::sync::watch;
 pub static LAYOUT_SENDER: LazyLock<watch::Sender<String>> =
     LazyLock::new(|| {
         let watch_sender = watch::Sender::new(String::new());
-
-        RT.spawn(KeyboardLayout::background_task(watch_sender.clone()));
+        spawn(KeyboardLayout::background_task(watch_sender.clone()));
 
         if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
-            let (sender, recv) = oneshot::channel();
-
-            RT.spawn(async move {
-                let devices = hyprland.devices().await.unwrap();
-                let active_keymap = devices
-                    .keyboards
-                    .into_iter()
-                    .find(|kb| kb.main)
-                    .unwrap()
-                    .active_keymap;
-
-                let short_name =
-                    KeyboardLayout::shrink_layout_name(&active_keymap);
-
-                if let Err(e) = sender.send(short_name) {
-                    log::error!("{e:?}");
-                };
-            });
-
-            glib::spawn_future_local({
-                let watch_sender = watch_sender.clone();
+            spawn_with_local_callback(
                 async move {
-                    let active_keymap = recv.await.unwrap();
+                    let devices = hyprland.devices().await.unwrap();
+                    let active_keymap = devices
+                        .keyboards
+                        .into_iter()
+                        .find(|kb| kb.main)
+                        .unwrap()
+                        .active_keymap;
 
-                    if let Err(e) = watch_sender.send(active_keymap) {
-                        log::error!("{e}");
+                    let short_name =
+                        KeyboardLayout::shrink_layout_name(&active_keymap);
+
+                    short_name
+                },
+                clone!(
+                    #[strong]
+                    watch_sender,
+                    move |active_keymap| {
+                        if let Err(e) = watch_sender.send(active_keymap) {
+                            log::error!("{e}");
+                        }
                     }
-                }
-            });
+                ),
+            );
         }
 
         watch_sender
