@@ -1,7 +1,7 @@
 use crate::NotificationServer;
 use crate::queue::NotificationQueue;
 use crate::requests::NotificationData;
-use gtkio::spawn_local;
+use gtkio::future::spawn_local;
 
 pub struct NotificationManager {
     queue: NotificationQueue,
