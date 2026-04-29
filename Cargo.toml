@@ -29,8 +29,8 @@ nucleo = "0.5.0"
 chrono = "0.4.42"
 dashmap = "6.1.0"
 uuid = "1.20.0"
-gtk = { version = "0.10.3", package = "gtk4", features = ["v4_20"] }
-layer_shell = { version = "0.7.1", package = "gtk4-layer-shell" }
+gtk = { version = "0.11.3", package = "gtk4", features = ["v4_20"] }
+layer_shell = { version = "0.8.0", package = "gtk4-layer-shell" }
 tokio = "1.48.0"
 tokio-util = "0.7.18"
 env_logger = "0.11.8"
