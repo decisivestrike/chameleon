@@ -10,7 +10,7 @@ use std::env::home_dir;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use std::{fmt, fs};
-use tracing::{Level, enabled, error, info, warn};
+use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 
 pub static DEFAULT_CONFIG_FOLDER: LazyLock<PathBuf> = LazyLock::new(|| {
