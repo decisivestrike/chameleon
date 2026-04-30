@@ -2,11 +2,11 @@ mod event;
 mod manager;
 
 use crate::common::Metadata;
+use crate::config::WorkspacesConfig;
 use crate::modules::ModuleFactory;
 use crate::modules::workspaces::event::WorkspaceEvent;
 use crate::modules::workspaces::manager::{MANAGER, WorkspacesManager};
 use anyhow::{Result, bail};
-use chameleon_config::panel::WorkspacesConfig;
 use chameleon_ipc::hyprland::Hyprland;
 use chameleon_ipc::{COMPOSITOR, CompositorVariant};
 use grapes::glib::clone::Downgrade;

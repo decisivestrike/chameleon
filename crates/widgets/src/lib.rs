@@ -1,4 +1,6 @@
-use chameleon_config::WidgetsConfig;
+pub mod config;
+
+use crate::config::Configuration;
 use grapes::css::StylePriority;
 use grapes::gtk::gdk::{self, Key};
 use grapes::gtk::glib::clone;
@@ -28,7 +30,7 @@ impl WidgetsLayer {
     pub fn new(
         application: &gtk::Application,
         monitor: &gdk::Monitor,
-        _config: &WidgetsConfig,
+        _config: &Configuration,
     ) -> Self {
         let window = ApplicationWindow::new(application);
 

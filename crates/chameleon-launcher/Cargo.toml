@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-chameleon-config.workspace = true
 chameleon-ipc.workspace = true
 chameleon-core.workspace = true
 
@@ -15,3 +14,4 @@ log.workspace = true
 libc.workspace = true
 thiserror.workspace = true
 nucleo.workspace = true
+serde.workspace = true

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-chameleon-config.workspace = true
+
 chameleon-ipc.workspace = true
 chameleon-core.workspace = true
 
@@ -22,4 +22,5 @@ uuid = { workspace = true, features = ['v4'] }
 anyhow.workspace = true
 tokio-util.workspace = true
 suukon = "0.2.0"
+serde.workspace = true
 pulse = { version = "2.30.1", package = "libpulse-binding" }

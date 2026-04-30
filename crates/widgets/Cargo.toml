@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-chameleon-config.workspace = true
 
+
+gtke.workspace = true
 grapes.workspace = true
 
 log.workspace = true
+serde.workspace = true

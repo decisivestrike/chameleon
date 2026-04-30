@@ -5,9 +5,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-chameleon-cli.workspace = true
 chameleon-launcher.workspace = true
-chameleon-config.workspace = true
 chameleon-ipc.workspace = true
 chameleon-panel.workspace = true
 widgets.workspace = true
@@ -22,3 +20,5 @@ inotify.workspace = true
 futures-util.workspace = true
 console-subscriber.workspace = true
 dashmap.workspace = true
+argh.workspace = true
+resolve-path = "0.1.0"

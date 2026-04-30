@@ -1,9 +1,10 @@
 mod card;
+mod config;
 mod entry_object;
 
 use crate::card::Card;
+use crate::config::LauncherConfig;
 use crate::entry_object::ApplicationEntry;
-use chameleon_config::LauncherConfig;
 use freedesktop_desktop_entry::desktop_entries;
 use grapes::glib::{self, clone};
 use grapes::gtk::gdk::Key;

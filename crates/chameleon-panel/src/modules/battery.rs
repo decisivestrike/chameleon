@@ -1,8 +1,8 @@
 use crate::common::Metadata;
+use crate::config::{BatteryConfig, CONFIG};
 use crate::modules::ModuleFactory;
 use anyhow::bail;
-use chameleon_config::CONFIG;
-use chameleon_config::panel::BatteryConfig;
+
 use grapes::gtk::prelude::WidgetExt;
 use grapes::tokio::sync::broadcast::{self};
 use grapes::tokio::time::sleep;
@@ -17,10 +17,7 @@ pub static CHARGE_SENDER: LazyLock<broadcast::Sender<String>> =
     LazyLock::new(|| {
         let sender = broadcast::Sender::new(64);
 
-        RT.spawn(Battery::background_task(
-            &CONFIG.panel.battery,
-            sender.clone(),
-        ));
+        RT.spawn(Battery::background_task(&CONFIG.battery, sender.clone()));
 
         sender
     });

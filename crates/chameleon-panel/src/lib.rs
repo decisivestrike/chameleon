@@ -1,21 +1,23 @@
 pub mod common;
+pub mod config;
 pub mod modules;
 pub mod services;
 
 use std::rc::Rc;
 
 use crate::common::Metadata;
+use crate::config::{Configuration, Module, ModulePlacement, Position};
 use crate::modules::{
     Battery, Clock, KeyboardLayout, ModuleFactory, Pulseaudio, Workspaces,
 };
-use chameleon_config::{self as config, PanelConfig};
+
 use chameleon_ipc::COMPOSITOR;
-use config::panel::{Layer as PanelLayer, Module, ModulePlacement, Position};
+
 use grapes::gtk::gdk::prelude::MonitorExt;
 use grapes::gtk::gdk::{self};
 use grapes::gtk::prelude::{GtkWindowExt, WidgetExt};
 use grapes::gtk::{self, ApplicationWindow, Orientation};
-use grapes::layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
+use grapes::layer_shell::{Edge, KeyboardMode, LayerShell};
 use grapes::prelude::OrientableExt;
 use grapes::prelude::containers::GrapesBoxExt;
 use grapes::{Component, WindowComponent};
@@ -37,7 +39,7 @@ impl Panel {
     pub fn new(
         application: &gtk::Application,
         monitor: &gdk::Monitor,
-        config: &PanelConfig,
+        config: &Configuration,
     ) -> Self {
         let window = ApplicationWindow::new(application);
         let centerbox = gtk::CenterBox::new();
@@ -87,7 +89,7 @@ impl Panel {
         self.centerbox.set_end_widget(Some(&self.right));
     }
 
-    pub fn configure(&mut self, config: &PanelConfig) {
+    pub fn configure(&mut self, config: &Configuration) {
         self.set_position(&config.position);
 
         let orientation = match config.position {
@@ -125,12 +127,7 @@ impl Panel {
             }
         };
 
-        self.window.set_layer(match config.layer {
-            PanelLayer::Background => Layer::Background,
-            PanelLayer::Bottom => Layer::Bottom,
-            PanelLayer::Top => Layer::Top,
-            PanelLayer::Overlay => Layer::Overlay,
-        });
+        self.window.set_layer(config.layer);
 
         let all_modules = [
             (&config.modules_left, ModulePlacement::Left),
@@ -156,7 +153,7 @@ impl Panel {
         module_name: &Module,
         meta: Metadata,
         placement: &ModulePlacement,
-        config: &PanelConfig,
+        config: &Configuration,
     ) {
         let maybe_module = match module_name {
             Module::Clock => Clock::create(&config.clock, &meta),

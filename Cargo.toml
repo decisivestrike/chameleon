@@ -3,8 +3,6 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.dependencies]
-chameleon-cli = { path = "crates/chameleon-cli" }
-chameleon-config = { path = "crates/chameleon-config" }
 chameleon-core = { path = "crates/chameleon-core" }
 chameleon-ipc = { path = "crates/chameleon-ipc" }
 chameleon-launcher = { path = "crates/chameleon-launcher" }
