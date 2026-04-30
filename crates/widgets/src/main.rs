@@ -1,5 +1,6 @@
 use crate::config::Configuration;
 use crate::layer::WidgetsLayer;
+use chameleon_core::init_tracing_subscriber;
 use gtk::gdk::Monitor;
 use gtk::glib;
 use gtke::WindowComponent;
@@ -11,7 +12,7 @@ pub mod config;
 pub mod layer;
 
 fn main() {
-    tracing_subscriber::fmt().without_time().init();
+    init_tracing_subscriber();
 
     if let Err(e) = gtk::init() {
         error!("Не удалось инициализировать GTK: {e}");

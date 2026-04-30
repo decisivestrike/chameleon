@@ -9,7 +9,9 @@ pub mod window;
 
 use crate::config::NotificationsConfig;
 use crate::manager::NotificationManager;
-use chameleon_core::{DEFAULT_CONFIG_FOLDER, read_config};
+use chameleon_core::{
+    DEFAULT_CONFIG_FOLDER, init_tracing_subscriber, read_config,
+};
 use gtk::glib;
 pub use server::NotificationServer;
 use std::process::exit;
@@ -27,7 +29,7 @@ pub static CONFIG: LazyLock<NotificationsConfig> = LazyLock::new(|| {
 pub const SPECIFICATION_VERSION: &str = "1.2";
 
 fn main() {
-    tracing_subscriber::fmt().without_time().init();
+    init_tracing_subscriber();
 
     if let Err(e) = gtk::init() {
         error!("Не удалось инициализировать GTK: {e}");

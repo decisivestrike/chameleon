@@ -10,7 +10,8 @@ use std::env::home_dir;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use std::{fmt, fs};
-use tracing::{error, info, warn};
+use tracing::{Level, enabled, error, info, warn};
+use tracing_subscriber::EnvFilter;
 
 pub static DEFAULT_CONFIG_FOLDER: LazyLock<PathBuf> = LazyLock::new(|| {
     let maybe_home = home_dir();
@@ -75,4 +76,15 @@ pub async fn styles_watcher(styles_path: PathBuf) {
             ));
         }
     }
+}
+
+/// Setup subscriber based on environment variable
+///
+/// Default level: error
+pub fn init_tracing_subscriber() {
+    let filter = EnvFilter::from_default_env();
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .without_time()
+        .init();
 }

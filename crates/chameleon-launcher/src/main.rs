@@ -5,7 +5,7 @@ mod entry_object;
 pub mod ipc;
 mod launcher;
 
-use chameleon_core::{read_config, styles_watcher};
+use chameleon_core::{init_tracing_subscriber, read_config, styles_watcher};
 use gtk::glib;
 use gtke::Css;
 use gtke::css::StylePriority;
@@ -24,7 +24,7 @@ static LAUNCHER: LazyLock<RwLock<Option<Arc<Launcher>>>> =
     LazyLock::new(|| RwLock::new(None));
 
 fn main() {
-    tracing_subscriber::fmt().without_time().init();
+    init_tracing_subscriber();
 
     let args: Command = argh::from_env();
 
@@ -33,7 +33,7 @@ fn main() {
     }
 
     if let Err(e) = gtk::init() {
-        error!("Не удалось инициализировать GTK: {e}");
+        error!("Failed to initialize GTK: {e}");
         exit(1);
     };
 

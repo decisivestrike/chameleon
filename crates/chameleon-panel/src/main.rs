@@ -1,5 +1,6 @@
 use crate::config::Configuration;
 use crate::panel::Panel;
+use chameleon_core::init_tracing_subscriber;
 use dashmap::DashMap;
 use grapes::WindowComponent;
 use grapes::prelude::MonitorExt;
@@ -19,7 +20,7 @@ pub mod services;
 static PANELS: LazyLock<DashMap<String, Panel>> = LazyLock::new(DashMap::new);
 
 fn main() {
-    tracing_subscriber::fmt().without_time().init();
+    init_tracing_subscriber();
 
     if let Err(e) = gtk::init() {
         error!("Не удалось инициализировать GTK: {e}");
