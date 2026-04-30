@@ -4,7 +4,7 @@ use tokio::sync::broadcast::{self};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle as TokioHandle;
 
-pub trait WorkerExt<T>
+pub trait MpscWorkerExt<T>
 where
     T: 'static,
 {
@@ -13,7 +13,7 @@ where
         F: Future<Output = ()> + Send + 'static;
 }
 
-impl<T: 'static> WorkerExt<T> for mpsc::Receiver<T> {
+impl<T: 'static> MpscWorkerExt<T> for mpsc::Receiver<T> {
     fn listen_local<F>(mut self, mut f: impl FnMut(Option<T>) -> F + 'static)
     where
         F: Future<Output = ()> + Send + 'static,

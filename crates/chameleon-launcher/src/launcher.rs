@@ -26,7 +26,7 @@ pub struct Launcher {
     #[root]
     window: Window,
     apps: Vec<ApplicationEntry>,
-    searchbar: gtk::SearchEntry,
+    searchbar: gtk::Entry,
     selection_model: SingleSelection,
     list_view: ListView,
     list_store: gio::ListStore,
@@ -96,7 +96,7 @@ impl Launcher {
         let locales = &["en".to_string()];
         let apps = Self::find_apps(locales);
 
-        let searchbar = gtk::SearchEntry::builder()
+        let searchbar = gtk::Entry::builder()
             .placeholder_text(&*config.placeholder)
             .hexpand(true)
             .build();
@@ -269,7 +269,6 @@ impl Launcher {
         window.set_size_request(480, 240);
         window.set_widget_name("launcher");
         window.set_namespace(Some("chameleon-launcher"));
-        window.set_exclusive_zone(-1);
         window.set_layer(Layer::Top);
         window.set_keyboard_mode(if true {
             KeyboardMode::Exclusive

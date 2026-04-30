@@ -4,8 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-grapes.workspace = true
-log.workspace = true
+gtk.workspace = true
+gtke.workspace = true
+gtkio.workspace = true
 serde = { workspace = true, features = ["derive", "rc"] }
 toml.workspace = true
 thiserror.workspace = true
+inotify.workspace = true
+tracing.workspace = true
+futures = "0.3.32"

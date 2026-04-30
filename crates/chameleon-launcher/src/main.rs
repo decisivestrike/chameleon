@@ -2,63 +2,26 @@ mod card;
 mod cli;
 mod config;
 mod entry_object;
+pub mod ipc;
 mod launcher;
 
+use chameleon_core::{read_config, styles_watcher};
 use gtk::glib;
+use gtke::Css;
+use gtke::css::StylePriority;
 use gtkio::future::spawn;
-use std::io::Write;
-use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 use std::process::exit;
 use std::sync::{Arc, LazyLock, RwLock};
-use tokio::fs;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::net::UnixListener;
-use tracing::{error, info};
+use tracing::error;
 
 use crate::cli::Command;
 use crate::config::LauncherConfig;
+use crate::ipc::{listen_socket, send_toggle_command};
 use crate::launcher::Launcher;
-
-static SOCKET_FOLDER: LazyLock<PathBuf> =
-    LazyLock::new(|| PathBuf::from("/tmp/chameleon"));
-
-static SOCKET_PATH: LazyLock<PathBuf> =
-    LazyLock::new(|| SOCKET_FOLDER.join("launcher.sock"));
 
 static LAUNCHER: LazyLock<RwLock<Option<Arc<Launcher>>>> =
     LazyLock::new(|| RwLock::new(None));
-
-pub fn toggle_launcher() {
-    if let Some(launcher) = &*LAUNCHER.read().unwrap() {
-        launcher.toggle_visibility();
-    }
-}
-
-async fn listen_socket() {
-    if !SOCKET_FOLDER.exists() {
-        fs::create_dir(&*SOCKET_FOLDER).await.unwrap();
-    }
-
-    if SOCKET_PATH.exists() {
-        fs::remove_file(&*SOCKET_PATH).await.unwrap();
-    }
-
-    let listener = UnixListener::bind(&*SOCKET_PATH).unwrap();
-    info!("Listening '{:?}'", *SOCKET_PATH);
-
-    loop {
-        let (stream, _addr) = listener.accept().await.unwrap();
-        let mut lines = BufReader::new(stream).lines();
-
-        match lines.next_line().await {
-            Ok(Some(_line)) => {
-                glib::idle_add_once(toggle_launcher);
-            }
-            _ => (),
-        }
-    }
-}
 
 fn main() {
     tracing_subscriber::fmt().without_time().init();
@@ -66,20 +29,7 @@ fn main() {
     let args: Command = argh::from_env();
 
     if args.toggle {
-        let mut stream = match UnixStream::connect(&*SOCKET_PATH) {
-            Ok(stream) => stream,
-            Err(e) => {
-                error!("{e}");
-                exit(1);
-            }
-        };
-
-        if let Err(e) = stream.write_all(&[2]) {
-            error!("{e}");
-            exit(1);
-        }
-
-        exit(0);
+        send_toggle_command()
     }
 
     if let Err(e) = gtk::init() {
@@ -87,10 +37,17 @@ fn main() {
         exit(1);
     };
 
-    *LAUNCHER.write().unwrap() =
-        Some(Launcher::create(LauncherConfig::default()));
+    let config: LauncherConfig =
+        read_config("/home/inqlog/.config/chameleon/launcher.toml");
+
+    *LAUNCHER.write().unwrap() = Some(Launcher::create(config));
+
+    let css_path = PathBuf::from("/home/inqlog/.config/chameleon/styles.css");
+
+    Css::load(&css_path).apply(StylePriority::User);
 
     spawn(listen_socket());
+    spawn(styles_watcher(css_path));
 
     glib::MainLoop::new(None, false).run();
 }
