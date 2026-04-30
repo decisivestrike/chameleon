@@ -70,6 +70,7 @@ impl Launcher {
                 }
             }
         ));
+        controller.set_propagation_phase(gtk::PropagationPhase::Capture);
         launcher.window.add_controller(controller);
 
         // Sort + filter
@@ -128,6 +129,8 @@ impl Launcher {
 
         let window = Self::create_window();
         window.set_child(Some(&container));
+
+        window.set_focusable(true);
 
         Self {
             window,
