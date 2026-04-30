@@ -314,6 +314,7 @@ dependencies = [
  "chameleon-config",
  "chameleon-ipc",
  "chameleon-launcher",
+ "chameleon-notifications",
  "chameleon-panel",
  "chameleon-widgets",
  "console-subscriber",
@@ -323,7 +324,6 @@ dependencies = [
  "grapes",
  "inotify",
  "log",
- "notifications",
 ]
 
 [[package]]
@@ -382,6 +382,27 @@ dependencies = [
  "log",
  "nucleo",
  "thiserror",
+]
+
+[[package]]
+name = "chameleon-notifications"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chameleon-core",
+ "gdk-pixbuf",
+ "grapes",
+ "gtk4",
+ "gtk4-layer-shell",
+ "gtkio",
+ "indexmap",
+ "serde",
+ "serde_repr",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "zbus",
 ]
 
 [[package]]
@@ -1192,6 +1213,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "gtke"
+version = "0.1.0"
+dependencies = [
+ "gtk4",
+ "gtke-macros",
+]
+
+[[package]]
+name = "gtke-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "gtkio"
 version = "0.1.1"
 dependencies = [
@@ -1639,27 +1677,6 @@ checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
  "memchr",
  "minimal-lexical",
-]
-
-[[package]]
-name = "notifications"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chameleon-core",
- "gdk-pixbuf",
- "grapes",
- "gtk4",
- "gtk4-layer-shell",
- "gtkio",
- "indexmap",
- "serde",
- "serde_repr",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "zbus",
 ]
 
 [[package]]

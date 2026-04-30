@@ -1,0 +1,9 @@
+[package]
+name = "gtke"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gtke-macros = { path = "../gtke-macros" }
+
+gtk.workspace = true

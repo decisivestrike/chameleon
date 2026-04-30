@@ -1,7 +1,6 @@
 use chameleon_config::{Config, LauncherConfig, PanelConfig, WidgetsConfig};
 use chameleon_launcher::Launcher;
 use chameleon_panel::Panel;
-use chameleon_widgets::WidgetsLayer;
 use dashmap::DashMap;
 use grapes::gtk::gdk::Monitor;
 use grapes::gtk::{self};
@@ -16,6 +15,7 @@ use notifications::manager::NotificationManager;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::LazyLock;
+use widgets::WidgetsLayer;
 
 /// Global instance manager
 pub static INSTANCE_MANAGER: LazyLock<InstanceManager> =

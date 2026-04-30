@@ -1,0 +1,150 @@
+mod utils;
+pub(crate) use utils::*;
+
+use proc_macro::TokenStream;
+use proc_macro2::TokenStream as TokenStream2;
+use quote::quote;
+use syn::{Data, DeriveInput, Fields, parse_macro_input};
+
+/// Generates code that will have to be written anyway
+#[proc_macro_derive(Component, attributes(root, state))]
+pub fn component(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let struct_name = &input.ident;
+
+    let (impl_generics, ty_generics, where_clause) =
+        input.generics.split_for_impl();
+
+    let mut maybe_root_ts: Option<TokenStream2> = None;
+    let mut maybe_state_ts: Option<TokenStream2> = None;
+
+    if let Data::Struct(data_struct) = input.data
+        && let Fields::Named(named_fields) = data_struct.fields
+    {
+        for field in named_fields.named.iter() {
+            for attr in &field.attrs {
+                if attr.path().is_ident("root") {
+                    let field_name = &field.ident;
+
+                    if maybe_root_ts.is_some() {
+                        return error(
+                            struct_name,
+                            "Only one field can have the #[root] attribute.",
+                        );
+                    }
+
+                    let expanded = quote! {
+                        impl #impl_generics Component for #struct_name #ty_generics #where_clause {}
+
+                        impl #impl_generics AsRef<::grapes::gtk::Widget> for #struct_name #ty_generics #where_clause {
+                            fn as_ref(&self) -> &::grapes::gtk::Widget {
+                                use ::grapes::gtk::prelude::Cast;
+                                self.#field_name.as_ref()
+                            }
+                        }
+                    };
+
+                    maybe_root_ts = Some(expanded);
+                } else if attr.path().is_ident("state") {
+                    let field_name = &field.ident;
+                    let field_type = &field.ty;
+
+                    if let Some(_) = maybe_state_ts {
+                        return error(
+                            attr.path(),
+                            "Using the #[state] attribute twice",
+                        );
+                    }
+
+                    let generic_type = match extract_generic(field_type) {
+                        Some(t) => t,
+                        None => {
+                            return error(
+                                struct_name,
+                                "Can't extract T from State<T>",
+                            );
+                        }
+                    };
+
+                    let expanded = quote! {
+                        impl #impl_generics ::grapes::Updateable for #struct_name #ty_generics #where_clause {
+                            type Message = #generic_type;
+
+                            fn update(&self, value: #generic_type) {
+                                self.#field_name.set(value);
+                            }
+                        }
+                    };
+
+                    maybe_state_ts = Some(expanded);
+                }
+            }
+        }
+    }
+
+    match (maybe_root_ts, maybe_state_ts) {
+        (None, _) => error(
+            struct_name,
+            "One of the fields must have the #[root] attribute.",
+        ),
+        (Some(root_ts), None) => root_ts.into(),
+        (Some(root_ts), Some(state_ts)) => {
+            let mut ts = TokenStream2::new();
+            ts.extend(root_ts);
+            ts.extend(state_ts);
+            ts.into()
+        }
+    }
+}
+
+/// Generates code that will have to be written anyway
+#[proc_macro_derive(WindowComponent, attributes(root))]
+pub fn window_component(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let struct_name = &input.ident;
+
+    let mut maybe_root_ts: Option<TokenStream2> = None;
+
+    if let Data::Struct(data_struct) = input.data
+        && let Fields::Named(named_fields) = data_struct.fields
+    {
+        for field in named_fields.named.iter() {
+            for attr in &field.attrs {
+                if attr.path().is_ident("root") {
+                    let field_name = &field.ident;
+
+                    if maybe_root_ts.is_some() {
+                        return error(
+                            struct_name,
+                            "Only one field can have the #[root] attribute.",
+                        );
+                    }
+
+                    let expanded = quote! {
+                        impl WindowComponent for #struct_name {
+                            /// Window present
+                            fn present(&self) {
+                                self.#field_name.present();
+                            }
+
+                            /// Window destroy
+                            fn destroy(&self) {
+                                self.#field_name.destroy();
+                            }
+                        }
+                    };
+
+                    maybe_root_ts = Some(expanded);
+                }
+            }
+        }
+    }
+
+    match maybe_root_ts {
+        None => error(
+            struct_name,
+            "One of the fields must have the #[root] attribute.",
+        ),
+        Some(root_ts) => root_ts.into(),
+    }
+}

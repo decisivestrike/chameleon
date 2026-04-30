@@ -1,6 +1,6 @@
 [package]
 name = "chameleon"
-description = "🦎 Highly customizable Wayland shell."
+description = "🦎 Highly customizable Wayland shell"
 version = "0.1.0"
 edition = "2024"
 
@@ -10,7 +10,7 @@ chameleon-launcher.workspace = true
 chameleon-config.workspace = true
 chameleon-ipc.workspace = true
 chameleon-panel.workspace = true
-chameleon-widgets.workspace = true
+widgets.workspace = true
 notifications.workspace = true
 
 grapes.workspace = true

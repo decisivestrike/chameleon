@@ -9,9 +9,11 @@ chameleon-core = { path = "crates/chameleon-core" }
 chameleon-ipc = { path = "crates/chameleon-ipc" }
 chameleon-launcher = { path = "crates/chameleon-launcher" }
 chameleon-panel = { path = "crates/chameleon-panel" }
-chameleon-widgets = { path = "crates/chameleon-widgets" }
-notifications = { path = "crates/notifications" }
 
+widgets = { path = "crates/widgets", package = "chameleon-widgets" }
+notifications = { path = "crates/notifications", package = "chameleon-notifications" }
+
+gtke = { path = "crates/gtke" }
 gtkio = { path = "crates/gtkio" }
 
 grapes = { git = "https://github.com/decisivestrike/grapes" }
