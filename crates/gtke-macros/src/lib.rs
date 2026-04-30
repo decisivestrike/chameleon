@@ -36,9 +36,9 @@ pub fn component(input: TokenStream) -> TokenStream {
                     let expanded = quote! {
                         impl #impl_generics Component for #struct_name #ty_generics #where_clause {}
 
-                        impl #impl_generics AsRef<::grapes::gtk::Widget> for #struct_name #ty_generics #where_clause {
-                            fn as_ref(&self) -> &::grapes::gtk::Widget {
-                                use ::grapes::gtk::prelude::Cast;
+                        impl #impl_generics AsRef<::gtk::Widget> for #struct_name #ty_generics #where_clause {
+                            fn as_ref(&self) -> &::gtk::Widget {
+                                use ::gtk::prelude::Cast;
                                 self.#field_name.as_ref()
                             }
                         }

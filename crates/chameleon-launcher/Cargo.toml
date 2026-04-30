@@ -4,14 +4,21 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+argh.workspace = true
+gtk.workspace = true
+gtke.workspace = true
+gtkio.workspace = true
+tokio.workspace = true
+layer_shell.workspace = true
+
 chameleon-ipc.workspace = true
 chameleon-core.workspace = true
 
-grapes.workspace = true
 
 freedesktop-desktop-entry.workspace = true
-log.workspace = true
 libc.workspace = true
 thiserror.workspace = true
 nucleo.workspace = true
 serde.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

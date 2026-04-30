@@ -2,7 +2,7 @@ mod imp;
 
 use freedesktop_desktop_entry::DesktopEntry;
 use glib::Object;
-use grapes::gtk::glib;
+use gtk::glib;
 use thiserror::Error;
 
 const TRUE_LITERAL: &str = "true";

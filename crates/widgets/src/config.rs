@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Default, Deserialize)]
 #[serde(default)]
-pub struct Configuration {}
+pub struct Configuration {
+    a: String,
+}

@@ -1,16 +1,14 @@
-use gtk::{
-    Widget,
-    prelude::{BoxExt, WidgetExt},
-};
+use gtk::Widget;
+use gtk::prelude::{BoxExt, WidgetExt};
 use std::iter::successors;
 
-pub trait GrapesBoxExt {
+pub trait GtkeBoxExt {
     fn append_ref(&self, child: impl AsRef<Widget>);
 
     fn children(&self) -> impl Iterator<Item = Widget>;
 }
 
-impl GrapesBoxExt for gtk::Box {
+impl GtkeBoxExt for gtk::Box {
     fn append_ref(&self, child: impl AsRef<Widget>) {
         self.append(child.as_ref());
     }

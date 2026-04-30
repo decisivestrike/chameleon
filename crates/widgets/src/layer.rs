@@ -1,25 +1,22 @@
-pub mod config;
-
 use crate::config::Configuration;
-use grapes::css::StylePriority;
-use grapes::gtk::gdk::{self, Key};
-use grapes::gtk::glib::clone;
-use grapes::gtk::prelude::{GtkWindowExt, *};
-use grapes::gtk::{
-    self, ApplicationWindow, EventControllerKey, EventControllerMotion, Fixed,
-    Orientation, Widget,
+use gtk::gdk::{self, Key};
+use gtk::glib::clone;
+use gtk::prelude::{GtkWindowExt, *};
+use gtk::{
+    self, EventControllerKey, EventControllerMotion, Fixed, Orientation,
+    Widget, Window,
 };
-use grapes::layer_shell::{self, Edge};
-use grapes::{Css, WindowComponent};
-use layer_shell::{KeyboardMode, Layer, LayerShell};
-use log::{Level, info, log_enabled};
+use gtke::css::StylePriority;
+use gtke::{Css, WindowComponent};
+use layer_shell::{self, Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use tracing::{Level, debug, enabled, info};
 
 #[derive(Clone, WindowComponent)]
 pub struct WidgetsLayer {
     #[root]
-    window: ApplicationWindow,
+    window: Window,
     fixer: Fixed,
     active_widget: Rc<RefCell<Option<Widget>>>,
     tracked_widget: Rc<RefCell<Option<Widget>>>,
@@ -27,12 +24,8 @@ pub struct WidgetsLayer {
 }
 
 impl WidgetsLayer {
-    pub fn new(
-        application: &gtk::Application,
-        monitor: &gdk::Monitor,
-        _config: &Configuration,
-    ) -> Self {
-        let window = ApplicationWindow::new(application);
+    pub fn new(monitor: &gdk::Monitor, _config: &Configuration) -> Self {
+        let window = Window::new();
 
         let fixer = Fixed::new();
         window.set_child(Some(&fixer));
@@ -82,10 +75,10 @@ impl WidgetsLayer {
             move |_, _, _| {
                 let widget: Widget = wrapper.clone().into();
 
-                if log_enabled!(Level::Info) {
+                if enabled!(Level::DEBUG) {
                     let widget_name =
                         widget.first_child().unwrap().widget_name();
-                    info!("Active widget: {widget_name}.",);
+                    debug!("Active widget: {widget_name}.",);
                 }
 
                 *active_widget.borrow_mut() = Some(widget);
@@ -187,10 +180,10 @@ impl WidgetsLayer {
                     let x = widget_x + diff_x;
                     let y = widget_y + diff_y;
 
-                    if log_enabled!(Level::Info) {
+                    if enabled!(Level::DEBUG) {
                         let widget_name =
                             widget.first_child().unwrap().widget_name();
-                        info!("Move {widget_name} to x: {x:.0}, y: {y:.0}",);
+                        debug!("Move {widget_name} to x: {x:.0}, y: {y:.0}",);
                     }
 
                     fixer.move_(widget, x, y);

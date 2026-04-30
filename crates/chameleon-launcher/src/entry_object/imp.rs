@@ -1,7 +1,7 @@
 use glib::Properties;
-use grapes::gtk::glib;
-use grapes::gtk::prelude::*;
-use grapes::gtk::subclass::prelude::*;
+use gtk::glib;
+use gtk::prelude::*;
+use gtk::subclass::prelude::*;
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;

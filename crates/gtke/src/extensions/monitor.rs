@@ -1,13 +1,12 @@
-use gtk::{
-    gdk::{self, prelude::DisplayExt},
-    glib::object::Cast,
-};
+use gtk::gdk::prelude::DisplayExt;
+use gtk::gdk::{self};
+use gtk::glib::object::Cast;
 
-pub trait GrapesMonitorExt {
+pub trait GtkeMonitorExt {
     fn all() -> Vec<gdk::Monitor>;
 }
 
-impl GrapesMonitorExt for gdk::Monitor {
+impl GtkeMonitorExt for gdk::Monitor {
     fn all() -> Vec<gdk::Monitor> {
         let display = gdk::Display::default().expect("No display");
 

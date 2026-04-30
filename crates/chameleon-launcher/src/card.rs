@@ -1,7 +1,8 @@
 use crate::entry_object::ApplicationEntry;
-use grapes::Component;
-use grapes::gtk::{self, Orientation};
-use grapes::prelude::{BoxExt, Cast, WidgetExt};
+use gtk::glib::object::Cast;
+use gtk::prelude::{BoxExt, WidgetExt};
+use gtk::{self, Orientation};
+use gtke::Component;
 
 #[derive(Debug, Component)]
 pub struct Card {

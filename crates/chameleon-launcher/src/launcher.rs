@@ -1,53 +1,43 @@
-mod card;
-mod config;
-mod entry_object;
-
 use crate::card::Card;
 use crate::config::LauncherConfig;
 use crate::entry_object::ApplicationEntry;
 use freedesktop_desktop_entry::desktop_entries;
-use grapes::glib::{self, clone};
-use grapes::gtk::gdk::Key;
-use grapes::gtk::{
-    self, ApplicationWindow, EventControllerKey, ListItem, ListScrollFlags,
-    ListView, PolicyType, ScrolledWindow, SignalListItemFactory,
-    SingleSelection,
+use gtk::gdk::Key;
+use gtk::glib::clone;
+use gtk::prelude::*;
+use gtk::{
+    EventControllerKey, ListItem, ListScrollFlags, ListView, PolicyType,
+    ScrolledWindow, SignalListItemFactory, SingleSelection, Window, gio, glib,
 };
-use grapes::layer_shell::{KeyboardMode, Layer, LayerShell};
-use grapes::prelude::{
-    BoxExt, Cast, CastNone, EditableExt, EntryExt, GtkWindowExt, ListItemExt,
-    ListModelExt, WidgetExt,
-};
-use grapes::tokio::process::Command;
-use grapes::{RT, WindowComponent, gio};
+use gtke::WindowComponent;
+use gtkio::future::spawn;
+use layer_shell::{KeyboardMode, Layer, LayerShell};
 use nucleo::{Config, Matcher, Utf32Str};
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::env::home_dir;
 use std::process::Stdio;
-use std::rc::Rc;
+use std::sync::Arc;
+use tokio::process::Command;
+use tracing::{error, info};
 
 #[derive(WindowComponent)]
 pub struct Launcher {
     #[root]
-    window: ApplicationWindow,
-
+    window: Window,
     apps: Vec<ApplicationEntry>,
-    searchbar: gtk::Entry,
+    searchbar: gtk::SearchEntry,
     selection_model: SingleSelection,
     list_view: ListView,
     list_store: gio::ListStore,
     visibility: Cell<bool>,
 
-    config: &'static LauncherConfig,
+    config: LauncherConfig,
 }
 
 impl Launcher {
-    pub fn create(
-        application: &gtk::Application,
-        config: &'static LauncherConfig,
-    ) -> Rc<Self> {
-        let launcher = Self::new(application, config);
+    pub fn create(config: LauncherConfig) -> Arc<Self> {
+        let launcher = Self::new(config);
 
         // On enter hit
         launcher.searchbar.connect_activate(clone!(
@@ -100,15 +90,12 @@ impl Launcher {
         launcher
     }
 
-    fn new(
-        application: &gtk::Application,
-        config: &'static LauncherConfig,
-    ) -> Rc<Self> {
+    fn new(config: LauncherConfig) -> Arc<Self> {
         // get locale
         let locales = &["en".to_string()];
         let apps = Self::find_apps(locales);
 
-        let searchbar = gtk::Entry::builder()
+        let searchbar = gtk::SearchEntry::builder()
             .placeholder_text(&*config.placeholder)
             .hexpand(true)
             .build();
@@ -139,7 +126,7 @@ impl Launcher {
         container.append(&searchbar);
         container.append(&scrolled_window);
 
-        let window = Self::create_application_window(application);
+        let window = Self::create_window();
         window.set_child(Some(&container));
 
         Self {
@@ -271,10 +258,8 @@ impl Launcher {
         }
     }
 
-    fn create_application_window(
-        application: &gtk::Application,
-    ) -> gtk::ApplicationWindow {
-        let window = gtk::ApplicationWindow::new(application);
+    fn create_window() -> gtk::Window {
+        let window = gtk::Window::new();
 
         window.init_layer_shell();
 
@@ -294,9 +279,9 @@ impl Launcher {
 
     fn open(&self, name: &str, terminal: bool) {
         let name = name.to_string();
-        let config = self.config;
+        let config = self.config.clone();
 
-        RT.spawn(async move {
+        spawn(async move {
             let mut command =
                 if terminal && let Some(cmd) = &config.terminal_cmd {
                     let mut command = Command::new(&cmd);
@@ -322,7 +307,7 @@ impl Launcher {
                 unsafe {
                     command.pre_exec(|| {
                         if libc::setsid() == -1 {
-                            log::error!("setsid")
+                            error!("setsid")
                         }
 
                         Ok(())
@@ -331,9 +316,12 @@ impl Launcher {
             }
 
             match command.spawn() {
-                Ok(_) => log::info!("App '{name}' spawned"),
-                Err(e) => log::error!("Can't spawn '{name}'. Error: {e}"),
+                Ok(_) => info!("App '{name}' spawned"),
+                Err(e) => error!("Can't spawn '{name}'. Error: {e}"),
             }
         });
     }
 }
+
+unsafe impl Send for Launcher {}
+unsafe impl Sync for Launcher {}

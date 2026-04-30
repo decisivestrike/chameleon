@@ -1,31 +1,23 @@
-pub mod common;
-pub mod config;
-pub mod modules;
-pub mod services;
-
-use std::rc::Rc;
-
 use crate::common::Metadata;
 use crate::config::{Configuration, Module, ModulePlacement, Position};
 use crate::modules::{
     Battery, Clock, KeyboardLayout, ModuleFactory, Pulseaudio, Workspaces,
 };
-
 use chameleon_ipc::COMPOSITOR;
-
 use grapes::gtk::gdk::prelude::MonitorExt;
 use grapes::gtk::gdk::{self};
 use grapes::gtk::prelude::{GtkWindowExt, WidgetExt};
-use grapes::gtk::{self, ApplicationWindow, Orientation};
+use grapes::gtk::{self, Orientation, Window};
 use grapes::layer_shell::{Edge, KeyboardMode, LayerShell};
 use grapes::prelude::OrientableExt;
 use grapes::prelude::containers::GrapesBoxExt;
 use grapes::{Component, WindowComponent};
+use std::rc::Rc;
 
 #[derive(WindowComponent)]
 pub struct Panel {
     #[root]
-    window: ApplicationWindow,
+    window: Window,
     centerbox: gtk::CenterBox,
     left: gtk::Box,
     center: gtk::Box,
@@ -36,12 +28,8 @@ pub struct Panel {
 }
 
 impl Panel {
-    pub fn new(
-        application: &gtk::Application,
-        monitor: &gdk::Monitor,
-        config: &Configuration,
-    ) -> Self {
-        let window = ApplicationWindow::new(application);
+    pub fn new(monitor: &gdk::Monitor, config: &Configuration) -> Self {
+        let window = Window::new();
         let centerbox = gtk::CenterBox::new();
 
         window.set_child(Some(&centerbox));
@@ -205,3 +193,6 @@ impl Panel {
         window.set_anchor(Edge::Left, left);
     }
 }
+
+unsafe impl Send for Panel {}
+unsafe impl Sync for Panel {}
