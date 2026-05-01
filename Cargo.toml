@@ -5,11 +5,6 @@ members = ["crates/*"]
 [workspace.dependencies]
 chameleon-core = { path = "crates/chameleon-core" }
 chameleon-ipc = { path = "crates/chameleon-ipc" }
-chameleon-launcher = { path = "crates/chameleon-launcher" }
-chameleon-panel = { path = "crates/chameleon-panel" }
-
-widgets = { path = "crates/widgets", package = "chameleon-widgets" }
-notifications = { path = "crates/notifications", package = "chameleon-notifications" }
 
 # My stuff for gtk
 gtke = { path = "crates/gtke" }

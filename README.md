@@ -2,12 +2,19 @@
 
 The project is under development. Nothing (almost) is working yet
 
+Installation:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/decisivestrike/chameleon/main/scripts/install.sh | bash
+```
+
 ## Launcher
 
 Just launcher with fuzzy search
 
 ```toml
-[launcher]
+# launcher.toml
+
 enabled = true
 placeholder = "let's find something..."
 
