@@ -5,9 +5,10 @@ set -e
 REPO_URL="https://github.com/decisivestrike/chameleon.git"
 BRANCH="${1:-main}"
 INSTALL_DIR="/usr/local/bin"
+CHAMELEON_ROOT="$HOME/.local/chameleon"
 
-mkdir -p /opt/chameleon/bin
-cd /opt/chameleon
+mkdir -p "$CHAMELEON_ROOT/bin"
+cd "$CHAMELEON_ROOT"
 
 git clone --depth 1 --branch "$BRANCH" "$REPO_URL" repo
 
