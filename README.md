@@ -5,7 +5,7 @@ The project is under development. Nothing (almost) is working yet
 Installation:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/decisivestrike/chameleon/main/scripts/install.sh | bash
+bash -c "$(curl -L https://raw.githubusercontent.com/decisivestrike/chameleon/main/scripts/install.sh)" install
 ```
 
 ## Launcher

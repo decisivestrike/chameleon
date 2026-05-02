@@ -8,7 +8,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "chameleon",
-	Short: "🦎 Highly customizable Wayland shell",
+	Short: "🦎 Highly customizable modular Wayland shell",
 }
 
 func Execute() {

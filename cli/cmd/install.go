@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	. "chameleon/internal"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,86 +12,79 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var chameleonDir string
+// Modules available for installation
+var modules = [...]string{"launcher", "notifications", "panel", "widgets"}
 
 var installCmd = &cobra.Command{
 	Use:     "install",
-	Short:   "Installing shell modules",
+	Short:   "Allows you to install shell modules",
 	Aliases: []string{"i"},
 	RunE:    runInstall,
 }
 
 func init() {
-	installCmd.Flags().StringVarP(&chameleonDir, "chameleon-dir", "c", "",
-		"But where is the chameleon?")
 	rootCmd.AddCommand(installCmd)
 }
 
-func runInstall(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("укажите хотя бы имя одного крейта")
-	}
-
+func moduleNamesFromArgs(args []string) ([]string, error) {
 	input := strings.Join(args, ",")
 	parts := strings.Split(input, ",")
+	var modules []string
 
-	var crates []string
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
 
 		if part != "" {
-			crates = append(crates, part)
+			modules = append(modules, part)
 		}
 	}
 
-	if len(crates) == 0 {
-		return fmt.Errorf("не указано ни одного крейта")
+	return modules, nil
+}
+
+func runInstall(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		fmt.Println("picker")
 	}
 
-	crateNames := [...]string{"launcher", "panel", "notifications"}
+	modules, err := moduleNamesFromArgs(args)
 
-	for _, crate := range crates {
-		if !slices.Contains(crateNames[:], crate) {
-			return fmt.Errorf("Crate not found")
-		}
+	if err != nil {
+		return err
+	}
 
-		fmt.Printf("Installing %s...\n", crate)
+	for _, module := range modules {
+		fmt.Printf("Installing %s...\n", module)
 
-		if err := installCrate(crate, chameleonDir); err != nil {
-			return fmt.Errorf("ошибка при установке %s: %w", crate, err)
+		if err := installModule(module); err != nil {
+			return fmt.Errorf("Ошибка при установке %s: %w", module, err)
 		}
 	}
+
 	return nil
 }
 
-func installCrate(name string, chameleonDir string) error {
-	crateDir := filepath.Join(chameleonDir, "crates", name)
-	if _, err := os.Stat(crateDir); os.IsNotExist(err) {
-		return fmt.Errorf("директория крейта не найдена: %s", crateDir)
-	}
-
-	mainRSPath := filepath.Join(crateDir, "src", "main.rs")
-
-	if _, err := os.Stat(mainRSPath); os.IsNotExist(err) {
-		return fmt.Errorf("крейт %s не является бинарным (отсутствует src/main.rs)", name)
-	}
-
-	buildCmd := exec.Command("cargo", "build", "--release")
-	buildCmd.Dir = crateDir
-	buildCmd.Stdout = os.Stdout
-	buildCmd.Stderr = os.Stderr
-
-	if err := buildCmd.Run(); err != nil {
-		return fmt.Errorf("ошибка сборки cargo: %w", err)
+func installModule(name string) error {
+	if !slices.Contains(modules[:], name) {
+		return fmt.Errorf("\"%s\" in not a shell module!\n\nModules: %v", name, modules)
 	}
 
 	binaryName := "chameleon-" + name
 
-	srcBinary := filepath.Join(crateDir, "target", "release", binaryName)
-	destBinary := filepath.Join("/opt/chameleon", name)
+	buildCmd := exec.Command("cargo", "build", "--bin", binaryName)
+	buildCmd.Dir = ChameleonRoot
+	buildCmd.Stdout = os.Stdout
+	buildCmd.Stderr = os.Stderr
 
-	if err := os.MkdirAll("/opt/chameleon", 0755); err != nil {
-		return fmt.Errorf("Cant create /opt/chameleon: %w", err)
+	if err := buildCmd.Run(); err != nil {
+		return fmt.Errorf("Cargo error: %w", err)
+	}
+
+	srcBinary := filepath.Join(ChameleonRepo, "target", "release", binaryName)
+	destBinary := filepath.Join(ChameleonRepo, name)
+
+	if err := os.MkdirAll(ChameleonBin, 0755); err != nil {
+		return fmt.Errorf("Cant create %s: %w", ChameleonBin, err)
 	}
 
 	input, err := os.ReadFile(srcBinary)
