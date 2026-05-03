@@ -9,8 +9,8 @@ pub mod window;
 
 use crate::config::NotificationsConfig;
 use crate::manager::NotificationManager;
-use chameleon_core::{
-    DEFAULT_CONFIG_FOLDER, init_tracing_subscriber, read_config,
+use chameleon_shared::{
+    CHAMELEON_CFG_ROOT, init_tracing_subscriber, read_toml,
 };
 use gtk::glib;
 pub use server::NotificationServer;
@@ -20,9 +20,9 @@ use tracing::error;
 
 pub static CONFIG: LazyLock<NotificationsConfig> = LazyLock::new(|| {
     let config_name = "notifications.toml";
-    let config_path = DEFAULT_CONFIG_FOLDER.join(config_name);
+    let config_path = CHAMELEON_CFG_ROOT.join(config_name);
 
-    read_config(config_path)
+    read_toml(config_path)
 });
 
 /// The specification version the server is compliant with.

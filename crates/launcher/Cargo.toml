@@ -12,7 +12,7 @@ tokio.workspace = true
 layer_shell.workspace = true
 
 chameleon-ipc.workspace = true
-chameleon-core.workspace = true
+chameleon_shared.workspace = true
 
 
 freedesktop-desktop-entry.workspace = true

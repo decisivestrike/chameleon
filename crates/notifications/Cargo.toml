@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-chameleon-core.workspace = true
+chameleon_shared.workspace = true
 
+argh.workspace = true
 anyhow.workspace = true
 tokio.workspace = true
 gtk.workspace = true

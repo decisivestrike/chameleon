@@ -1,53 +1,38 @@
+pub mod config;
 pub mod errors;
+pub mod utils;
 
 use futures::StreamExt;
 use gtk::glib::{self, clone};
 use gtke::Css;
 use gtke::css::StylePriority;
 use inotify::{Inotify, WatchMask};
-use serde::de::DeserializeOwned;
 use std::env::home_dir;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::LazyLock;
-use std::{fmt, fs};
-use tracing::{error, info, warn};
+use tracing::info;
 use tracing_subscriber::EnvFilter;
 
-pub static DEFAULT_CONFIG_FOLDER: LazyLock<PathBuf> = LazyLock::new(|| {
+/// Config root directory
+pub static CHAMELEON_CFG_ROOT: LazyLock<PathBuf> = LazyLock::new(|| {
     let maybe_home = home_dir();
 
     if let Some(home) = maybe_home {
-        home.join(".config").join("chameleon")
+        home.join(".config/chameleon")
     } else {
-        panic!("Cant get $HOME")
+        panic!("Can't get $HOME directory")
     }
 });
 
-pub fn read_config<Config, P>(config_path: P) -> Config
-where
-    Config: Default + DeserializeOwned,
-    P: AsRef<Path> + fmt::Debug,
-{
-    match fs::read_to_string(&config_path) {
-        Ok(str) => parse_config(&str),
-        Err(e) => {
-            warn!(
-                "Failed to open config file at {config_path:?}. {e}. The default configuration will be used."
-            );
-            Config::default()
-        }
-    }
-}
+/// Themes
+pub static CHAMELEON_THEMES_ROOT: LazyLock<PathBuf> =
+    LazyLock::new(|| CHAMELEON_CFG_ROOT.join("themes"));
 
-fn parse_config<Config: DeserializeOwned>(input: &str) -> Config {
-    match toml::from_str(&input) {
-        Ok(config) => config,
-        Err(e) => {
-            error!("{e}");
-            std::process::exit(-1);
-        }
-    }
-}
+/// Presets
+pub static CHAMELEON_PRESETS_ROOT: LazyLock<PathBuf> =
+    LazyLock::new(|| CHAMELEON_CFG_ROOT.join("presets"));
+
+/// Reads toml file
 
 pub async fn styles_watcher(styles_path: PathBuf) {
     let inotify =

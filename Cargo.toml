@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.dependencies]
-chameleon-core = { path = "crates/chameleon-core" }
+chameleon_shared = { path = "crates/chameleon_shared" }
 chameleon-ipc = { path = "crates/chameleon-ipc" }
 
 # My stuff for gtk

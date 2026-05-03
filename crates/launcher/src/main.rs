@@ -5,7 +5,8 @@ mod entry_object;
 pub mod ipc;
 mod launcher;
 
-use chameleon_core::{init_tracing_subscriber, read_config, styles_watcher};
+use chameleon_shared::config::read;
+use chameleon_shared::{init_tracing_subscriber, styles_watcher};
 use gtk::glib;
 use gtke::Css;
 use gtke::css::StylePriority;
@@ -15,7 +16,7 @@ use std::process::exit;
 use std::sync::{Arc, LazyLock, RwLock};
 use tracing::error;
 
-use crate::cli::Command;
+use crate::cli::Args;
 use crate::config::LauncherConfig;
 use crate::ipc::{listen_socket, send_toggle_command};
 use crate::launcher::Launcher;
@@ -26,7 +27,7 @@ static LAUNCHER: LazyLock<RwLock<Option<Arc<Launcher>>>> =
 fn main() {
     init_tracing_subscriber();
 
-    let args: Command = argh::from_env();
+    let args: Args = argh::from_env();
 
     if args.toggle {
         send_toggle_command()
@@ -38,7 +39,7 @@ fn main() {
     };
 
     let config: LauncherConfig =
-        read_config("/home/inqlog/.config/chameleon/launcher.toml");
+        read("/home/inqlog/.config/chameleon/launcher.toml").unwrap();
 
     *LAUNCHER.write().unwrap() = Some(Launcher::create(config));
 

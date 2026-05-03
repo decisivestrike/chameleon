@@ -233,16 +233,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
-name = "chameleon-core"
+name = "chameleon"
 version = "0.1.0"
 dependencies = [
- "futures",
- "gtk4",
- "gtke",
- "gtkio",
- "inotify",
+ "argh",
+ "chameleon_shared",
  "serde",
- "thiserror",
+ "tokio",
  "toml",
  "tracing",
  "tracing-subscriber",
@@ -264,8 +261,8 @@ name = "chameleon-launcher"
 version = "0.1.0"
 dependencies = [
  "argh",
- "chameleon-core",
  "chameleon-ipc",
+ "chameleon_shared",
  "freedesktop-desktop-entry",
  "gtk4",
  "gtk4-layer-shell",
@@ -274,7 +271,7 @@ dependencies = [
  "libc",
  "nucleo",
  "serde",
- "thiserror",
+ "thiserror 2.0.18",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -285,7 +282,8 @@ name = "chameleon-notifications"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "chameleon-core",
+ "argh",
+ "chameleon_shared",
  "gdk-pixbuf",
  "grapes",
  "gtk4",
@@ -294,7 +292,7 @@ dependencies = [
  "indexmap",
  "serde",
  "serde_repr",
- "thiserror",
+ "thiserror 2.0.18",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -306,8 +304,8 @@ name = "chameleon-panel"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "chameleon-core",
  "chameleon-ipc",
+ "chameleon_shared",
  "chrono",
  "dashmap",
  "grapes",
@@ -330,11 +328,28 @@ dependencies = [
 name = "chameleon-widgets"
 version = "0.1.0"
 dependencies = [
- "chameleon-core",
+ "chameleon_shared",
  "gtk4",
  "gtk4-layer-shell",
  "gtke",
  "serde",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "chameleon_shared"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "gtk4",
+ "gtke",
+ "gtkio",
+ "inotify",
+ "resolve-path",
+ "serde",
+ "thiserror 2.0.18",
+ "toml",
  "tracing",
  "tracing-subscriber",
 ]
@@ -453,6 +468,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "dirs"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
+dependencies = [
+ "dirs-sys",
+]
+
+[[package]]
+name = "dirs-sys"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b1d1d91c932ef41c0f2663aa8b0ca0342d444d842c06914aa0a7e352d0bada6"
+dependencies = [
+ "libc",
+ "redox_users",
+ "winapi",
+]
+
+[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -554,7 +589,7 @@ dependencies = [
  "gettext-rs",
  "log",
  "memchr",
- "thiserror",
+ "thiserror 2.0.18",
  "unicase",
  "xdg",
 ]
@@ -716,6 +751,17 @@ dependencies = [
  "pango-sys",
  "pkg-config",
  "system-deps",
+]
+
+[[package]]
+name = "getrandom"
+version = "0.2.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff2abc00be7fca6ebc474524697ae276ad847ad0a6b3faa4bcb027e9a4614ad0"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "wasi",
 ]
 
 [[package]]
@@ -1198,6 +1244,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "libredox"
+version = "0.1.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e02f3bb43d335493c96bf3fd3a321600bf6bd07ed34bc64118e9293bdffea46c"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1568,6 +1623,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_users"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba009ff324d1fc1b900bd1fdb31564febe58a8ccc8a6fdbb93b543d33b13ca43"
+dependencies = [
+ "getrandom 0.2.17",
+ "libredox",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "regex"
 version = "1.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1595,6 +1661,15 @@ name = "regex-syntax"
 version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
+
+[[package]]
+name = "resolve-path"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "321e5e41b3b192dab6f1e75b9deacb6688b4b8c5e68906a78e8f43e7c2887bb5"
+dependencies = [
+ "dirs",
+]
 
 [[package]]
 name = "rust-fuzzy-search"
@@ -1816,10 +1891,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix",
  "windows-sys",
+]
+
+[[package]]
+name = "thiserror"
+version = "1.0.69"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
+dependencies = [
+ "thiserror-impl 1.0.69",
 ]
 
 [[package]]
@@ -1828,7 +1912,18 @@ version = "2.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4288b5bcbc7920c07a1149a35cf9590a2aa808e0bc1eafaade0b80947865fbc4"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 2.0.18",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "1.0.69"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -2046,7 +2141,7 @@ version = "1.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee48d38b119b0cd71fe4141b30f5ba9c7c5d9f4e7a3a8b4a674e4b6ef789976f"
 dependencies = [
- "getrandom",
+ "getrandom 0.3.4",
  "js-sys",
  "serde_core",
  "wasm-bindgen",

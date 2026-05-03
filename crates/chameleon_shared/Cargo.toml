@@ -1,5 +1,5 @@
 [package]
-name = "chameleon-core"
+name = "chameleon_shared"
 version = "0.1.0"
 edition = "2024"
 
@@ -14,3 +14,4 @@ inotify.workspace = true
 tracing.workspace = true
 futures = "0.3.32"
 tracing-subscriber.workspace = true
+resolve-path = "0.1.0"
