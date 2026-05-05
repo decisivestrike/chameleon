@@ -13,13 +13,10 @@ gtkio.workspace = true
 gtke.workspace = true
 tokio.workspace = true
 
-grapes.workspace = true
-grapes_components.workspace = true
 
 chrono.workspace = true
 log.workspace = true
 dashmap.workspace = true
-uuid = { workspace = true, features = ['v4'] }
 anyhow.workspace = true
 tokio-util.workspace = true
 suukon = "0.2.0"

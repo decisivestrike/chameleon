@@ -1,7 +1,9 @@
 //! https://specifications.freedesktop.org/notification/latest/protocol.html
-use crate::requests::NotificationData;
-use crate::responses::{Capability, ServerInfo};
-use grapes::RT;
+pub mod info;
+pub use info::{Capability, ServerInfo};
+
+use crate::notification::NotificationData;
+use gtkio::future::spawn;
 use std::future::{self};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
@@ -9,6 +11,9 @@ use tracing::{debug, error, warn};
 use zbus::connection::Builder as ConnectionBuilder;
 use zbus::object_server::SignalEmitter;
 use zbus::{Connection, interface};
+
+/// The specification version the server is compliant with.
+pub const SPECIFICATION_VERSION: &str = "1.2";
 
 pub struct NotificationServer {
     notification_id: u32,
@@ -27,7 +32,7 @@ impl NotificationServer {
     }
 
     pub fn serve(self) -> JoinHandle<()> {
-        RT.spawn(async {
+        spawn(async {
             let connection = self.create_connection().await;
 
             if let Err(e) = connection {

@@ -10,9 +10,6 @@ chameleon-ipc = { path = "crates/chameleon-ipc" }
 gtke = { path = "crates/gtke" }
 gtkio = { path = "crates/gtkio" }
 
-grapes = { git = "https://github.com/decisivestrike/grapes" }
-grapes_components = { git = "https://github.com/decisivestrike/grapes", package = "grapes-components" }
-
 argh = "0.1.13"
 anyhow = "1.0.100"
 inotify = "0.11.0"

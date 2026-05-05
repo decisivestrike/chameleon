@@ -1,4 +1,7 @@
-use crate::SPECIFICATION_VERSION;
+pub mod capability;
+pub use capability::Capability;
+
+use crate::server::SPECIFICATION_VERSION;
 use serde::Serialize;
 use zbus::zvariant::Type;
 
@@ -31,7 +34,7 @@ impl Default for ServerInfo {
 
 #[cfg(test)]
 mod tests {
-    use crate::responses::ServerInfo;
+    use crate::server::ServerInfo;
     use zbus::zvariant::Type;
 
     #[test]

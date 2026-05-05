@@ -1,16 +1,4 @@
 //! https://specifications.freedesktop.org/notification/latest/protocol.html#command-notify
-pub mod hints;
-pub use hints::NotificationHints;
-
-pub mod urgency;
-pub use urgency::Urgency;
-
-pub mod image_data;
-pub use image_data::ImageData;
-
-pub mod timeout;
-pub use timeout::Timeout;
-
 use serde::Deserialize;
 use zbus::zvariant::Type;
 
@@ -25,14 +13,16 @@ pub struct NotificationData {
     /// replace the given notification with this one. This allows clients to
     /// effectively modify the notification while it's active. A value of 0
     /// means that this notification won't replace any existing notifications.
-    pub replaces_id: u32,
+    #[doc(alias = "replaces_id")]
+    pub id: u32,
 
     /// The optional program icon of the calling application. See Icons and
     /// Images. Can be an empty string, indicating no icon.
     pub app_icon: String,
 
-    /// The summary text briefly describing the notification.
-    pub summary: String,
+    /// The text briefly describing the notification.
+    #[doc(alias = "summary")]
+    pub title: String,
 
     /// The optional detailed body text. Can be empty.
     pub body: String,
@@ -48,12 +38,12 @@ pub struct NotificationData {
     /// other supports any specific hints, they can be used to pass along
     /// information, such as the process PID or window ID, that the server
     /// may be able to make use of. See Hints. Can be empty.
-    pub hints: NotificationHints,
+    pub hints: super::NotificationHints,
 
     /// The timeout time in milliseconds since the display of the notification
     /// at which the notification should automatically close.
     /// If -1, the notification's expiration time is dependent on the
     /// notification server's settings, and may vary for the type of
     /// notification. If 0, never expire.
-    pub expire_timeout: Timeout,
+    pub expire_timeout: super::Timeout,
 }

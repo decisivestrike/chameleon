@@ -1,11 +1,24 @@
-use crate::requests::NotificationData;
+pub mod data;
+pub use data::NotificationData;
+
+pub mod hints;
+pub use hints::NotificationHints;
+
+pub mod image_data;
+pub use image_data::ImageData;
+
+pub mod timeout;
+pub use timeout::Timeout;
+
+pub mod urgency;
+pub use urgency::Urgency;
+
 use crate::window::NotificationWindow;
-use grapes::WindowComponent;
-use grapes::glib::clone;
-use grapes::gtk::{self};
-use grapes::prelude::GtkWindowExt;
 use gtk::Window;
 use gtk::gdk::MemoryTexture;
+use gtk::glib::clone;
+use gtk::prelude::GtkWindowExt;
+use gtke::WindowComponent;
 use gtkio::time::timeout_local;
 
 pub struct Notification {
@@ -14,16 +27,17 @@ pub struct Notification {
 }
 
 impl Notification {
-    pub fn new(data: NotificationData) -> Self {
+    pub fn new(data: &NotificationData) -> Self {
         let NotificationData {
             replaces_id,
             expire_timeout,
             ..
         } = data;
+
         let window = NotificationWindow::new(data.hints.urgency);
 
         timeout_local(
-            expire_timeout.into(),
+            (*expire_timeout).into(),
             clone!(
                 #[strong]
                 window,
@@ -32,7 +46,7 @@ impl Notification {
         );
 
         let mut notification = Self {
-            id: replaces_id,
+            id: *replaces_id,
             window,
         };
 
@@ -41,7 +55,7 @@ impl Notification {
         notification
     }
 
-    pub fn update(&mut self, data: NotificationData) {
+    pub fn update(&mut self, data: &NotificationData) {
         let window = &mut self.window;
 
         if let Some(ref image_data) = data.hints.image_data {
@@ -49,12 +63,13 @@ impl Notification {
             window.add_icon(texture);
         }
 
-        let summary = match data.hints.desktop_entry {
-            Some(entry_name) => format!("[{entry_name}] {}", data.summary),
-            None => data.summary,
+        match &data.hints.desktop_entry {
+            Some(entry_name) => window
+                .summary
+                .set_label(&format!("[{entry_name}] {}", data.title)),
+            None => window.summary.set_label(&data.title),
         };
 
-        window.summary.set_label(&summary);
         window.body.set_label(&data.body)
     }
 

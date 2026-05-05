@@ -1,27 +1,28 @@
-use chameleon_shared::config;
-use chameleon_shared::errors::ConfigError;
+use chameleon_shared::utils::read_config;
 use serde::Deserialize;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 #[derive(Default, Deserialize)]
 #[serde(default)]
 pub struct Preset {
     /// Enabled modules
-    enabled: Vec<Module>,
-    ipc: bool,
-    themes_root: PathBuf,
+    pub enabled: HashSet<Module>,
+
+    /// Path to folder with themes
+    pub themes_root: Option<PathBuf>,
 
     /// Default theme for preset
-    theme: String,
+    pub theme: String,
 }
 
 impl Preset {
-    pub fn load(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
-        config::read(&path)
+    pub fn load(path: impl AsRef<Path>) -> Self {
+        read_config(&path).unwrap()
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum Module {
     Launcher,
@@ -29,4 +30,16 @@ pub enum Module {
     Panel,
     Watcher,
     Widgets,
+}
+
+impl AsRef<str> for Module {
+    fn as_ref(&self) -> &str {
+        match self {
+            Module::Launcher => "chameleon-launcher",
+            Module::Notifications => "chameleon-notifications",
+            Module::Panel => "chameleon-panel",
+            Module::Watcher => "chameleon-watcher",
+            Module::Widgets => "chameleon-widgets",
+        }
+    }
 }

@@ -1,4 +1,3 @@
-use crate::requests::notification_data::{ImageData, Urgency};
 use zbus::zvariant::{DeserializeDict, Type};
 
 /// Hints are a way to provide extra data to a notification server that the
@@ -26,7 +25,7 @@ pub struct NotificationHints {
     /// This is a raw data image format which describes the width, height,
     /// rowstride, has alpha, bits per sample, channels and image data
     /// respectively.
-    pub image_data: Option<ImageData>,
+    pub image_data: Option<super::ImageData>,
 
     /// Alternative way to define the notification image.
     pub image_path: Option<String>,
@@ -64,5 +63,5 @@ pub struct NotificationHints {
     pub y: Option<i32>,
 
     /// The urgency level.
-    pub urgency: Option<Urgency>,
+    pub urgency: Option<super::Urgency>,
 }

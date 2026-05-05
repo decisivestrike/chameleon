@@ -1,32 +1,32 @@
-use crate::CONFIG;
-use crate::notification::Notification;
-use crate::requests::NotificationData;
-use grapes::prelude::WidgetExt;
+use crate::notification::{Notification, NotificationData};
+use gtk::prelude::WidgetExt;
 use indexmap::IndexMap;
 use layer_shell::{Edge, LayerShell};
 use tokio::sync::Mutex;
 
 pub struct NotificationQueue {
-    notifications: Mutex<IndexMap<u32, Notification>>,
+    persistance: Mutex<IndexMap<u32, Notification>>,
     max_notifications: usize,
+    config: QueueConfig,
 }
 
 impl NotificationQueue {
-    pub fn new() -> Self {
+    pub fn new(config: QueueConfig, windows_factory: WindowsFactory) -> Self {
         let map = IndexMap::new();
 
         Self {
-            notifications: Mutex::new(map).into(),
-            max_notifications: CONFIG.max_notifications.get().into(),
+            persistance: Mutex::new(map).into(),
+            max_notifications: config.history_len as usize,
+            config,
         }
     }
 
-    pub async fn push_or_replace(&self, data: NotificationData) {
-        let mut notifications = self.notifications.lock().await;
+    pub async fn push_or_replace(&self, data: &NotificationData) {
+        let mut notifications = self.persistance.lock().await;
         let maybe_notification = notifications.get_mut(&data.replaces_id);
 
         if let Some(old_notification) = maybe_notification {
-            self.replace(old_notification, data).await
+            self.replace(old_notification, &data).await
         } else {
             drop(notifications);
             self.push(data).await;
@@ -34,12 +34,12 @@ impl NotificationQueue {
     }
 
     pub async fn remove(&self, id: u32) {
-        let mut notifications = self.notifications.lock().await;
+        let mut notifications = self.persistance.lock().await;
         notifications.shift_remove(&id);
     }
 
-    async fn push(&self, data: NotificationData) {
-        let mut notifications = self.notifications.lock().await;
+    async fn push(&self, data: &NotificationData) {
+        let mut notifications = self.persistance.lock().await;
         let mut notifications_count = notifications.len();
 
         if notifications_count >= self.max_notifications.into() {
@@ -53,7 +53,7 @@ impl NotificationQueue {
             let height = notification.window().height();
             let count = (notifications_count + 1 - index) as i32;
 
-            let gaps = CONFIG.gaps as i32 * count;
+            let gaps = self.config.gap as i32 * count;
             let heights = height * (count - 1);
             let margin_top = gaps + heights;
 
@@ -61,14 +61,14 @@ impl NotificationQueue {
         }
 
         let id = data.replaces_id;
-        let notification = Notification::new(data);
+        let notification = Notification::new(&data);
         notification.show();
 
         notifications.insert(id, notification);
     }
 
-    async fn replace(&self, old: &mut Notification, data: NotificationData) {
-        old.update(data);
+    async fn replace(&self, old: &mut Notification, data: &NotificationData) {
+        old.update(&data);
     }
 }
 

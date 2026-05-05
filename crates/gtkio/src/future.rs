@@ -13,6 +13,14 @@ where
     RUNTIME.spawn(future)
 }
 
+pub fn spawn_blocking<F, R>(func: F) -> TokioHandle<F::Output>
+where
+    F: FnOnce() -> R + Send + 'static,
+    R: Send + 'static,
+{
+    RUNTIME.spawn_blocking(func)
+}
+
 /// This can be called only from the thread where the main context is running
 pub fn spawn_local<F>(future: F) -> GlibHandle<F::Output>
 where

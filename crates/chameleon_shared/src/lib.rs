@@ -1,4 +1,3 @@
-pub mod config;
 pub mod errors;
 pub mod utils;
 
@@ -13,26 +12,21 @@ use std::sync::LazyLock;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
-/// Config root directory
-pub static CHAMELEON_CFG_ROOT: LazyLock<PathBuf> = LazyLock::new(|| {
-    let maybe_home = home_dir();
+/// User's home directory
+pub static HOME: LazyLock<PathBuf> =
+    LazyLock::new(|| home_dir().expect("Can't get home directory"));
 
-    if let Some(home) = maybe_home {
-        home.join(".config/chameleon")
-    } else {
-        panic!("Can't get $HOME directory")
-    }
-});
+/// Config root directory
+pub static CHAMELEON_CONFIG_ROOT: LazyLock<PathBuf> =
+    LazyLock::new(|| HOME.join(".config/chameleon"));
 
 /// Themes
 pub static CHAMELEON_THEMES_ROOT: LazyLock<PathBuf> =
-    LazyLock::new(|| CHAMELEON_CFG_ROOT.join("themes"));
+    LazyLock::new(|| CHAMELEON_CONFIG_ROOT.join("themes"));
 
 /// Presets
 pub static CHAMELEON_PRESETS_ROOT: LazyLock<PathBuf> =
-    LazyLock::new(|| CHAMELEON_CFG_ROOT.join("presets"));
-
-/// Reads toml file
+    LazyLock::new(|| CHAMELEON_CONFIG_ROOT.join("presets"));
 
 pub async fn styles_watcher(styles_path: PathBuf) {
     let inotify =

@@ -77,6 +77,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f0e0fee31ef5ed1ba1316088939cea399010ed7731dba877ed44aeb407a75ea"
 
 [[package]]
+name = "arc-swap"
+version = "1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a3a1fd6f75306b68087b831f025c712524bcb19aad54e557b1129cfa0a2b207"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "argh"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -250,7 +259,6 @@ name = "chameleon-ipc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "grapes",
  "log",
  "serde",
  "serde_json",
@@ -282,12 +290,13 @@ name = "chameleon-notifications"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "arc-swap",
  "argh",
  "chameleon_shared",
  "gdk-pixbuf",
- "grapes",
  "gtk4",
  "gtk4-layer-shell",
+ "gtke",
  "gtkio",
  "indexmap",
  "serde",
@@ -308,8 +317,6 @@ dependencies = [
  "chameleon_shared",
  "chrono",
  "dashmap",
- "grapes",
- "grapes-components",
  "gtk4",
  "gtke",
  "gtkio",
@@ -321,7 +328,6 @@ dependencies = [
  "tokio-util",
  "tracing",
  "tracing-subscriber",
- "uuid",
 ]
 
 [[package]]
@@ -898,36 +904,6 @@ dependencies = [
  "glib-sys",
  "libc",
  "system-deps",
-]
-
-[[package]]
-name = "grapes"
-version = "0.1.0"
-source = "git+https://github.com/decisivestrike/grapes#a1aae51bb8c099893cd2592a9d7b34857c2fc71c"
-dependencies = [
- "grapes-macros",
- "gtk4",
- "gtk4-layer-shell",
- "tokio",
- "tokio-util",
-]
-
-[[package]]
-name = "grapes-components"
-version = "0.1.0"
-source = "git+https://github.com/decisivestrike/grapes#a1aae51bb8c099893cd2592a9d7b34857c2fc71c"
-dependencies = [
- "grapes",
-]
-
-[[package]]
-name = "grapes-macros"
-version = "0.1.0"
-source = "git+https://github.com/decisivestrike/grapes#a1aae51bb8c099893cd2592a9d7b34857c2fc71c"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -2141,7 +2117,6 @@ version = "1.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee48d38b119b0cd71fe4141b30f5ba9c7c5d9f4e7a3a8b4a674e4b6ef789976f"
 dependencies = [
- "getrandom 0.3.4",
  "js-sys",
  "serde_core",
  "wasm-bindgen",
