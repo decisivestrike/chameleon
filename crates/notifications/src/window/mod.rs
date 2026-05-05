@@ -1,3 +1,6 @@
+pub mod content;
+pub use content::NotificationContent;
+
 use crate::notification::Urgency;
 use gtk::gdk::MemoryTexture;
 use gtk::prelude::*;

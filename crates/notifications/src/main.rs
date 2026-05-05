@@ -4,6 +4,7 @@ mod dbus;
 pub use dbus::*;
 pub mod manager;
 pub mod queue;
+mod temporal_map;
 pub mod window;
 
 use crate::cli::Args;

@@ -2,11 +2,21 @@ use crate::notification::Timeout;
 use serde::Deserialize;
 use std::num::NonZeroU8;
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Rules {
+    #[serde(flatten)]
+    pub manager_rules: ManagerRules,
+
+    #[serde(rename = "window")]
+    pub window_rules: WindowRules,
+}
+
+#[derive(Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct ManagerRules {
     /// Notification on startup
-    // pub greet: bool,
+    /// pub greet: bool,
 
     /// The number of simultaneous notifications displayed on the screen
     pub max_active: NonZeroU8,
@@ -16,22 +26,19 @@ pub struct Rules {
 
     /// Gap between windows
     pub gap: u16,
-
-    #[serde(rename = "window")]
-    pub window_rules: WindowRules,
 }
 
-impl Default for Rules {
+impl Default for ManagerRules {
     fn default() -> Self {
         Self {
             gap: 10,
             max_active: NonZeroU8::new(5).unwrap(),
             max_history: 64,
-            window_rules: Default::default(),
         }
     }
 }
 
+/// Setting for notification window
 #[derive(Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct WindowRules {

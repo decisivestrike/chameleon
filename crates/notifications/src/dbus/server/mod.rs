@@ -67,13 +67,13 @@ impl NotificationServer {
 
     /// If the id is zero, then we have to determine it ourselves
     fn set_id_if_zero(&mut self, data: &mut NotificationData) -> u32 {
-        if data.replaces_id == 0 {
+        if data.id == 0 {
             let id = self.generate_id();
-            data.replaces_id = id;
+            data.id = id;
 
             id
         } else {
-            data.replaces_id
+            data.id
         }
     }
 }

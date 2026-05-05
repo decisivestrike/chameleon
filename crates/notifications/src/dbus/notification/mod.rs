@@ -29,9 +29,7 @@ pub struct Notification {
 impl Notification {
     pub fn new(data: &NotificationData) -> Self {
         let NotificationData {
-            replaces_id,
-            expire_timeout,
-            ..
+            id, expire_timeout, ..
         } = data;
 
         let window = NotificationWindow::new(data.hints.urgency);
@@ -45,10 +43,7 @@ impl Notification {
             ),
         );
 
-        let mut notification = Self {
-            id: *replaces_id,
-            window,
-        };
+        let mut notification = Self { id: *id, window };
 
         notification.update(data);
 

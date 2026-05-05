@@ -2,6 +2,7 @@ pub mod future;
 pub mod time;
 pub mod workers;
 
+use glib::MainContext;
 use std::sync::{LazyLock, OnceLock};
 use tokio::runtime::{self, Runtime};
 
@@ -25,6 +26,10 @@ pub static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
         .build()
         .unwrap()
 });
+
+/// Glib main context
+pub static MAIN_CONTEXT: LazyLock<MainContext> =
+    LazyLock::new(MainContext::default);
 
 #[cfg(test)]
 mod tests {

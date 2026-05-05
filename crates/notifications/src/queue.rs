@@ -60,7 +60,7 @@ impl NotificationQueue {
             notification.window().set_margin(Edge::Top, margin_top);
         }
 
-        let id = data.replaces_id;
+        let id = data.id;
         let notification = Notification::new(&data);
         notification.show();
 
