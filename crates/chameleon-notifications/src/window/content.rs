@@ -1,34 +1,24 @@
-pub mod content;
-pub use content::NotificationContent;
-
 use crate::notification::Urgency;
+use gtk::Orientation;
 use gtk::gdk::MemoryTexture;
-use gtk::prelude::*;
-use gtk::{self, Orientation, Window};
-use gtke::WindowComponent;
-use layer_shell::{Edge, LayerShell};
+use gtk::prelude::BoxExt;
+use gtke::Component;
 
-const NAMESPACE: &str = "chameleon-notifications";
-
-#[derive(Clone, WindowComponent)]
-pub struct NotificationWindow {
+#[derive(Clone, Component)]
+pub struct NotificationContent {
     pub icon: Option<gtk::Image>,
-    pub summary: gtk::Label,
+    pub title: gtk::Label,
     pub body: gtk::Label,
-
     pub text_container: gtk::Box,
-    pub container: gtk::Box,
+
     #[root]
-    pub window: Window,
+    pub container: gtk::Box,
 }
 
-impl NotificationWindow {
-    const NAME: &str = "notification-window";
+impl NotificationContent {
+    const NAME: &str = "notification";
 
     pub fn new(urgency: Option<Urgency>) -> Self {
-        let window = Window::new();
-        Self::setup_layershell(&window);
-
         let title = gtk::Label::builder().name("summary").build();
         let body = gtk::Label::builder().name("body").build();
 
@@ -52,20 +42,16 @@ impl NotificationWindow {
 
         container.append(&text_container);
 
-        window.set_child(Some(&container));
-        window.set_widget_name(Self::NAME);
-
         Self {
-            summary: title,
+            title,
             icon: None,
             body,
             text_container,
             container,
-            window,
         }
     }
 
-    pub fn add_icon(&mut self, texture: MemoryTexture) {
+    pub fn set_icon(&mut self, texture: MemoryTexture) {
         if let Some(ref icon) = self.icon {
             icon.set_paintable(Some(&texture));
         } else {
@@ -77,18 +63,5 @@ impl NotificationWindow {
             self.container.prepend(&icon);
             self.icon = Some(icon);
         }
-    }
-
-    fn setup_layershell(window: &Window) {
-        let gap = 10; // CONFIG.gaps.into();
-
-        window.init_layer_shell();
-        window.set_namespace(Some(NAMESPACE));
-
-        window.set_anchor(Edge::Top, true);
-        window.set_margin(Edge::Top, gap);
-
-        window.set_anchor(Edge::Right, true);
-        window.set_margin(Edge::Right, 10);
     }
 }

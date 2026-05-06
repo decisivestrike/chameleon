@@ -1,5 +1,6 @@
 pub mod errors;
 pub mod utils;
+pub mod watcher;
 
 use futures::StreamExt;
 use gtk::glib::{self, clone};

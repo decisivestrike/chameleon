@@ -2,12 +2,15 @@
 pub mod info;
 pub use info::{Capability, ServerInfo};
 
+pub mod action;
+pub use action::Action;
+
 use crate::notification::NotificationData;
 use gtkio::future::spawn;
-use std::future::{self};
+use std::future;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, trace};
 use zbus::connection::Builder as ConnectionBuilder;
 use zbus::object_server::SignalEmitter;
 use zbus::{Connection, interface};
@@ -17,14 +20,14 @@ pub const SPECIFICATION_VERSION: &str = "1.2";
 
 pub struct NotificationServer {
     notification_id: u32,
-    sender: mpsc::Sender<NotificationData>,
+    sender: mpsc::Sender<Action>,
 }
 
 impl NotificationServer {
     const SERVICE_NAME: &str = "org.freedesktop.Notifications";
     const OBJECT_PATH: &str = "/org/freedesktop/Notifications";
 
-    pub fn create() -> (Self, mpsc::Receiver<NotificationData>) {
+    pub fn create() -> (Self, mpsc::Receiver<Action>) {
         let (sender, receiver) = mpsc::channel(64);
         let server = Self::new(sender);
 
@@ -43,7 +46,7 @@ impl NotificationServer {
         })
     }
 
-    fn new(sender: mpsc::Sender<NotificationData>) -> Self {
+    fn new(sender: mpsc::Sender<Action>) -> Self {
         Self {
             notification_id: 1,
             sender,
@@ -64,44 +67,46 @@ impl NotificationServer {
 
         id
     }
-
-    /// If the id is zero, then we have to determine it ourselves
-    fn set_id_if_zero(&mut self, data: &mut NotificationData) -> u32 {
-        if data.id == 0 {
-            let id = self.generate_id();
-            data.id = id;
-
-            id
-        } else {
-            data.id
-        }
-    }
 }
 
 #[interface(name = "org.freedesktop.Notifications")]
 impl NotificationServer {
     /// Returns the server's capabilities.
-    async fn get_capabilities(&self) -> Vec<Capability> {
+    fn get_capabilities(&self) -> Vec<Capability> {
+        trace!("GetCapabilities");
         vec![Capability::Body, Capability::BodyMarkup]
     }
 
     async fn notify(&mut self, mut data: NotificationData) -> u32 {
-        let id = self.set_id_if_zero(&mut data);
+        trace!("Notify");
+
+        let id = {
+            if data.id == 0 {
+                data.id = self.generate_id();
+            }
+
+            data.id
+        };
 
         debug!("{data:#?}");
 
-        if let Err(e) = self.sender.send(data).await {
+        if let Err(e) = self.sender.send(Action::Create(data)).await {
             error!("{e}");
         }
 
         id
     }
 
-    async fn close_notification(&self, _id: u32) {
-        warn!("I can't close notifications yet.");
+    async fn close_notification(&self, id: u32) {
+        trace!("CloseNotification({})", id);
+
+        if let Err(e) = self.sender.send(Action::Remove(id)).await {
+            error!("{e}");
+        }
     }
 
     fn get_server_information(&self) -> ServerInfo {
+        trace!("GetServerInformation");
         ServerInfo::default()
     }
 

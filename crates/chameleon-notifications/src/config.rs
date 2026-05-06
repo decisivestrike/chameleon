@@ -1,20 +1,30 @@
+use crate::cli::Args;
 use crate::notification::Timeout;
+use arc_swap::ArcSwap;
+use chameleon_shared::utils::read_config;
 use serde::Deserialize;
 use std::num::NonZeroU8;
+use std::sync::LazyLock;
+
+pub static RULES: LazyLock<ArcSwap<Rules>> = LazyLock::new(|| {
+    let args: Args = argh::from_env();
+    let rules: Rules = read_config(args.config_path).unwrap();
+
+    ArcSwap::from_pointee(rules)
+});
 
 #[derive(Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Rules {
     #[serde(flatten)]
-    pub manager_rules: ManagerRules,
+    pub common_rules: CommonRules,
 
-    #[serde(rename = "window")]
-    pub window_rules: WindowRules,
+    pub window: WindowRules,
 }
 
 #[derive(Deserialize)]
 #[serde(default, deny_unknown_fields)]
-pub struct ManagerRules {
+pub struct CommonRules {
     /// Notification on startup
     /// pub greet: bool,
 
@@ -24,14 +34,14 @@ pub struct ManagerRules {
     /// The number of
     pub max_history: usize,
 
-    /// Gap between windows
-    pub gap: u16,
+    /// Space between windows
+    pub spacing: u16,
 }
 
-impl Default for ManagerRules {
+impl Default for CommonRules {
     fn default() -> Self {
         Self {
-            gap: 10,
+            spacing: 10,
             max_active: NonZeroU8::new(5).unwrap(),
             max_history: 64,
         }
