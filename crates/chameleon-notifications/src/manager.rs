@@ -1,29 +1,30 @@
 use crate::NotificationServer;
 use crate::config::Rules;
-use crate::history::History;
+use crate::history::{History, Summary};
 use crate::server::Action;
-use crate::window::NotificationWindow;
+use crate::window::{NotificationContent, NotificationWindow};
 use crate::windows_map::WindowsMap;
-use arc_swap::ArcSwap;
 use gtkio::future::spawn_local;
 
 pub struct NotificationManager {
     history: History,
     windows_map: WindowsMap,
-    windows_factory: WindowsFactory,
-    rules: ArcSwap<Rules>,
+    rules: Rules,
 }
 
 impl NotificationManager {
-    pub fn new(rules: ArcSwap<Rules>) -> Self {
+    pub fn new(rules: Rules) -> Self {
         Self {
-            history: History::default(),
-            windows_map: WindowsMap::default(),
+            history: History::new(rules.max_history),
+            windows_map: WindowsMap::new(
+                rules.max_active.get().into(),
+                rules.spacing.into(),
+            ),
             rules,
         }
     }
 
-    pub fn run(self) {
+    pub fn run(mut self) {
         let (server, mut receiver) = NotificationServer::create();
 
         spawn_local(async move {
@@ -37,13 +38,24 @@ impl NotificationManager {
         server.serve();
     }
 
-    async fn handle_action(&self, action: Action) {
+    async fn handle_action(&mut self, action: Action) {
         match action {
             Action::Create(data) => {
                 if self.windows_map.contains_id(data.id) {
-                    self.windows_map.modify(data.id, |window| {});
+                    self.windows_map.modify(data.id, |window| {
+                        let content = NotificationContent::new(
+                            &data,
+                            &self.rules.window.content,
+                        );
+                        window.set_content(content);
+                    });
                 } else {
-                    let window = NotificationWindow::new();
+                    let content = NotificationContent::new(
+                        &data,
+                        &self.rules.window.content,
+                    );
+                    let window =
+                        NotificationWindow::new(content, &self.rules.window);
 
                     self.windows_map.insert(
                         data.id,
@@ -52,8 +64,9 @@ impl NotificationManager {
                     );
                 }
 
-                // add to history
-                // history.add(data.summarize())
+                if let Some(summary) = Summary::from_data(data) {
+                    self.history.add(summary);
+                }
             }
             Action::Remove(id) => {
                 self.windows_map.remove(id);

@@ -1,6 +1,6 @@
 use crate::config::Configuration;
 use crate::layer::WidgetsLayer;
-use chameleon_core::init_tracing_subscriber;
+use chameleon_shared::init_tracing_subscriber;
 use gtk::gdk::Monitor;
 use gtk::glib;
 use gtke::WindowComponent;
@@ -25,7 +25,11 @@ fn main() {
         let widgets_layer =
             WidgetsLayer::new(monitor, &Configuration::default());
 
-        widgets_layer.append(gtk::Label::new(Some("WOW")), 100.0, 100.0);
+        widgets_layer.append(
+            gtk::Label::builder().label("WOW").name("wow").build(),
+            100.0,
+            100.0,
+        );
 
         widgets_layer.present();
 
