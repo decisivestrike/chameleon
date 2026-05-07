@@ -1,5 +1,5 @@
 use crate::window::NotificationWindow;
-use gtk::glib::{SourceId, clone};
+use gtk::glib::{self, SourceId, clone};
 use gtk::prelude::{GtkWindowExt, WidgetExt};
 use gtke::WindowComponent;
 use gtkio::MAIN_CONTEXT;
@@ -134,7 +134,7 @@ impl Entry {
         id: u32,
         ttl: Duration,
     ) -> SourceId {
-        timeout_local(
+        glib::timeout_add_local_once(
             ttl,
             clone!(
                 #[strong]
