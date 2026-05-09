@@ -3,7 +3,6 @@ use gtk::glib::{self, SourceId, clone};
 use gtk::prelude::{GtkWindowExt, WidgetExt};
 use gtke::WindowComponent;
 use gtkio::MAIN_CONTEXT;
-use gtkio::time::timeout_local;
 use indexmap::IndexMap;
 use layer_shell::{Edge, LayerShell};
 use std::cell::RefCell;
