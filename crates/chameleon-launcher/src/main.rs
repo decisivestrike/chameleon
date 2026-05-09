@@ -5,7 +5,7 @@ mod entry_object;
 pub mod ipc;
 mod launcher;
 
-use chameleon_shared::config::read;
+use chameleon_shared::utils::read_config;
 use chameleon_shared::{init_tracing_subscriber, styles_watcher};
 use gtk::glib;
 use gtke::Css;
@@ -39,7 +39,7 @@ fn main() {
     };
 
     let config: LauncherConfig =
-        read("/home/inqlog/.config/chameleon/launcher.toml").unwrap();
+        read_config("/home/inqlog/.config/chameleon/launcher.toml").unwrap();
 
     *LAUNCHER.write().unwrap() = Some(Launcher::create(config));
 

@@ -5,6 +5,10 @@ edition = "2024"
 
 [dependencies]
 anyhow.workspace = true
+gtk.workspace = true
+gtke.workspace = true
+gtkio.workspace = true
 log.workspace = true
+tokio.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true

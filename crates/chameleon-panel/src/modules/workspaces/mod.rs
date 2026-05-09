@@ -9,13 +9,15 @@ use crate::modules::workspaces::manager::{MANAGER, WorkspacesManager};
 use anyhow::{Result, bail};
 use chameleon_ipc::hyprland::Hyprland;
 use chameleon_ipc::{COMPOSITOR, CompositorVariant};
-use grapes::glib::clone::Downgrade;
-use grapes::gtk::{GestureClick, Label, Widget};
-use grapes::prelude::containers::GrapesBoxExt;
-use grapes::prelude::*;
-use grapes::tokio::sync::mpsc::{self};
+use glib::clone::Downgrade;
+use gtk::prelude::{BoxExt, WidgetExt};
+use gtk::{GestureClick, Label, Widget, glib};
+use gtke::containers::GtkeBoxExt;
+use gtke::{Component, UpdateableComponent};
+use gtkio::RUNTIME;
 use std::rc::Rc;
 use suukon::Numeral;
+use tokio::sync::mpsc::{self};
 
 const SPECIAL_WORKSPACE_ID: i32 = -98;
 
@@ -42,7 +44,8 @@ impl ModuleFactory for Workspaces {
             let (sender, receiver) = mpsc::channel(64);
             let workspaces = Workspaces::new(config, &meta, receiver, hyprland);
 
-            if let Err(e) = RT.block_on(manager.register(&meta.monitor, sender))
+            if let Err(e) =
+                RUNTIME.block_on(manager.register(&meta.monitor, sender))
             {
                 log::error!("{e}");
             };
@@ -70,7 +73,7 @@ impl Workspaces {
             config: config.clone(),
         });
 
-        RT.block_on(async {
+        RUNTIME.block_on(async {
             for ws in
                 hyprland.workspaces_on_monitor(&meta.monitor).await.unwrap()
             {
@@ -122,7 +125,7 @@ impl Workspaces {
 
         event_controller.connect_pressed(move |_, _, _, _| {
             // On click
-            RT.spawn(async move {
+            RUNTIME.spawn(async move {
                 let command = format!("dispatch workspace {}", id);
                 hyprland.command(command.as_bytes()).await.expect("hm");
             });

@@ -4,14 +4,13 @@ use crate::modules::{
     Battery, Clock, KeyboardLayout, ModuleFactory, Pulseaudio, Workspaces,
 };
 use chameleon_ipc::COMPOSITOR;
-use grapes::gtk::gdk::prelude::MonitorExt;
-use grapes::gtk::gdk::{self};
-use grapes::gtk::prelude::{GtkWindowExt, WidgetExt};
-use grapes::gtk::{self, Orientation, Window};
-use grapes::layer_shell::{Edge, KeyboardMode, LayerShell};
-use grapes::prelude::OrientableExt;
-use grapes::prelude::containers::GrapesBoxExt;
-use grapes::{Component, WindowComponent};
+use gtk::gdk::prelude::MonitorExt;
+use gtk::gdk::{self};
+use gtk::prelude::{GtkWindowExt, OrientableExt, WidgetExt};
+use gtk::{self, Orientation, Window};
+use gtke::containers::GtkeBoxExt;
+use gtke::{Component, WindowComponent};
+use layer_shell::{Edge, KeyboardMode, LayerShell};
 use std::rc::Rc;
 
 #[derive(WindowComponent)]

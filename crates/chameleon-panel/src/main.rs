@@ -1,11 +1,11 @@
 use crate::config::Configuration;
 use crate::panel::Panel;
-use chameleon_core::init_tracing_subscriber;
+use chameleon_shared::init_tracing_subscriber;
 use dashmap::DashMap;
-use grapes::WindowComponent;
-use grapes::prelude::MonitorExt;
 use gtk::gdk::Monitor;
+use gtk::gdk::prelude::MonitorExt;
 use gtk::glib;
+use gtke::WindowComponent;
 use gtke::monitor::GtkeMonitorExt;
 use std::process::exit;
 use std::sync::LazyLock;

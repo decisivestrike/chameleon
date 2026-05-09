@@ -1,23 +1,20 @@
 use crate::common::Metadata;
 use crate::config::{BatteryConfig, CONFIG};
-use crate::modules::ModuleFactory;
-use anyhow::bail;
-
-use grapes::gtk::prelude::WidgetExt;
-use grapes::tokio::sync::broadcast::{self};
-use grapes::tokio::time::sleep;
-use grapes::tokio::{self};
-use grapes::{Component, RT, State, state};
-use grapes_components::StatefullLabel;
+use crate::modules::{BaseModule, ModuleFactory};
+use gtk::prelude::WidgetExt;
+use gtke::Component;
+use gtkio::future::spawn;
 use std::rc::Rc;
 use std::sync::LazyLock;
 use std::time::Duration;
+use tokio::sync::watch;
+use tokio::time::sleep;
+use tokio::{self};
 
-pub static CHARGE_SENDER: LazyLock<broadcast::Sender<String>> =
+pub static CHARGE_SENDER: LazyLock<watch::Sender<String>> =
     LazyLock::new(|| {
-        let sender = broadcast::Sender::new(64);
-
-        RT.spawn(Battery::background_task(&CONFIG.battery, sender.clone()));
+        let sender = watch::Sender::new(format!("0%"));
+        spawn(Battery::background_task(&CONFIG.battery, sender.clone()));
 
         sender
     });
@@ -27,38 +24,33 @@ const BAT_PLACEHOLDER: &str = "BAT1";
 #[derive(Debug, Component)]
 pub struct Battery {
     #[root]
-    label: StatefullLabel<String>,
+    base: BaseModule,
 }
 
 impl ModuleFactory for Battery {
     type Config = BatteryConfig;
 
     fn create(
-        config: &Self::Config,
+        _config: &Self::Config,
         _meta: &Metadata,
     ) -> anyhow::Result<Rc<dyn Component>> {
-        match RT
-            .block_on(Self::formatted_charge(BAT_PLACEHOLDER, &config.icons))
-        {
-            Ok(formatted_charge) => {
-                let fcs = state(formatted_charge);
-                fcs.track(&CHARGE_SENDER);
+        let battery = Battery::new();
 
-                Ok(Rc::new(Battery::new(&fcs)))
-            }
-            Err(e) => bail!("I can't find the battery in your device: {e}"),
-        }
+        Ok(Rc::new(battery))
     }
 }
 
 impl Battery {
-    fn new(formatted_charge: &Rc<State<String>>) -> Self {
-        let label = StatefullLabel::new(&formatted_charge);
+    const NAME: &str = "battery";
 
-        label.as_ref().add_css_class("module");
-        label.as_ref().set_widget_name("battery");
+    fn new() -> Self {
+        let state = CHARGE_SENDER.subscribe();
+        let base = BaseModule::new(state);
 
-        Self { label }
+        base.set_widget_name(Self::NAME);
+        base.add_css_class("module");
+
+        Self { base }
     }
 
     async fn formatted_charge(
@@ -92,7 +84,7 @@ impl Battery {
 
     async fn background_task(
         config: &'static BatteryConfig,
-        sender: broadcast::Sender<String>,
+        sender: watch::Sender<String>,
     ) {
         loop {
             if let Ok(charge) =

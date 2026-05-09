@@ -12,6 +12,7 @@ gtk.workspace = true
 gtkio.workspace = true
 gtke.workspace = true
 tokio.workspace = true
+layer_shell.workspace = true
 
 
 chrono.workspace = true

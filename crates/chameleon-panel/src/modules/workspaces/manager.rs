@@ -1,14 +1,14 @@
 use crate::modules::workspaces::SPECIAL_WORKSPACE_ID;
 use crate::modules::workspaces::event::WorkspaceEvent;
-use chameleon_core::errors::MonitorError;
 use chameleon_ipc::compositor::Compositor;
 use chameleon_ipc::hyprland::{HyprEvent, Hyprland, Workspace};
+use chameleon_shared::errors::MonitorError;
 use dashmap::DashMap;
-use grapes::RT;
-use grapes::gtk::gdk;
-use grapes::prelude::MonitorExt;
-use grapes::tokio::sync::mpsc;
+use gtk::gdk;
+use gtk::gdk::prelude::MonitorExt;
+use gtkio::future::spawn;
 use std::sync::OnceLock;
+use tokio::sync::mpsc;
 
 pub(super) static MANAGER: OnceLock<WorkspacesManager> = OnceLock::new();
 
@@ -18,7 +18,7 @@ pub(super) struct WorkspacesManager {
 
 impl WorkspacesManager {
     pub fn new(hyprland: &'static Hyprland) -> Self {
-        RT.spawn(Self::event_handler(hyprland));
+        spawn(Self::event_handler(hyprland));
 
         Self {
             instances: Default::default(),

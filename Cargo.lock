@@ -259,9 +259,13 @@ name = "chameleon-ipc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "gtk4",
+ "gtke",
+ "gtkio",
  "log",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -318,6 +322,7 @@ dependencies = [
  "chrono",
  "dashmap",
  "gtk4",
+ "gtk4-layer-shell",
  "gtke",
  "gtkio",
  "libpulse-binding",

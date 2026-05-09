@@ -1,8 +1,9 @@
 use crate::common::Metadata;
 use crate::modules::{BaseModule, ModuleFactory};
 use crate::services::{CurrentSink, PULSEAUDIO_SERVICE};
-use grapes::{Component, RT};
 use gtk::prelude::WidgetExt;
+use gtke::Component;
+use gtkio::future::spawn;
 use std::rc::Rc;
 use std::sync::LazyLock;
 use tokio::sync::watch;
@@ -13,7 +14,7 @@ pub static PA_HANDLER: LazyLock<watch::Sender<String>> = LazyLock::new(|| {
     let label = Pulseaudio::label_from_sink(&current_sink.borrow());
     let sender = watch::Sender::new(label);
 
-    RT.spawn({
+    spawn({
         let sender = sender.clone();
         let sink_clone = current_sink.clone();
         async move {
@@ -25,7 +26,7 @@ pub static PA_HANDLER: LazyLock<watch::Sender<String>> = LazyLock::new(|| {
         }
     });
 
-    RT.spawn({
+    spawn({
         let sender = sender.clone();
         async move {
             loop {

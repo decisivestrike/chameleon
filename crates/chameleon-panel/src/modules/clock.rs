@@ -2,19 +2,20 @@ use crate::common::Metadata;
 use crate::config::{CONFIG, ClockConfig};
 use crate::modules::{BaseModule, ModuleFactory};
 use chrono::Local;
-use grapes::tokio::time::sleep;
-use grapes::{Component, RT};
 use gtk::prelude::WidgetExt;
+use gtke::Component;
+use gtkio::future::spawn;
 use std::rc::Rc;
 use std::sync::LazyLock;
 use std::time::Duration;
 use tokio::sync::watch;
+use tokio::time::sleep;
 
 pub static TIME_SENDER: LazyLock<watch::Sender<String>> = LazyLock::new(|| {
     let initial_time = Clock::formatted_time(&CONFIG.clock.format);
     let sender = watch::Sender::new(initial_time);
 
-    RT.spawn(Clock::background_task(&CONFIG.clock, sender.clone()));
+    spawn(Clock::background_task(&CONFIG.clock, sender.clone()));
 
     sender
 });

@@ -14,8 +14,8 @@ pub mod pulseaudio;
 pub use pulseaudio::Pulseaudio;
 
 use crate::common::Metadata;
-use grapes::Component;
 use gtk::glib::clone::Downgrade;
+use gtke::Component;
 use std::rc::Rc;
 use tokio::sync::watch;
 

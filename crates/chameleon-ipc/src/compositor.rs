@@ -1,4 +1,4 @@
-use grapes::tokio::sync::broadcast;
+use tokio::sync::broadcast;
 
 pub trait Compositor {
     type Message;

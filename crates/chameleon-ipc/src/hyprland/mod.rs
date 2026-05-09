@@ -3,6 +3,8 @@ mod listener;
 pub mod workspace;
 
 pub use event::HyprEvent;
+use gtk::gdk::prelude::MonitorExt;
+use gtkio::future::spawn;
 pub use workspace::*;
 
 mod device;
@@ -12,14 +14,12 @@ use crate::hyprland::device::Devices;
 use crate::hyprland::listener::EventListener;
 use crate::{COMPOSITOR, CompositorVariant};
 use anyhow::Result;
-use grapes::RT;
-use grapes::gtk::gdk::Monitor;
-use grapes::prelude::MonitorExt;
-use grapes::tokio::io::{AsyncReadExt, AsyncWriteExt};
-use grapes::tokio::net::UnixStream;
-use grapes::tokio::sync::broadcast;
+use gtk::gdk::Monitor;
 use std::env::var;
 use std::path::PathBuf;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::UnixStream;
+use tokio::sync::broadcast;
 
 #[derive(Debug)]
 pub struct Hyprland {
@@ -55,9 +55,9 @@ impl Hyprland {
         let sender_sock =
             format!("{xdg_runtime_dir}/hypr/{his}/.socket2.sock").into();
 
-        RT.spawn(async move {
+        spawn(async move {
             if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
-                RT.spawn(EventListener::run(hyprland));
+                spawn(EventListener::run(hyprland));
             }
         });
 
