@@ -1,5 +1,6 @@
 use crate::common::Metadata;
 use crate::config::{Module, ModulePlacement, Position, Rules};
+use crate::modules::separator::Separator;
 use crate::modules::{
     Battery, Clock, KeyboardLayout, ModuleFactory, Pulseaudio, Workspaces,
 };
@@ -7,7 +8,7 @@ use chameleon_ipc::COMPOSITOR;
 use gtk::gdk::prelude::MonitorExt;
 use gtk::gdk::{self};
 use gtk::prelude::{GtkWindowExt, OrientableExt, WidgetExt};
-use gtk::{self, Orientation, Window};
+use gtk::{self, BaselinePosition, Orientation, Window};
 use gtke::containers::GtkeBoxExt;
 use gtke::{Component, WindowComponent};
 use layer_shell::{Edge, KeyboardMode, LayerShell};
@@ -30,7 +31,9 @@ pub struct Panel {
 impl Panel {
     pub fn new(monitor: &gdk::Monitor, config: &Rules) -> Self {
         let window = Window::new();
-        let centerbox = gtk::CenterBox::new();
+        let centerbox = gtk::CenterBox::builder()
+            .baseline_position(BaselinePosition::Center)
+            .build();
 
         window.set_child(Some(&centerbox));
 
@@ -149,6 +152,9 @@ impl Panel {
             Module::Workspaces => Workspaces::create(&config.workspaces, &meta),
             Module::KeyboardLayout => KeyboardLayout::create(&(), &meta),
             Module::Pulseaudio => Pulseaudio::create(&(), &meta),
+            Module::Separator => {
+                Ok(Rc::new(Separator::new()) as Rc<dyn gtke::Component>)
+            }
         };
 
         match maybe_module {

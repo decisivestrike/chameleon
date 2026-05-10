@@ -23,6 +23,7 @@ pub enum Module {
     Workspaces,
     KeyboardLayout,
     Pulseaudio,
+    Separator,
 }
 
 impl fmt::Display for Module {
@@ -36,6 +37,7 @@ impl fmt::Display for Module {
                 Module::Workspaces => "workspaces",
                 Module::KeyboardLayout => "keyboard layout",
                 Module::Pulseaudio => "pulseaudio",
+                Module::Separator => "separator",
             }
         )
     }
