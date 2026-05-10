@@ -1,5 +1,5 @@
 use crate::common::Metadata;
-use crate::config::{BatteryConfig, CONFIG};
+use crate::config::{BatteryConfig, config};
 use crate::modules::{BaseModule, ModuleFactory};
 use gtk::prelude::WidgetExt;
 use gtke::Component;
@@ -14,7 +14,7 @@ use tokio::{self};
 pub static CHARGE_SENDER: LazyLock<watch::Sender<String>> =
     LazyLock::new(|| {
         let sender = watch::Sender::new(format!("0%"));
-        spawn(Battery::background_task(&CONFIG.battery, sender.clone()));
+        spawn(Battery::background_task(&config().battery, sender.clone()));
 
         sender
     });

@@ -1,7 +1,8 @@
 use crate::cli::Args;
-use crate::config::Rules;
+use crate::config::CONFIG;
 use crate::panel::Panel;
 use chameleon_shared::init_tracing_subscriber;
+use chameleon_shared::utils::read_config;
 use chameleon_shared::watcher::FilesWatcher;
 use dashmap::DashMap;
 use gtk::gdk::Monitor;
@@ -12,7 +13,7 @@ use gtke::monitor::GtkeMonitorExt;
 use gtke::{Css, WindowComponent};
 use std::process::exit;
 use std::sync::LazyLock;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 mod cli;
 pub mod common;
@@ -36,12 +37,23 @@ fn main() {
         config_path,
     } = argh::from_env();
 
+    match read_config(&config_path) {
+        Ok(config) => {
+            debug!("{:#?}", config);
+            CONFIG.set(config).unwrap()
+        }
+        Err(e) => {
+            error!("{e}");
+            exit(1)
+        }
+    };
+
     Css::load(&styles_path).apply(StylePriority::User);
 
     info!("Setup panels...");
 
     for monitor in Monitor::all().iter() {
-        let panel = Panel::new(monitor, &Rules::default());
+        let panel = Panel::new(monitor, config::config());
         panel.present();
 
         let connector_name = monitor.connector().unwrap().to_string();

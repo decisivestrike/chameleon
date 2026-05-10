@@ -118,9 +118,9 @@ impl Panel {
         self.window.set_layer(config.layer);
 
         let all_modules = [
-            (&config.modules_left, ModulePlacement::Left),
-            (&config.modules_center, ModulePlacement::Center),
-            (&config.modules_right, ModulePlacement::Right),
+            (&config.modules.left, ModulePlacement::Left),
+            (&config.modules.center, ModulePlacement::Center),
+            (&config.modules.right, ModulePlacement::Right),
         ];
 
         let meta = Metadata {
@@ -166,7 +166,7 @@ impl Panel {
         let window = &self.window;
 
         window.init_layer_shell();
-        window.set_namespace(Some("chameleon-taskbar"));
+        window.set_namespace(Some("chameleon-panel"));
 
         window.set_widget_name("panel");
 

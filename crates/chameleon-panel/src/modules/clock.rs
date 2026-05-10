@@ -1,5 +1,5 @@
 use crate::common::Metadata;
-use crate::config::{CONFIG, ClockConfig};
+use crate::config::{ClockConfig, config};
 use crate::modules::{BaseModule, ModuleFactory};
 use chrono::Local;
 use gtk::prelude::WidgetExt;
@@ -37,10 +37,11 @@ impl Clock {
     pub fn new() -> Self {
         static TIME_SENDER: LazyLock<watch::Sender<String>> =
             LazyLock::new(|| {
-                let initial_time = Clock::formatted_time(&CONFIG.clock.format);
+                let initial_time =
+                    Clock::formatted_time(&config().clock.format);
                 let sender = watch::Sender::new(initial_time);
 
-                spawn(Clock::background_task(&CONFIG.clock, sender.clone()));
+                spawn(Clock::background_task(&config().clock, sender.clone()));
 
                 sender
             });

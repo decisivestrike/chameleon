@@ -1,12 +1,18 @@
 pub mod modules;
-use layer_shell::Layer;
 pub use modules::*;
 
+use layer_shell::Layer;
 use serde::Deserialize;
 use std::fmt;
-use std::sync::LazyLock;
+use std::sync::OnceLock;
 
-pub static CONFIG: LazyLock<Rules> = LazyLock::new(Default::default);
+pub static CONFIG: OnceLock<Rules> = OnceLock::new();
+
+pub fn config() -> &'static Rules {
+    CONFIG
+        .get()
+        .expect("Configuration must be loaded at the start")
+}
 
 /// All panel modules
 #[derive(Debug, Deserialize)]
@@ -67,6 +73,7 @@ pub enum Position {
     Left,
 }
 
+#[doc(hidden)]
 #[derive(Default, Deserialize)]
 #[serde(remote = "Layer", rename_all = "snake_case")]
 enum LayerDefinition {
@@ -77,19 +84,23 @@ enum LayerDefinition {
     Overlay,
 }
 
+#[derive(Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Modules {
+    pub left: Vec<Module>,
+    pub center: Vec<Module>,
+    pub right: Vec<Module>,
+}
+
 #[derive(Debug, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct Rules {
-    pub enabled: bool,
     pub position: Position,
     pub thickness: Option<i32>,
     pub spacing: i32,
-
     #[serde(with = "LayerDefinition")]
     pub layer: Layer,
-    pub modules_left: Vec<Module>,
-    pub modules_center: Vec<Module>,
-    pub modules_right: Vec<Module>,
+    pub modules: Modules,
     pub clock: ClockConfig,
     pub battery: BatteryConfig,
     pub workspaces: WorkspacesConfig,
@@ -98,14 +109,11 @@ pub struct Rules {
 impl Default for Rules {
     fn default() -> Self {
         Self {
-            enabled: Default::default(),
             position: Default::default(),
             thickness: Default::default(),
             spacing: Default::default(),
             layer: Layer::Top,
-            modules_left: Default::default(),
-            modules_center: Default::default(),
-            modules_right: Default::default(),
+            modules: Default::default(),
             clock: Default::default(),
             battery: Default::default(),
             workspaces: Default::default(),

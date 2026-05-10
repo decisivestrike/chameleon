@@ -7,6 +7,7 @@ use crate::cli::{Args, CliCommand, StartCommand};
 use crate::preset::Preset;
 use crate::process_manager::ProcessManager;
 use chameleon_shared::{CHAMELEON_PRESETS_ROOT, HOME, init_tracing_subscriber};
+use std::env;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 use tokio::process::Command;
@@ -20,6 +21,12 @@ async fn main() {
     init_tracing_subscriber();
 
     let args: Args = argh::from_env();
+
+    if cfg!(debug_assertions) {
+        let cwd = env::current_dir().unwrap();
+        let exe = env::current_exe().unwrap();
+    } else {
+    }
 
     match args.cmd {
         CliCommand::Start(cmd) => start(cmd).await,
