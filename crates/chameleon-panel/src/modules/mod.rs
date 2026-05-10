@@ -15,9 +15,12 @@ pub use pulseaudio::Pulseaudio;
 
 use crate::common::Metadata;
 use gtk::glib::clone::Downgrade;
+use gtk::glib::{self, WeakRef};
 use gtke::Component;
+use std::borrow::Borrow;
 use std::rc::Rc;
 use tokio::sync::watch;
+use tracing::error;
 
 /// Panel module factory
 pub trait ModuleFactory {
@@ -29,14 +32,10 @@ pub trait ModuleFactory {
     ) -> anyhow::Result<Rc<dyn Component>>;
 }
 
-use glib::Object;
-use gtk::glib::{self, WeakRef};
-use gtk::prelude::ButtonExt;
-
-glib::wrapper! {
-    pub struct BaseModule(ObjectSubclass<imp::BaseModule>)
-        @extends gtk::Button, gtk::Widget,
-        @implements gtk::Accessible, gtk::Actionable, gtk::Buildable, gtk::ConstraintTarget;
+#[derive(Debug, Component)]
+pub struct BaseModule {
+    #[root]
+    label: gtk::Label,
 }
 
 impl BaseModule {
@@ -44,17 +43,14 @@ impl BaseModule {
     where
         Label: AsRef<str> + 'static,
     {
-        let module: Self = Object::builder().build();
-        glib::spawn_future_local(Self::track_updates(
-            module.downgrade(),
-            state,
-        ));
+        let label = gtk::Label::new(None);
+        glib::spawn_future_local(Self::track_updates(label.downgrade(), state));
 
-        module
+        Self { label }
     }
 
     async fn track_updates<Label>(
-        weak_module: WeakRef<BaseModule>,
+        weak_module: WeakRef<gtk::Label>,
         mut state: watch::Receiver<Label>,
     ) where
         Label: AsRef<str> + 'static,
@@ -66,31 +62,17 @@ impl BaseModule {
                         let updated_label = state.borrow();
                         module.set_label(updated_label.as_ref());
                     }
-                    Err(e) => log::error!("{e}"),
+                    Err(e) => error!("{e}"),
                 }
+            } else {
+                break;
             }
         }
     }
 }
 
-mod imp {
-    use gtk::glib::{self, Properties};
-    use gtk::subclass::prelude::*;
-
-    #[derive(Default, Properties)]
-    #[properties(wrapper_type = super::BaseModule)]
-    pub struct BaseModule {}
-
-    #[glib::object_subclass]
-    impl ObjectSubclass for BaseModule {
-        const NAME: &'static str = "MyGtkAppCustomButton";
-        type Type = super::BaseModule;
-        type ParentType = gtk::Button;
+impl Borrow<gtk::Widget> for BaseModule {
+    fn borrow(&self) -> &gtk::Widget {
+        self.label.borrow()
     }
-
-    impl ObjectImpl for BaseModule {}
-
-    impl WidgetImpl for BaseModule {}
-
-    impl ButtonImpl for BaseModule {}
 }

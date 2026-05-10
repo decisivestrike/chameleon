@@ -48,6 +48,7 @@ fn main() {
     FilesWatcher::new()
         .unwrap()
         .add_stylesheet(styles_path)
+        .unwrap()
         .run();
 
     let manager = NotificationManager::new(config);

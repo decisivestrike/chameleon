@@ -47,8 +47,8 @@ impl Battery {
         let state = CHARGE_SENDER.subscribe();
         let base = BaseModule::new(state);
 
-        base.set_widget_name(Self::NAME);
-        base.add_css_class("module");
+        base.as_ref().set_widget_name(Self::NAME);
+        base.as_ref().add_css_class("module");
 
         Self { base }
     }

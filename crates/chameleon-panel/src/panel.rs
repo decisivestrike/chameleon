@@ -1,5 +1,5 @@
 use crate::common::Metadata;
-use crate::config::{Configuration, Module, ModulePlacement, Position};
+use crate::config::{Module, ModulePlacement, Position, Rules};
 use crate::modules::{
     Battery, Clock, KeyboardLayout, ModuleFactory, Pulseaudio, Workspaces,
 };
@@ -12,6 +12,7 @@ use gtke::containers::GtkeBoxExt;
 use gtke::{Component, WindowComponent};
 use layer_shell::{Edge, KeyboardMode, LayerShell};
 use std::rc::Rc;
+use tracing::{info, warn};
 
 #[derive(WindowComponent)]
 pub struct Panel {
@@ -27,7 +28,7 @@ pub struct Panel {
 }
 
 impl Panel {
-    pub fn new(monitor: &gdk::Monitor, config: &Configuration) -> Self {
+    pub fn new(monitor: &gdk::Monitor, config: &Rules) -> Self {
         let window = Window::new();
         let centerbox = gtk::CenterBox::new();
 
@@ -76,7 +77,7 @@ impl Panel {
         self.centerbox.set_end_widget(Some(&self.right));
     }
 
-    pub fn configure(&mut self, config: &Configuration) {
+    pub fn configure(&mut self, config: &Rules) {
         self.set_position(&config.position);
 
         let orientation = match config.position {
@@ -140,7 +141,7 @@ impl Panel {
         module_name: &Module,
         meta: Metadata,
         placement: &ModulePlacement,
-        config: &Configuration,
+        config: &Rules,
     ) {
         let maybe_module = match module_name {
             Module::Clock => Clock::create(&config.clock, &meta),
@@ -155,9 +156,9 @@ impl Panel {
                 self.add_module(module.as_ref(), placement);
                 self.modules.push(module);
 
-                log::info!("Added {module_name} to {placement} bar group.");
+                info!("Added {module_name} to {placement} bar group.");
             }
-            Err(e) => log::warn!("{e}"),
+            Err(e) => warn!("{e}"),
         }
     }
 

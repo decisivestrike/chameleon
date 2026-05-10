@@ -9,6 +9,7 @@ use gtk::gdk::prelude::MonitorExt;
 use gtkio::future::spawn;
 use std::sync::OnceLock;
 use tokio::sync::mpsc;
+use tracing::{error, warn};
 
 pub(super) static MANAGER: OnceLock<WorkspacesManager> = OnceLock::new();
 
@@ -49,7 +50,7 @@ impl WorkspacesManager {
             let event = match maybe_event {
                 Ok(event) => event,
                 Err(e) => {
-                    log::error!("In event handler: {e}");
+                    error!("In event handler: {e}");
                     continue;
                 }
             };
@@ -125,10 +126,10 @@ impl WorkspacesManager {
         match maybe_sender {
             Some(sender) => {
                 if let Err(e) = sender.send(event).await {
-                    log::error!("Error while sending event: {e}");
+                    error!("Error while sending event: {e}");
                 }
             }
-            None => log::warn!("Cant find channel for '{}'", monitor_connector),
+            None => warn!("Cant find channel for '{}'", monitor_connector),
         }
     }
 }

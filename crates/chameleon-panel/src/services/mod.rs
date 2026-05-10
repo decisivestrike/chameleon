@@ -8,6 +8,9 @@ use pulse::volume::Volume;
 use std::sync::LazyLock;
 use std::thread;
 use tokio::sync::watch;
+use tracing::error;
+
+const DEFAULT_SINK_NAME: &str = "@DEFAULT_SINK@";
 
 pub static PULSEAUDIO_SERVICE: LazyLock<watch::Sender<CurrentSink>> =
     LazyLock::new(|| {
@@ -71,7 +74,7 @@ fn listen_pa_events(sender: watch::Sender<CurrentSink>) -> ! {
 
     context.subscribe(InterestMaskSet::ALL, |ok| {
         if !ok {
-            log::error!("Some kind of error while subscribe callback")
+            error!("Some kind of error while subscribe callback")
         }
     });
 
@@ -80,7 +83,7 @@ fn listen_pa_events(sender: watch::Sender<CurrentSink>) -> ! {
     context.set_subscribe_callback(Some(subscribtion_callback));
 
     context.introspect().get_sink_info_by_name(
-        "@DEFAULT_SINK@",
+        DEFAULT_SINK_NAME,
         create_result_handler(sender.clone()),
     );
 
@@ -125,7 +128,7 @@ fn create_result_handler(
             };
 
             if let Err(e) = sender.send(sink_info) {
-                log::error!("{e}");
+                error!("{e}");
             }
         }
     }

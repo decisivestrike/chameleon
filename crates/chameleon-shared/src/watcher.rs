@@ -24,20 +24,16 @@ impl FilesWatcher {
         Ok(watcher)
     }
 
-    pub fn add(mut self, path: PathBuf, f: FileActionFn) -> Self {
-        let wd = self
-            .inotify
-            .watches()
-            .add(&path, WatchMask::CLOSE_WRITE)
-            .unwrap();
+    pub fn add(mut self, path: PathBuf, f: FileActionFn) -> io::Result<Self> {
+        let wd = self.inotify.watches().add(&path, WatchMask::CLOSE_WRITE)?;
 
         let action = FileAction::new(path, f);
         self.actions.insert(wd, action);
 
-        self
+        Ok(self)
     }
 
-    pub fn add_stylesheet(self, path: PathBuf) -> Self {
+    pub fn add_stylesheet(self, path: PathBuf) -> io::Result<Self> {
         self.add(
             path,
             Box::new(|path| {

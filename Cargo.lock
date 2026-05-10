@@ -317,6 +317,7 @@ name = "chameleon-panel"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "argh",
  "chameleon-ipc",
  "chameleon_shared",
  "chrono",
@@ -326,7 +327,6 @@ dependencies = [
  "gtke",
  "gtkio",
  "libpulse-binding",
- "log",
  "serde",
  "suukon",
  "tokio",

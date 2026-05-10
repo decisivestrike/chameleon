@@ -11,6 +11,7 @@ use gtkio::future::{spawn, spawn_with_local_callback};
 use std::rc::Rc;
 use std::sync::LazyLock;
 use tokio::sync::watch;
+use tracing::error;
 
 pub static LAYOUT_SENDER: LazyLock<watch::Sender<String>> =
     LazyLock::new(|| {
@@ -38,7 +39,7 @@ pub static LAYOUT_SENDER: LazyLock<watch::Sender<String>> =
                     watch_sender,
                     move |active_keymap| {
                         if let Err(e) = watch_sender.send(active_keymap) {
-                            log::error!("{e}");
+                            error!("{e}");
                         }
                     }
                 ),
@@ -74,8 +75,8 @@ impl KeyboardLayout {
         let state = LAYOUT_SENDER.subscribe();
         let base = BaseModule::new(state);
 
-        base.set_widget_name(Self::NAME);
-        base.add_css_class("module");
+        base.as_ref().set_widget_name(Self::NAME);
+        base.as_ref().add_css_class("module");
 
         Self { base }
     }

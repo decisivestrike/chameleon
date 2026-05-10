@@ -11,15 +11,7 @@ use std::time::Duration;
 use tokio::sync::watch;
 use tokio::time::sleep;
 
-pub static TIME_SENDER: LazyLock<watch::Sender<String>> = LazyLock::new(|| {
-    let initial_time = Clock::formatted_time(&CONFIG.clock.format);
-    let sender = watch::Sender::new(initial_time);
-
-    spawn(Clock::background_task(&CONFIG.clock, sender.clone()));
-
-    sender
-});
-
+/// Clock module
 #[derive(Debug, Component)]
 pub struct Clock {
     #[root]
@@ -43,11 +35,21 @@ impl Clock {
     const NAME: &str = "clock";
 
     pub fn new() -> Self {
+        static TIME_SENDER: LazyLock<watch::Sender<String>> =
+            LazyLock::new(|| {
+                let initial_time = Clock::formatted_time(&CONFIG.clock.format);
+                let sender = watch::Sender::new(initial_time);
+
+                spawn(Clock::background_task(&CONFIG.clock, sender.clone()));
+
+                sender
+            });
+
         let state = TIME_SENDER.subscribe();
         let base = BaseModule::new(state);
 
-        base.set_widget_name(Self::NAME);
-        base.add_css_class("module");
+        base.as_ref().set_widget_name(Self::NAME);
+        base.as_ref().add_css_class("module");
 
         Self { base }
     }

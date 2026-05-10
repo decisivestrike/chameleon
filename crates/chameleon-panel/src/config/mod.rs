@@ -6,7 +6,7 @@ use serde::Deserialize;
 use std::fmt;
 use std::sync::LazyLock;
 
-pub static CONFIG: LazyLock<Configuration> = LazyLock::new(Default::default);
+pub static CONFIG: LazyLock<Rules> = LazyLock::new(Default::default);
 
 /// All panel modules
 #[derive(Debug, Deserialize)]
@@ -79,7 +79,7 @@ enum LayerDefinition {
 
 #[derive(Debug, Deserialize)]
 #[serde(default)]
-pub struct Configuration {
+pub struct Rules {
     pub enabled: bool,
     pub position: Position,
     pub thickness: Option<i32>,
@@ -95,7 +95,7 @@ pub struct Configuration {
     pub workspaces: WorkspacesConfig,
 }
 
-impl Default for Configuration {
+impl Default for Rules {
     fn default() -> Self {
         Self {
             enabled: Default::default(),

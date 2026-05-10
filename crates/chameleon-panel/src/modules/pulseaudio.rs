@@ -7,6 +7,7 @@ use gtkio::future::spawn;
 use std::rc::Rc;
 use std::sync::LazyLock;
 use tokio::sync::watch;
+use tracing::error;
 
 pub static PA_HANDLER: LazyLock<watch::Sender<String>> = LazyLock::new(|| {
     let mut current_sink = PULSEAUDIO_SERVICE.subscribe();
@@ -21,7 +22,7 @@ pub static PA_HANDLER: LazyLock<watch::Sender<String>> = LazyLock::new(|| {
             let sink = sink_clone.borrow();
             let label = Pulseaudio::label_from_sink(&sink);
             if let Err(e) = sender.send(label) {
-                log::error!("{e}");
+                error!("{e}");
             }
         }
     });
@@ -36,10 +37,10 @@ pub static PA_HANDLER: LazyLock<watch::Sender<String>> = LazyLock::new(|| {
                         let label = Pulseaudio::label_from_sink(&sink);
 
                         if let Err(e) = sender.send(label) {
-                            log::error!("{e}");
+                            error!("{e}");
                         }
                     }
-                    Err(e) => log::error!("{e}"),
+                    Err(e) => error!("{e}"),
                 }
             }
         }
@@ -74,8 +75,8 @@ impl Pulseaudio {
         let state = PA_HANDLER.subscribe();
         let base = BaseModule::new(state);
 
-        base.set_widget_name(Self::NAME);
-        base.add_css_class("module");
+        base.as_ref().set_widget_name(Self::NAME);
+        base.as_ref().add_css_class("module");
 
         Self { base }
     }

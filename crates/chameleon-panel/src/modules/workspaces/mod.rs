@@ -18,6 +18,7 @@ use gtkio::RUNTIME;
 use std::rc::Rc;
 use suukon::Numeral;
 use tokio::sync::mpsc::{self};
+use tracing::{debug, error};
 
 const SPECIAL_WORKSPACE_ID: i32 = -98;
 
@@ -47,7 +48,7 @@ impl ModuleFactory for Workspaces {
             if let Err(e) =
                 RUNTIME.block_on(manager.register(&meta.monitor, sender))
             {
-                log::error!("{e}");
+                error!("{e}");
             };
 
             Ok(workspaces)
@@ -105,7 +106,7 @@ impl Workspaces {
             }
         });
 
-        log::debug!("Local listener stopped")
+        debug!("Local listener stopped")
     }
 
     fn create_button(&self, id: i32) -> Label {
