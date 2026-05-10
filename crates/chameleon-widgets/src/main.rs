@@ -1,15 +1,18 @@
+mod cli;
+pub mod config;
+pub mod layer;
+
+use crate::cli::Args;
 use crate::config::Configuration;
 use crate::layer::WidgetsLayer;
 use chameleon_shared::init_tracing_subscriber;
 use gtk::gdk::Monitor;
 use gtk::glib;
-use gtke::WindowComponent;
+use gtke::css::StylePriority;
 use gtke::monitor::GtkeMonitorExt;
+use gtke::{Css, WindowComponent};
 use std::process::exit;
 use tracing::{error, info};
-
-pub mod config;
-pub mod layer;
 
 fn main() {
     init_tracing_subscriber();
@@ -19,7 +22,11 @@ fn main() {
         exit(1);
     };
 
+    let Args { styles_path, .. } = argh::from_env();
+
     info!("Setup widgets...");
+
+    Css::load(&styles_path).apply(StylePriority::User);
 
     for monitor in Monitor::all().iter() {
         let widgets_layer =

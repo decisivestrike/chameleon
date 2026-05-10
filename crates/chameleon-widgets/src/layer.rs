@@ -1,17 +1,19 @@
 use crate::config::Configuration;
-use gtk::gdk::{self, Key};
+use gtk::gdk::prelude::MonitorExt;
 use gtk::glib::clone;
-use gtk::prelude::{GtkWindowExt, *};
+use gtk::prelude::{
+    BoxExt, FixedExt, GestureSingleExt, GtkWindowExt, WidgetExt,
+};
 use gtk::{
-    self, EventControllerKey, EventControllerMotion, Fixed, Orientation,
-    Widget, Window,
+    EventControllerMotion, Fixed, GestureClick, Orientation, Widget, Window,
+    gdk,
 };
 use gtke::css::StylePriority;
 use gtke::{Css, WindowComponent};
 use layer_shell::{self, Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-use tracing::{Level, debug, enabled, info};
+use tracing::{Level, debug, enabled, trace};
 
 #[derive(Clone, WindowComponent)]
 pub struct WidgetsLayer {
@@ -26,23 +28,8 @@ pub struct WidgetsLayer {
 impl WidgetsLayer {
     pub fn new(monitor: &gdk::Monitor, _config: &Configuration) -> Self {
         let window = Window::new();
-
         let fixer = Fixed::new();
         window.set_child(Some(&fixer));
-
-        window.connect_realize(clone!(
-            #[strong]
-            fixer,
-            move |_| {
-                let mut child = fixer.first_child();
-                while let Some(widget) = child {
-                    let (x, y) = fixer.child_position(&widget);
-                    fixer.move_(&widget, x, y);
-
-                    child = widget.next_sibling();
-                }
-            }
-        ));
 
         let widget_layer = Self {
             window,
@@ -78,7 +65,7 @@ impl WidgetsLayer {
                 if enabled!(Level::DEBUG) {
                     let widget_name =
                         widget.first_child().unwrap().widget_name();
-                    debug!("Active widget: {widget_name}.",);
+                    debug!("Active widget: {widget_name}",);
                 }
 
                 *active_widget.borrow_mut() = Some(widget);
@@ -90,7 +77,7 @@ impl WidgetsLayer {
             self.active_widget,
             move |_| {
                 *active_widget.borrow_mut() = None;
-                info!("No active widget.");
+                debug!("No active widget.");
             }
         ));
 
@@ -108,7 +95,6 @@ impl WidgetsLayer {
             monitor.geometry().width(),
             monitor.geometry().height(),
         );
-
         window.set_decorated(false);
         window.set_resizable(false);
 
@@ -130,32 +116,28 @@ impl WidgetsLayer {
 
     /// Allows to track the widget
     fn setup_tracker(&self) {
-        let key_controller = EventControllerKey::new();
+        let controller = GestureClick::new();
+        controller.set_button(1);
 
-        key_controller.connect_key_pressed(clone!(
+        controller.connect_pressed(clone!(
             #[strong(rename_to=tracked)]
             self.tracked_widget,
             #[strong(rename_to=active)]
             self.active_widget,
-            move |_, key, _keyval, _state| {
-                if key == Key::Super_L {
-                    *tracked.borrow_mut() = active.borrow().clone();
-                }
-                gtk::glib::Propagation::Proceed
+            move |_, _, _x, _y| {
+                *tracked.borrow_mut() = active.borrow().clone();
             }
         ));
 
-        key_controller.connect_key_released(clone!(
+        controller.connect_released(clone!(
             #[strong(rename_to=tracked)]
             self.tracked_widget,
-            move |_, key, _keyval, _state| {
-                if key == Key::Super_L {
-                    *tracked.borrow_mut() = None;
-                }
+            move |_, _, _x, _y| {
+                *tracked.borrow_mut() = None;
             }
         ));
 
-        self.window.add_controller(key_controller);
+        self.window.add_controller(controller);
     }
 
     fn setup_motion_controller(&self) {
@@ -180,10 +162,10 @@ impl WidgetsLayer {
                     let x = widget_x + diff_x;
                     let y = widget_y + diff_y;
 
-                    if enabled!(Level::DEBUG) {
+                    if enabled!(Level::TRACE) {
                         let widget_name =
                             widget.first_child().unwrap().widget_name();
-                        debug!("Move {widget_name} to x: {x:.0}, y: {y:.0}",);
+                        trace!("Move {widget_name} to x: {x:.0}, y: {y:.0}",);
                     }
 
                     fixer.move_(widget, x, y);

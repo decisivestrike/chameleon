@@ -339,6 +339,7 @@ dependencies = [
 name = "chameleon-widgets"
 version = "0.1.0"
 dependencies = [
+ "argh",
  "chameleon_shared",
  "gtk4",
  "gtk4-layer-shell",
