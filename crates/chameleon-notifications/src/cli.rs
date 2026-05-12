@@ -14,7 +14,6 @@ pub struct Args {
         from_str_fn(resolve_path)
     )]
     pub config_path: PathBuf,
-
     #[argh(
         option,
         short = 's',

@@ -1,8 +1,9 @@
 use serde::Serialize;
-use zbus::zvariant::Type;
+use zbus::zvariant::{OwnedValue, Type};
 
-#[derive(Serialize, PartialEq, Eq, Type)]
-#[zvariant(signature = "s", rename_all = "kebab-case")]
+#[derive(Serialize, PartialEq, Eq, Type, OwnedValue)]
+#[serde(rename_all = "kebab-case")]
+#[zvariant(signature = "s")]
 pub enum Capability {
     ActionIcons,
     Actions,

@@ -8,6 +8,7 @@ pub use action::Action;
 use crate::notification::NotificationData;
 use gtkio::future::spawn;
 use std::future;
+use std::process::exit;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tracing::{debug, error, trace};
@@ -27,7 +28,14 @@ impl NotificationServer {
     const SERVICE_NAME: &str = "org.freedesktop.Notifications";
     const OBJECT_PATH: &str = "/org/freedesktop/Notifications";
 
-    pub fn create() -> (Self, mpsc::Receiver<Action>) {
+    pub fn new(sender: mpsc::Sender<Action>) -> Self {
+        Self {
+            notification_id: 1,
+            sender,
+        }
+    }
+
+    pub fn with_sender() -> (Self, mpsc::Receiver<Action>) {
         let (sender, receiver) = mpsc::channel(64);
         let server = Self::new(sender);
 
@@ -40,17 +48,11 @@ impl NotificationServer {
 
             if let Err(e) = connection {
                 error!("{e}");
+                exit(1)
             }
 
             future::pending::<()>().await;
         })
-    }
-
-    fn new(sender: mpsc::Sender<Action>) -> Self {
-        Self {
-            notification_id: 1,
-            sender,
-        }
     }
 
     async fn create_connection(self) -> zbus::Result<Connection> {

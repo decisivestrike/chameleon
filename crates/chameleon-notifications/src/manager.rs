@@ -25,7 +25,7 @@ impl NotificationManager {
     }
 
     pub fn run(mut self) {
-        let (server, mut receiver) = NotificationServer::create();
+        let (server, mut receiver) = NotificationServer::with_sender();
 
         spawn_local(async move {
             loop {
