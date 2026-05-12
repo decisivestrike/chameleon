@@ -17,7 +17,8 @@ static SOCKET_FOLDER: LazyLock<PathBuf> =
 static SOCKET_PATH: LazyLock<PathBuf> =
     LazyLock::new(|| SOCKET_FOLDER.join("launcher.sock"));
 
-pub async fn listen_socket() {
+/// ipc
+pub async fn wait_toggle_command() {
     if !SOCKET_FOLDER.exists() {
         fs::create_dir(&*SOCKET_FOLDER).await.unwrap();
     }
@@ -27,7 +28,7 @@ pub async fn listen_socket() {
     }
 
     let listener = UnixListener::bind(&*SOCKET_PATH).unwrap();
-    info!("Listening '{:?}'", *SOCKET_PATH);
+    info!("Listening {:?}", *SOCKET_PATH);
 
     loop {
         let (stream, addr) = listener.accept().await.unwrap();

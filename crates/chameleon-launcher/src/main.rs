@@ -5,6 +5,10 @@ mod entry_object;
 pub mod ipc;
 mod launcher;
 
+use crate::cli::Args;
+use crate::config::LauncherConfig;
+use crate::ipc::{send_toggle_command, wait_toggle_command};
+use crate::launcher::Launcher;
 use chameleon_shared::utils::read_config;
 use chameleon_shared::{init_tracing_subscriber, styles_watcher};
 use gtk::glib;
@@ -16,20 +20,19 @@ use std::process::exit;
 use std::sync::{Arc, LazyLock, RwLock};
 use tracing::error;
 
-use crate::cli::Args;
-use crate::config::LauncherConfig;
-use crate::ipc::{listen_socket, send_toggle_command};
-use crate::launcher::Launcher;
-
 static LAUNCHER: LazyLock<RwLock<Option<Arc<Launcher>>>> =
     LazyLock::new(|| RwLock::new(None));
 
 fn main() {
     init_tracing_subscriber();
 
-    let args: Args = argh::from_env();
+    let Args {
+        config_path,
+        styles_path,
+        toggle,
+    } = argh::from_env();
 
-    if args.toggle {
+    if toggle {
         send_toggle_command()
     }
 
@@ -38,16 +41,15 @@ fn main() {
         exit(1);
     };
 
-    let config: LauncherConfig =
-        read_config("/home/inqlog/.config/chameleon/launcher.toml").unwrap();
+    let config: LauncherConfig = read_config(&config_path).unwrap();
 
     *LAUNCHER.write().unwrap() = Some(Launcher::create(config));
 
-    let css_path = PathBuf::from("/home/inqlog/.config/chameleon/styles.css");
+    let css_path = PathBuf::from(&styles_path);
 
     Css::load(&css_path).apply(StylePriority::User);
 
-    spawn(listen_socket());
+    spawn(wait_toggle_command());
     spawn(styles_watcher(css_path));
 
     glib::MainLoop::new(None, false).run();
