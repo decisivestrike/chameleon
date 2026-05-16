@@ -127,8 +127,10 @@ impl Workspaces {
         event_controller.connect_pressed(move |_, _, _, _| {
             // On click
             RUNTIME.spawn(async move {
-                let command = format!("dispatch workspace {}", id);
-                hyprland.command(command.as_bytes()).await.expect("hm");
+                let command =
+                    format!(r#"hl.dsp.focus({{ workspace = "{id}" }})"#);
+
+                hyprland.dispatch(&command).await.expect("should work");
             });
         });
 

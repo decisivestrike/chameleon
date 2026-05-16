@@ -85,6 +85,15 @@ impl Hyprland {
         Ok(())
     }
 
+    /// Calls dispatcher
+    ///
+    /// Example: `hl.dsp.focus({ workspace = "2" })`
+    pub async fn dispatch(&self, dsp: &str) -> Result<()> {
+        let command = format!("dispatch {}\0", dsp);
+
+        self.command(command.as_bytes()).await
+    }
+
     pub async fn active_workspace(&self) -> Result<Workspace> {
         let json_str = self.query(b"j/activeworkspace\0").await?;
 
