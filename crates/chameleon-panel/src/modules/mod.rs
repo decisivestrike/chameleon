@@ -4,14 +4,14 @@ pub use clock::Clock;
 pub mod battery;
 pub use battery::Battery;
 
-pub mod workspaces;
-pub use workspaces::Workspaces;
+// pub mod workspaces;
+// pub use workspaces::Workspaces;
 
 pub mod keyboard_layout;
 pub use keyboard_layout::KeyboardLayout;
 
-pub mod pulseaudio;
-pub use pulseaudio::Pulseaudio;
+// pub mod pulseaudio;
+// pub use pulseaudio::Pulseaudio;
 
 pub mod separator;
 

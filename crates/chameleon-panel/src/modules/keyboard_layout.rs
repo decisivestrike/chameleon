@@ -1,11 +1,9 @@
-use crate::modules::Metadata;
-use anyhow::Result;
+use crate::modules::{Metadata, PanelModule};
 use chameleon_ipc::compositor::Compositor;
 use chameleon_ipc::hyprland::HyprEvent;
 use chameleon_ipc::{COMPOSITOR, CompositorVariant};
 use gtk::glib::clone;
 use gtk::prelude::WidgetExt;
-use gtke::Component;
 use gtkio::future::{spawn, spawn_with_local_callback};
 use std::rc::Rc;
 use std::sync::LazyLock;
@@ -48,22 +46,16 @@ pub static LAYOUT_SENDER: LazyLock<watch::Sender<String>> =
         watch_sender
     });
 
-#[derive(Debug, Component)]
-pub struct KeyboardLayout {
-    #[root]
-    base: BaseModule,
-}
+pub struct KeyboardLayout;
 
-impl ModuleFactory for KeyboardLayout {
+impl PanelModule for KeyboardLayout {
     type Rules = ();
 
     fn create(
-        _config: &Self::Rules,
-        _meta: &Metadata,
-    ) -> Result<Rc<dyn Component>> {
-        let kb_layout = KeyboardLayout::new();
-
-        Ok(Rc::new(kb_layout))
+        rules: Self::Rules,
+        meta: Rc<Metadata>,
+    ) -> std::result::Result<gtk::Widget, super::Error> {
+        todo!()
     }
 }
 

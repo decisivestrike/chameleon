@@ -11,11 +11,11 @@ use chameleon_shared::init_tracing_subscriber;
 use chameleon_shared::utils::read_config;
 use chameleon_shared::watcher::FilesWatcher;
 use gtk::gdk::Monitor;
-use gtk::gdk::prelude::MonitorExt;
 use gtk::glib;
+use gtk::prelude::GtkWindowExt;
+use gtke::Css;
 use gtke::css::StylePriority;
 use gtke::monitor::GtkeMonitorExt;
-use gtke::{Css, WindowComponent};
 use std::process::exit;
 use tracing::{debug, error, info};
 
@@ -52,7 +52,7 @@ fn main() {
         let panel = Panel::new(rules.clone(), monitor);
         panel.present();
 
-        let connector_name = monitor.connector().unwrap().to_string();
+        // let connector_name = monitor.connector().unwrap().to_string();
         // panels.insert(connector_name, panel);
         panels.push(panel);
     }

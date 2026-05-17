@@ -1,24 +1,11 @@
 use crate::config::BatteryRules;
 use crate::modules::{Metadata, PanelModule};
+use gtk::glib::clone::Downgrade;
 use gtk::glib::object::Cast;
-use gtk::prelude::WidgetExt;
-use gtke::Component;
+use gtk::glib::{self, ControlFlow, clone};
 use std::rc::Rc;
-use std::sync::LazyLock;
-use std::time::Duration;
-use tokio::sync::watch;
-use tokio::time::sleep;
-use tokio::{self};
 
-pub static CHARGE_SENDER: LazyLock<watch::Sender<String>> =
-    LazyLock::new(|| {
-        let sender = watch::Sender::new(format!("0%"));
-        // spawn(Battery::background_task(&config().battery, sender.clone()));
-
-        sender
-    });
-
-const BAT_PLACEHOLDER: &str = "BAT1";
+const BAT: &str = "BAT1";
 
 pub struct Battery;
 
@@ -29,7 +16,35 @@ impl PanelModule for Battery {
         rules: Self::Rules,
         meta: Rc<Metadata>,
     ) -> Result<gtk::Widget, super::Error> {
-        let battery = gtk::Label::builder().build();
+        let battery = gtk::Label::builder()
+            .name("battery")
+            .css_classes(["module"])
+            .build();
+
+        glib::timeout_add_seconds_local(60, {
+            let battery_weak = battery.downgrade();
+            let rules = Rc::new(rules);
+            move || {
+                if let Some(battery) = battery_weak.upgrade() {
+                    glib::spawn_future_local(clone!(
+                        #[strong]
+                        rules,
+                        async move {
+                            if let Ok(charge) =
+                                Battery::formatted_charge(BAT, &rules.icons)
+                                    .await
+                            {
+                                battery.set_label(&charge);
+                            }
+                        }
+                    ));
+
+                    ControlFlow::Continue
+                } else {
+                    ControlFlow::Break
+                }
+            }
+        });
 
         Ok(battery.upcast())
     }
@@ -37,16 +52,6 @@ impl PanelModule for Battery {
 
 impl Battery {
     const NAME: &str = "battery";
-
-    fn new() -> Self {
-        let state = CHARGE_SENDER.subscribe();
-        let base = BaseModule::new(state);
-
-        base.as_ref().set_widget_name(Self::NAME);
-        base.as_ref().add_css_class("module");
-
-        Self { base }
-    }
 
     async fn formatted_charge(
         bat: &str,
@@ -75,20 +80,5 @@ impl Battery {
         let i = (charge as f32 / divider).round() as usize;
 
         format!("{} {}%", icons[i], charge)
-    }
-
-    async fn background_task(
-        config: &'static BatteryRules,
-        sender: watch::Sender<String>,
-    ) {
-        loop {
-            if let Ok(charge) =
-                Battery::formatted_charge(BAT_PLACEHOLDER, &config.icons).await
-            {
-                let _ = sender.send(charge);
-            }
-
-            sleep(Duration::from_secs(60)).await;
-        }
     }
 }

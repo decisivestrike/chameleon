@@ -4,4 +4,5 @@ pub enum WorkspaceEvent {
     Destroy(i32),
     Activate(i32),
     Deactivate(i32),
+    // Urgent(i32)
 }

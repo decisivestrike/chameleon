@@ -1,6 +1,5 @@
 use serde::Deserialize;
 
-#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct Workspace {
     pub id: i32,
@@ -8,16 +7,18 @@ pub struct Workspace {
     /// Monitors connector
     pub monitor: String,
     #[serde(rename = "monitorID")]
-    monitor_id: i32,
-    windows: i32,
+    pub monitor_id: i32,
+    pub windows: i32,
     #[serde(rename = "hasfullscreen")]
-    has_fullscreen: bool,
+    pub has_fullscreen: bool,
     #[serde(rename = "lastwindow")]
-    last_window: String,
+    pub last_window: String,
     #[serde(rename = "lastwindowtitle")]
-    last_window_title: String,
+    pub last_window_title: String,
     #[serde(rename = "ispersistent")]
-    is_persistent: bool,
+    pub is_persistent: bool,
+    #[serde(rename = "tiledLayout")]
+    pub tiled_layout: String,
 }
 
 impl Workspace {

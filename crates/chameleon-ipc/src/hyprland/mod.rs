@@ -3,8 +3,6 @@ mod listener;
 pub mod workspace;
 
 pub use event::HyprEvent;
-use gtk::gdk::prelude::MonitorExt;
-use gtkio::future::spawn;
 pub use workspace::*;
 
 mod device;
@@ -15,6 +13,8 @@ use crate::hyprland::listener::EventListener;
 use crate::{COMPOSITOR, CompositorVariant};
 use anyhow::Result;
 use gtk::gdk::Monitor;
+use gtk::gdk::prelude::MonitorExt;
+use gtkio::future::spawn;
 use std::env::var;
 use std::path::PathBuf;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -37,8 +37,6 @@ pub struct Hyprland {
 }
 
 impl Compositor for Hyprland {
-    type Message = HyprEvent;
-
     fn subscribe(&self) -> broadcast::Receiver<HyprEvent> {
         self.event_sender.subscribe()
     }
@@ -66,6 +64,10 @@ impl Hyprland {
             recv_sock,
             sender_sock,
         }
+    }
+
+    pub fn subscribe(&self) -> broadcast::Receiver<HyprEvent> {
+        self.event_sender.subscribe()
     }
 
     pub async fn query(&self, request: &[u8]) -> Result<String> {

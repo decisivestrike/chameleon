@@ -1,7 +1,7 @@
 use tokio::sync::broadcast;
 
-pub trait Compositor {
-    type Message;
+pub enum CompositorEvent {}
 
-    fn subscribe(&self) -> broadcast::Receiver<Self::Message>;
+pub trait Compositor {
+    fn subscribe(&self) -> broadcast::Receiver<CompositorEvent>;
 }
