@@ -15,66 +15,30 @@ pub use pulseaudio::Pulseaudio;
 
 pub mod separator;
 
-use crate::common::Metadata;
-use gtk::glib::clone::Downgrade;
-use gtk::glib::{self, WeakRef};
-use gtke::Component;
-use std::borrow::Borrow;
+use gtk::Orientation;
+use gtk::gdk::Monitor;
 use std::rc::Rc;
-use tokio::sync::watch;
-use tracing::error;
+use thiserror::Error;
 
-/// Panel module factory
-pub trait ModuleFactory {
-    type Config;
+#[derive(Debug, Clone)]
+pub struct Metadata {
+    pub monitor: Monitor,
+    pub orientation: Orientation,
+}
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("unsupported device: {0}")]
+    UnsupportedDevice(&'static str),
+    #[error("unsupported compositor: {0}")]
+    UnsupportedCompositor(&'static str),
+}
+
+pub trait PanelModule {
+    type Rules;
 
     fn create(
-        config: &Self::Config,
-        meta: &Metadata,
-    ) -> anyhow::Result<Rc<dyn Component>>;
-}
-
-#[derive(Debug, Component)]
-pub struct BaseModule {
-    #[root]
-    label: gtk::Label,
-}
-
-impl BaseModule {
-    pub fn new<Label>(state: watch::Receiver<Label>) -> Self
-    where
-        Label: AsRef<str> + 'static,
-    {
-        let label = gtk::Label::new(None);
-        glib::spawn_future_local(Self::track_updates(label.downgrade(), state));
-
-        Self { label }
-    }
-
-    async fn track_updates<Label>(
-        weak_module: WeakRef<gtk::Label>,
-        mut state: watch::Receiver<Label>,
-    ) where
-        Label: AsRef<str> + 'static,
-    {
-        loop {
-            if let Some(module) = weak_module.upgrade() {
-                match state.changed().await {
-                    Ok(_) => {
-                        let updated_label = state.borrow();
-                        module.set_label(updated_label.as_ref());
-                    }
-                    Err(e) => error!("{e}"),
-                }
-            } else {
-                break;
-            }
-        }
-    }
-}
-
-impl Borrow<gtk::Widget> for BaseModule {
-    fn borrow(&self) -> &gtk::Widget {
-        self.label.borrow()
-    }
+        rules: Self::Rules,
+        meta: Rc<Metadata>,
+    ) -> Result<gtk::Widget, Error>;
 }

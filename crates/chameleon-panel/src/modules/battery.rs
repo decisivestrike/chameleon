@@ -1,9 +1,8 @@
-use crate::common::Metadata;
-use crate::config::{BatteryConfig, config};
-use crate::modules::{BaseModule, ModuleFactory};
+use crate::config::BatteryRules;
+use crate::modules::{Metadata, PanelModule};
+use gtk::glib::object::Cast;
 use gtk::prelude::WidgetExt;
 use gtke::Component;
-use gtkio::future::spawn;
 use std::rc::Rc;
 use std::sync::LazyLock;
 use std::time::Duration;
@@ -14,29 +13,25 @@ use tokio::{self};
 pub static CHARGE_SENDER: LazyLock<watch::Sender<String>> =
     LazyLock::new(|| {
         let sender = watch::Sender::new(format!("0%"));
-        spawn(Battery::background_task(&config().battery, sender.clone()));
+        // spawn(Battery::background_task(&config().battery, sender.clone()));
 
         sender
     });
 
 const BAT_PLACEHOLDER: &str = "BAT1";
 
-#[derive(Debug, Component)]
-pub struct Battery {
-    #[root]
-    base: BaseModule,
-}
+pub struct Battery;
 
-impl ModuleFactory for Battery {
-    type Config = BatteryConfig;
+impl PanelModule for Battery {
+    type Rules = BatteryRules;
 
     fn create(
-        _config: &Self::Config,
-        _meta: &Metadata,
-    ) -> anyhow::Result<Rc<dyn Component>> {
-        let battery = Battery::new();
+        rules: Self::Rules,
+        meta: Rc<Metadata>,
+    ) -> Result<gtk::Widget, super::Error> {
+        let battery = gtk::Label::builder().build();
 
-        Ok(Rc::new(battery))
+        Ok(battery.upcast())
     }
 }
 
@@ -83,7 +78,7 @@ impl Battery {
     }
 
     async fn background_task(
-        config: &'static BatteryConfig,
+        config: &'static BatteryRules,
         sender: watch::Sender<String>,
     ) {
         loop {

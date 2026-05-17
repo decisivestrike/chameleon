@@ -1,6 +1,5 @@
-use crate::common::Metadata;
-use crate::modules::{BaseModule, ModuleFactory};
-use crate::services::{CurrentSink, PULSEAUDIO_SERVICE};
+use crate::modules::Metadata;
+use crate::services::pulseaudio::{CurrentSink, PULSEAUDIO_SERVICE};
 use gtk::prelude::WidgetExt;
 use gtke::Component;
 use gtkio::future::spawn;
@@ -56,10 +55,10 @@ pub struct Pulseaudio {
 }
 
 impl ModuleFactory for Pulseaudio {
-    type Config = ();
+    type Rules = ();
 
     fn create(
-        _config: &Self::Config,
+        _config: &Self::Rules,
         _meta: &Metadata,
     ) -> anyhow::Result<Rc<dyn Component>> {
         let pa = Pulseaudio::new();

@@ -1,8 +1,8 @@
 use serde::Deserialize;
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
-pub struct ClockConfig {
+pub struct ClockRules {
     #[serde(default = "default_format")]
     pub format: String,
 }

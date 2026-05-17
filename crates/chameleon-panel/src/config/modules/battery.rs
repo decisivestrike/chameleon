@@ -1,8 +1,8 @@
 use serde::Deserialize;
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
-pub struct BatteryConfig {
+pub struct BatteryRules {
     pub icons: Vec<String>,
     pub name: String,
     pub format: String,

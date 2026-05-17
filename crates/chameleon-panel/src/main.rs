@@ -1,10 +1,15 @@
+mod cli;
+pub mod config;
+pub mod modules;
+pub mod panel;
+pub mod services;
+
 use crate::cli::Args;
-use crate::config::CONFIG;
+use crate::config::Rules;
 use crate::panel::Panel;
 use chameleon_shared::init_tracing_subscriber;
 use chameleon_shared::utils::read_config;
 use chameleon_shared::watcher::FilesWatcher;
-use dashmap::DashMap;
 use gtk::gdk::Monitor;
 use gtk::gdk::prelude::MonitorExt;
 use gtk::glib;
@@ -12,17 +17,7 @@ use gtke::css::StylePriority;
 use gtke::monitor::GtkeMonitorExt;
 use gtke::{Css, WindowComponent};
 use std::process::exit;
-use std::sync::LazyLock;
 use tracing::{debug, error, info};
-
-mod cli;
-pub mod common;
-pub mod config;
-pub mod modules;
-pub mod panel;
-pub mod services;
-
-static PANELS: LazyLock<DashMap<String, Panel>> = LazyLock::new(DashMap::new);
 
 fn main() {
     init_tracing_subscriber();
@@ -37,10 +32,10 @@ fn main() {
         config_path,
     } = argh::from_env();
 
-    match read_config(&config_path) {
+    let rules: Rules = match read_config(&config_path) {
         Ok(config) => {
             debug!("{:#?}", config);
-            CONFIG.set(config).unwrap()
+            config
         }
         Err(e) => {
             error!("{e}");
@@ -51,13 +46,15 @@ fn main() {
     Css::load(&styles_path).apply(StylePriority::User);
 
     info!("Setup panels...");
+    let mut panels = Vec::new();
 
-    for monitor in Monitor::all().iter() {
-        let panel = Panel::new(monitor, config::config());
+    for monitor in Monitor::each().into_iter() {
+        let panel = Panel::new(rules.clone(), monitor);
         panel.present();
 
         let connector_name = monitor.connector().unwrap().to_string();
-        PANELS.insert(connector_name, panel);
+        // panels.insert(connector_name, panel);
+        panels.push(panel);
     }
 
     FilesWatcher::new()

@@ -1,5 +1,4 @@
-use crate::common::Metadata;
-use crate::modules::{BaseModule, ModuleFactory};
+use crate::modules::Metadata;
 use anyhow::Result;
 use chameleon_ipc::compositor::Compositor;
 use chameleon_ipc::hyprland::HyprEvent;
@@ -56,10 +55,10 @@ pub struct KeyboardLayout {
 }
 
 impl ModuleFactory for KeyboardLayout {
-    type Config = ();
+    type Rules = ();
 
     fn create(
-        _config: &Self::Config,
+        _config: &Self::Rules,
         _meta: &Metadata,
     ) -> Result<Rc<dyn Component>> {
         let kb_layout = KeyboardLayout::new();

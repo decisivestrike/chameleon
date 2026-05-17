@@ -3,7 +3,7 @@
 set -e
 
 install() {
-    cargo install --path "$1" --root "$CHAMELEON_ROOT" --no-track --quiet --force
+    cargo install --path "$1" --root "$CHAMELEON_ROOT" --no-track --force
 }
 
 CHAMELEON_ROOT="$HOME/.chameleon"

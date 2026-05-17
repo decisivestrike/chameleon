@@ -1,23 +1,14 @@
-use gtk::Orientation;
-use gtke::Component;
+use crate::modules::{Metadata, PanelModule};
+use gtk::glib::object::Cast;
+use std::rc::Rc;
 
-use crate::config::{Position, config};
+/// Default gtk4 separator
+pub struct Separator;
 
-#[derive(Component)]
-pub struct Separator {
-    #[root]
-    inner: gtk::Separator,
-}
+impl PanelModule for Separator {
+    type Rules = ();
 
-impl Separator {
-    pub fn new() -> Self {
-        let orientation = match config().position {
-            Position::Top | Position::Bottom => Orientation::Vertical,
-            Position::Right | Position::Left => Orientation::Horizontal,
-        };
-
-        Self {
-            inner: gtk::Separator::new(orientation),
-        }
+    fn create(_: (), meta: Rc<Metadata>) -> Result<gtk::Widget, super::Error> {
+        Ok(gtk::Separator::new(meta.orientation).upcast())
     }
 }

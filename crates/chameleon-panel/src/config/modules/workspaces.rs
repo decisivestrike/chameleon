@@ -3,7 +3,7 @@ use suukon::{NumeralSystem as SuukonNumeralSystem, Setting as SuukonSetting};
 
 #[derive(Debug, Clone, Copy, Default, Deserialize)]
 #[serde(default)]
-pub struct WorkspacesConfig {
+pub struct WorkspacesRules {
     pub numeral_system: NumeralSystem,
     pub numeral_variant: NumeralVariant,
 }

@@ -3,11 +3,11 @@ use gtk::gdk::{self};
 use gtk::glib::object::Cast;
 
 pub trait GtkeMonitorExt {
-    fn all() -> Vec<gdk::Monitor>;
+    fn each() -> Vec<gdk::Monitor>;
 }
 
 impl GtkeMonitorExt for gdk::Monitor {
-    fn all() -> Vec<gdk::Monitor> {
+    fn each() -> Vec<gdk::Monitor> {
         let display = gdk::Display::default().expect("No display");
 
         display

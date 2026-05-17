@@ -1,8 +1,9 @@
 use crate::future::{spawn, spawn_local};
-use tokio::sync::broadcast::error::RecvError;
-use tokio::sync::broadcast::{self};
-use tokio::sync::mpsc;
+use tokio::sync::broadcast::error::RecvError as BroadcastRecvError;
+// use tokio::sync::watch::error::RecvError as WatchRecvError;
+use tokio::sync::{broadcast, mpsc, watch};
 use tokio::task::JoinHandle as TokioHandle;
+use tracing::error;
 
 pub trait MpscWorkerExt<T>
 where
@@ -42,6 +43,7 @@ where
     receiver
 }
 
+///
 pub struct BroadcastWorker<T>
 where
     T: Clone + 'static,
@@ -54,7 +56,7 @@ where
 impl<T: Clone + 'static> BroadcastWorker<T> {
     pub fn listen_local<F>(
         &self,
-        mut f: impl FnMut(Result<T, RecvError>) -> F + 'static,
+        mut f: impl FnMut(Result<T, BroadcastRecvError>) -> F + 'static,
     ) where
         F: Future<Output = ()> + Send + 'static,
     {
@@ -81,4 +83,46 @@ where
     let handle = spawn(f(sender.clone()));
 
     BroadcastWorker { sender, handle }
+}
+
+///
+pub struct WatchWorker<T>
+where
+    T: 'static,
+{
+    sender: watch::Sender<T>,
+    #[allow(dead_code)]
+    handle: TokioHandle<()>,
+}
+
+impl<T: 'static> WatchWorker<T> {
+    pub fn new<F>(init: T, f: impl FnOnce(watch::Sender<T>) -> F) -> Self
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        let sender = watch::Sender::new(init);
+        let handle = spawn(f(sender.clone()));
+
+        WatchWorker { sender, handle }
+    }
+
+    pub fn listen_local<F>(
+        &self,
+        mut f: impl FnMut(watch::Ref<'_, T>) -> F + 'static,
+    ) where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        let mut state = self.sender.subscribe();
+
+        spawn_local(async move {
+            loop {
+                if let Err(e) = state.changed().await {
+                    error!("{e}");
+                } else {
+                    let value = state.borrow();
+                    f(value);
+                }
+            }
+        });
+    }
 }

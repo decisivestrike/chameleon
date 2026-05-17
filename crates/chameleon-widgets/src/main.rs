@@ -28,7 +28,7 @@ fn main() {
 
     Css::load(&styles_path).apply(StylePriority::User);
 
-    for monitor in Monitor::all().iter() {
+    for monitor in Monitor::each().iter() {
         let widgets_layer =
             WidgetsLayer::new(monitor, &Configuration::default());
 

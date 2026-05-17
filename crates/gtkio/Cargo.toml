@@ -4,6 +4,7 @@ version = "0.1.1"
 edition = "2024"
 
 [dependencies]
+tracing.workspace = true
 futures = "0.3.32"
 glib = "0.22.5"
 tokio = { workspace = true, features = ["full"] }

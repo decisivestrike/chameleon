@@ -7,6 +7,7 @@ edition = "2024"
 argh.workspace = true
 chameleon-ipc.workspace = true
 chameleon_shared.workspace = true
+thiserror.workspace = true
 
 gtk.workspace = true
 gtkio.workspace = true
@@ -24,3 +25,5 @@ pulse = { version = "2.30.1", package = "libpulse-binding" }
 
 tracing.workspace = true
 tracing-subscriber.workspace = true
+arc-swap = "1.9.1"
+sysinfo = "0.39.2"

@@ -1,9 +1,8 @@
 mod event;
 mod manager;
 
-use crate::common::Metadata;
-use crate::config::WorkspacesConfig;
-use crate::modules::ModuleFactory;
+use crate::config::WorkspacesRules;
+use crate::modules::Metadata;
 use crate::modules::workspaces::event::WorkspaceEvent;
 use crate::modules::workspaces::manager::{MANAGER, WorkspacesManager};
 use anyhow::{Result, bail};
@@ -27,15 +26,15 @@ pub struct Workspaces {
     #[root]
     root: gtk::Box,
     hyprland: &'static Hyprland,
-    config: WorkspacesConfig,
+    config: WorkspacesRules,
 }
 
 impl ModuleFactory for Workspaces {
-    type Config = WorkspacesConfig;
+    type Rules = WorkspacesRules;
 
     /// Creates `Workspaces` instance and register it in `WorkspacesManager`
     fn create(
-        config: &WorkspacesConfig,
+        config: &WorkspacesRules,
         meta: &Metadata,
     ) -> Result<Rc<dyn Component>> {
         if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
@@ -60,7 +59,7 @@ impl ModuleFactory for Workspaces {
 
 impl Workspaces {
     fn new(
-        config: &WorkspacesConfig,
+        config: &WorkspacesRules,
         meta: &Metadata,
         receiver: mpsc::Receiver<WorkspaceEvent>,
         hyprland: &'static Hyprland,
@@ -110,7 +109,7 @@ impl Workspaces {
     }
 
     fn create_button(&self, id: i32) -> Label {
-        let WorkspacesConfig {
+        let WorkspacesRules {
             numeral_system,
             numeral_variant,
         } = self.config;

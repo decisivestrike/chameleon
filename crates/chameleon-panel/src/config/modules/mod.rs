@@ -1,8 +1,8 @@
 pub mod battery;
-pub use battery::BatteryConfig;
+pub use battery::BatteryRules;
 
 pub mod clock;
-pub use clock::ClockConfig;
+pub use clock::ClockRules;
 
 pub mod workspaces;
-pub use workspaces::WorkspacesConfig;
+pub use workspaces::WorkspacesRules;

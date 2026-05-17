@@ -1,21 +1,15 @@
 pub mod modules;
+use arc_swap::{ArcSwap, Guard};
+use chameleon_shared::utils::read_config;
 pub use modules::*;
 
 use layer_shell::Layer;
 use serde::Deserialize;
 use std::fmt;
-use std::sync::OnceLock;
-
-pub static CONFIG: OnceLock<Rules> = OnceLock::new();
-
-pub fn config() -> &'static Rules {
-    CONFIG
-        .get()
-        .expect("Configuration must be loaded at the start")
-}
+use std::sync::{Arc, LazyLock, OnceLock};
 
 /// All panel modules
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Module {
     Clock,
@@ -65,7 +59,7 @@ impl fmt::Display for ModulePlacement {
     }
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Position {
     #[default]
@@ -86,7 +80,7 @@ enum LayerDefinition {
     Overlay,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Modules {
     pub left: Vec<Module>,
@@ -94,7 +88,7 @@ pub struct Modules {
     pub right: Vec<Module>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Rules {
     pub position: Position,
@@ -103,9 +97,9 @@ pub struct Rules {
     #[serde(with = "LayerDefinition")]
     pub layer: Layer,
     pub modules: Modules,
-    pub clock: ClockConfig,
-    pub battery: BatteryConfig,
-    pub workspaces: WorkspacesConfig,
+    pub clock: ClockRules,
+    pub battery: BatteryRules,
+    pub workspaces: WorkspacesRules,
 }
 
 impl Default for Rules {
