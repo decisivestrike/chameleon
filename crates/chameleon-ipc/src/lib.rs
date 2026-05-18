@@ -36,7 +36,7 @@ impl CompositorVariant {
     }
 }
 
-pub static WORKSPACES_EVENTS: LazyLock<()> = LazyLock::new(|| {});
+// pub static WORKSPACES: LazyLock<BroadcastWorker> = LazyLock::new(|| {});
 
 pub static KEYBOARD_LAYOUT: LazyLock<WatchWorker<String>> =
     LazyLock::new(|| match &*COMPOSITOR {

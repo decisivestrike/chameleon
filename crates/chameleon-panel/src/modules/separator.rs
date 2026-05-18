@@ -1,4 +1,5 @@
 use crate::modules::{Metadata, PanelModule};
+use gtk::Orientation;
 use gtk::glib::object::Cast;
 use std::rc::Rc;
 
@@ -9,10 +10,13 @@ impl PanelModule for Separator {
     type Rules = ();
 
     fn create(_: (), meta: Rc<Metadata>) -> Result<gtk::Widget, super::Error> {
-        let separator = gtk::Separator::builder()
-            .orientation(meta.orientation)
-            .build();
+        let orientation = match meta.orientation {
+            Orientation::Horizontal => Orientation::Vertical,
+            Orientation::Vertical => Orientation::Horizontal,
+            _ => unreachable!(),
+        };
 
+        let separator = gtk::Separator::new(orientation);
         Ok(separator.upcast())
     }
 }

@@ -4,7 +4,7 @@ use crate::modules::{Battery, Clock, KeyboardLayout, Metadata, PanelModule};
 use gtk::gdk::prelude::MonitorExt;
 use gtk::glib::Object;
 use gtk::glib::object::Cast;
-use gtk::prelude::{BoxExt, GtkWindowExt};
+use gtk::prelude::{BoxExt, GtkWindowExt, OrientableExt};
 use gtk::subclass::prelude::*;
 use gtk::{Orientation, gdk, glib};
 use layer_shell::{Edge, LayerShell};
@@ -69,13 +69,23 @@ impl Panel {
     pub fn new(rules: Rules, monitor: gdk::Monitor) -> Self {
         let panel: Self = Object::builder().build();
         panel.set_layer(rules.layer);
-        panel.set_position(&rules.position);
+        panel.set_anchors(&rules.position);
         panel.set_monitor(Some(&monitor));
 
         let orientation = match rules.position {
             Position::Top | Position::Bottom => Orientation::Horizontal,
             Position::Right | Position::Left => Orientation::Vertical,
         };
+
+        let imp = panel.imp();
+        imp.left.set_spacing(rules.spacing);
+        imp.left.set_orientation(orientation);
+
+        imp.center.set_spacing(rules.spacing);
+        imp.center.set_orientation(orientation);
+
+        imp.right.set_spacing(rules.spacing);
+        imp.right.set_orientation(orientation);
 
         match orientation {
             Orientation::Horizontal => {
@@ -155,7 +165,7 @@ impl Panel {
         self.imp().right.append(module);
     }
 
-    fn set_position(&self, position: &Position) {
+    fn set_anchors(&self, position: &Position) {
         let (top, right, bottom, left) = match position {
             Position::Top => (true, true, false, true),
             Position::Right => (true, true, true, false),

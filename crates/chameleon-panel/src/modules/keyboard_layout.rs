@@ -25,9 +25,10 @@ impl PanelModule for KeyboardLayout {
             kb_layout,
             async move |state| {
                 let layout_name = state.borrow_and_update();
-                kb_layout.set_label(&KeyboardLayout::shrink_layout_name(
-                    &*layout_name,
-                ));
+                let shrinked_name =
+                    KeyboardLayout::shrink_layout_name(&*layout_name);
+
+                kb_layout.set_label(&shrinked_name);
             }
         ));
 
