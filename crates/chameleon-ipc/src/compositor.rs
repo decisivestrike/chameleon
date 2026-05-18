@@ -3,5 +3,7 @@ use tokio::sync::broadcast;
 pub enum CompositorEvent {}
 
 pub trait Compositor {
-    fn subscribe(&self) -> broadcast::Receiver<CompositorEvent>;
+    type Event;
+
+    fn subscribe(&self) -> broadcast::Receiver<Self::Event>;
 }

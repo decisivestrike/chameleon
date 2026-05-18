@@ -1,11 +1,13 @@
 use crate::config::{Module, Position, Rules};
-use crate::modules::{Clock, Metadata, PanelModule};
+use crate::modules::separator::Separator;
+use crate::modules::{Battery, Clock, KeyboardLayout, Metadata, PanelModule};
+use gtk::gdk::prelude::MonitorExt;
 use gtk::glib::Object;
-use gtk::prelude::GtkWindowExt;
+use gtk::glib::object::Cast;
+use gtk::prelude::{BoxExt, GtkWindowExt};
 use gtk::subclass::prelude::*;
 use gtk::{Orientation, gdk, glib};
 use layer_shell::{Edge, LayerShell};
-use std::rc::Rc;
 
 mod imp {
     use gtk::glib;
@@ -66,6 +68,8 @@ glib::wrapper! {
 impl Panel {
     pub fn new(rules: Rules, monitor: gdk::Monitor) -> Self {
         let panel: Self = Object::builder().build();
+        panel.set_layer(rules.layer);
+        panel.set_position(&rules.position);
         panel.set_monitor(Some(&monitor));
 
         let orientation = match rules.position {
@@ -82,6 +86,8 @@ impl Panel {
                     panel.set_default_height(-1);
                     panel.auto_exclusive_zone_enable();
                 }
+
+                panel.set_default_width(monitor.geometry().width());
             }
             Orientation::Vertical => {
                 if let Some(thickness) = rules.thickness {
@@ -91,51 +97,46 @@ impl Panel {
                     panel.set_default_width(-1);
                     panel.auto_exclusive_zone_enable();
                 }
+
+                panel.set_default_height(monitor.geometry().height());
             }
             _ => unreachable!(),
         }
 
-        let meta = Rc::new(Metadata {
-            monitor,
-            orientation,
-        });
+        let meta = Metadata::new_rc(monitor, orientation);
+        let Rules {
+            modules,
+            clock,
+            battery,
+            workspaces,
+            ..
+        } = rules;
 
-        for module in rules.modules.left {
-            let widget = match module {
-                Module::Clock => Clock::create(rules.clock, meta),
-                Module::Battery => todo!(),
-                Module::Workspaces => todo!(),
-                Module::KeyboardLayout => todo!(),
-                Module::Pulseaudio => todo!(),
-                Module::Separator => todo!(),
-            };
+        let create_widget = |module: &Module| {
+            let meta = meta.clone();
 
+            match module {
+                Module::Clock => Clock::create(clock.clone(), meta),
+                Module::Battery => Battery::create(battery.clone(), meta),
+                Module::Workspaces => Ok(gtk::Box::builder().build().upcast()),
+                Module::KeyboardLayout => KeyboardLayout::create((), meta),
+                Module::Pulseaudio => Ok(gtk::Box::builder().build().upcast()),
+                Module::Separator => Separator::create((), meta),
+            }
+        };
+
+        for module in modules.left {
+            let widget = create_widget(&module);
             panel.append_left_module(&widget.unwrap());
         }
 
-        for module in rules.modules.center {
-            let widget = match module {
-                Module::Clock => Clock::create(rules.clock, meta),
-                Module::Battery => todo!(),
-                Module::Workspaces => todo!(),
-                Module::KeyboardLayout => todo!(),
-                Module::Pulseaudio => todo!(),
-                Module::Separator => todo!(),
-            };
-
+        for module in modules.center {
+            let widget = create_widget(&module);
             panel.append_center_module(&widget.unwrap());
         }
 
-        for module in rules.modules.right {
-            let widget = match module {
-                Module::Clock => Clock::create(rules.clock, meta),
-                Module::Battery => todo!(),
-                Module::Workspaces => todo!(),
-                Module::KeyboardLayout => todo!(),
-                Module::Pulseaudio => todo!(),
-                Module::Separator => todo!(),
-            };
-
+        for module in modules.right {
+            let widget = create_widget(&module);
             panel.append_right_module(&widget.unwrap());
         }
 

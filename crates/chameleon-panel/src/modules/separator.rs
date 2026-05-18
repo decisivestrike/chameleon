@@ -9,6 +9,10 @@ impl PanelModule for Separator {
     type Rules = ();
 
     fn create(_: (), meta: Rc<Metadata>) -> Result<gtk::Widget, super::Error> {
-        Ok(gtk::Separator::new(meta.orientation).upcast())
+        let separator = gtk::Separator::builder()
+            .orientation(meta.orientation)
+            .build();
+
+        Ok(separator.upcast())
     }
 }

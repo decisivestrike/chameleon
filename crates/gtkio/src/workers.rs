@@ -1,5 +1,6 @@
 use crate::future::{spawn, spawn_local};
 use tokio::sync::broadcast::error::RecvError as BroadcastRecvError;
+use tokio::sync::watch::Ref;
 // use tokio::sync::watch::error::RecvError as WatchRecvError;
 use tokio::sync::{broadcast, mpsc, watch};
 use tokio::task::JoinHandle as TokioHandle;
@@ -106,12 +107,14 @@ impl<T: 'static> WatchWorker<T> {
         WatchWorker { sender, handle }
     }
 
-    pub fn listen_local<F>(
+    pub fn borrow(&self) -> watch::Ref<'_, T> {
+        self.sender.borrow()
+    }
+
+    pub fn listen_local(
         &self,
-        mut f: impl FnMut(watch::Ref<'_, T>) -> F + 'static,
-    ) where
-        F: Future<Output = ()> + Send + 'static,
-    {
+        mut f: impl AsyncFnMut(&mut watch::Receiver<T>) + 'static,
+    ) {
         let mut state = self.sender.subscribe();
 
         spawn_local(async move {
@@ -119,8 +122,7 @@ impl<T: 'static> WatchWorker<T> {
                 if let Err(e) = state.changed().await {
                     error!("{e}");
                 } else {
-                    let value = state.borrow();
-                    f(value);
+                    f(&mut state).await;
                 }
             }
         });

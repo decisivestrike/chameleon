@@ -1,97 +1,47 @@
 use crate::modules::{Metadata, PanelModule};
-use chameleon_ipc::compositor::Compositor;
-use chameleon_ipc::hyprland::HyprEvent;
-use chameleon_ipc::{COMPOSITOR, CompositorVariant};
+use chameleon_ipc::KEYBOARD_LAYOUT;
 use gtk::glib::clone;
-use gtk::prelude::WidgetExt;
-use gtkio::future::{spawn, spawn_with_local_callback};
+use gtk::glib::object::Cast;
+use gtk::{Widget, glib};
 use std::rc::Rc;
-use std::sync::LazyLock;
-use tokio::sync::watch;
-use tracing::error;
-
-pub static LAYOUT_SENDER: LazyLock<watch::Sender<String>> =
-    LazyLock::new(|| {
-        let watch_sender = watch::Sender::new(String::new());
-        spawn(KeyboardLayout::background_task(watch_sender.clone()));
-
-        if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
-            spawn_with_local_callback(
-                async move {
-                    let devices = hyprland.devices().await.unwrap();
-                    let active_keymap = devices
-                        .keyboards
-                        .into_iter()
-                        .find(|kb| kb.main)
-                        .unwrap()
-                        .active_keymap;
-
-                    let short_name =
-                        KeyboardLayout::shrink_layout_name(&active_keymap);
-
-                    short_name
-                },
-                clone!(
-                    #[strong]
-                    watch_sender,
-                    move |active_keymap| {
-                        if let Err(e) = watch_sender.send(active_keymap) {
-                            error!("{e}");
-                        }
-                    }
-                ),
-            );
-        }
-
-        watch_sender
-    });
 
 pub struct KeyboardLayout;
 
 impl PanelModule for KeyboardLayout {
     type Rules = ();
 
-    fn create(
-        rules: Self::Rules,
-        meta: Rc<Metadata>,
-    ) -> std::result::Result<gtk::Widget, super::Error> {
-        todo!()
+    fn create(_: Self::Rules, _: Rc<Metadata>) -> Result<Widget, super::Error> {
+        let kb_layout = gtk::Label::builder()
+            .name(Self::NAME)
+            .css_classes(["module"])
+            .build();
+
+        let current_layout = &*KEYBOARD_LAYOUT.borrow();
+        kb_layout
+            .set_label(&KeyboardLayout::shrink_layout_name(current_layout));
+
+        KEYBOARD_LAYOUT.listen_local(clone!(
+            #[weak]
+            kb_layout,
+            async move |state| {
+                let layout_name = state.borrow_and_update();
+                kb_layout.set_label(&KeyboardLayout::shrink_layout_name(
+                    &*layout_name,
+                ));
+            }
+        ));
+
+        Ok(kb_layout.upcast())
     }
 }
 
 impl KeyboardLayout {
     const NAME: &str = "keyboard-layout";
 
-    pub fn new() -> Self {
-        let state = LAYOUT_SENDER.subscribe();
-        let base = BaseModule::new(state);
-
-        base.as_ref().set_widget_name(Self::NAME);
-        base.as_ref().add_css_class("module");
-
-        Self { base }
-    }
-
     pub fn shrink_layout_name(name: &String) -> String {
         name.chars()
             .take(2)
             .flat_map(|c| c.to_uppercase())
             .collect()
-    }
-
-    async fn background_task(sender: watch::Sender<String>) {
-        if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
-            let mut receiver = hyprland.subscribe();
-
-            loop {
-                if let Ok(event) = receiver.recv().await
-                    && let HyprEvent::ActiveLayout { layout_name, .. } = event
-                {
-                    let short_name = Self::shrink_layout_name(&layout_name);
-
-                    sender.send(short_name).unwrap();
-                }
-            }
-        }
     }
 }

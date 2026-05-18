@@ -1,5 +1,6 @@
 use crate::config::BatteryRules;
 use crate::modules::{Metadata, PanelModule};
+use gtk::Widget;
 use gtk::glib::clone::Downgrade;
 use gtk::glib::object::Cast;
 use gtk::glib::{self, ControlFlow, clone};
@@ -14,31 +15,19 @@ impl PanelModule for Battery {
 
     fn create(
         rules: Self::Rules,
-        meta: Rc<Metadata>,
-    ) -> Result<gtk::Widget, super::Error> {
-        let battery = gtk::Label::builder()
-            .name("battery")
+        _: Rc<Metadata>,
+    ) -> Result<Widget, super::Error> {
+        let battery_label = gtk::Label::builder()
+            .name(Self::NAME)
             .css_classes(["module"])
             .build();
 
         glib::timeout_add_seconds_local(60, {
-            let battery_weak = battery.downgrade();
+            let battery_weak = battery_label.downgrade();
             let rules = Rc::new(rules);
             move || {
-                if let Some(battery) = battery_weak.upgrade() {
-                    glib::spawn_future_local(clone!(
-                        #[strong]
-                        rules,
-                        async move {
-                            if let Ok(charge) =
-                                Battery::formatted_charge(BAT, &rules.icons)
-                                    .await
-                            {
-                                battery.set_label(&charge);
-                            }
-                        }
-                    ));
-
+                if let Some(battery_label) = battery_weak.upgrade() {
+                    Battery::update_label(battery_label, rules.clone());
                     ControlFlow::Continue
                 } else {
                     ControlFlow::Break
@@ -46,12 +35,26 @@ impl PanelModule for Battery {
             }
         });
 
-        Ok(battery.upcast())
+        Ok(battery_label.upcast())
     }
 }
 
 impl Battery {
     const NAME: &str = "battery";
+
+    fn update_label(label: gtk::Label, rules: Rc<BatteryRules>) {
+        glib::spawn_future_local(clone!(
+            #[strong]
+            rules,
+            async move {
+                if let Ok(charge) =
+                    Battery::formatted_charge(BAT, &rules.icons).await
+                {
+                    label.set_label(&charge);
+                }
+            }
+        ));
+    }
 
     async fn formatted_charge(
         bat: &str,

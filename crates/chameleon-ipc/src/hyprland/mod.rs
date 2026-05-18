@@ -37,6 +37,8 @@ pub struct Hyprland {
 }
 
 impl Compositor for Hyprland {
+    type Event = HyprEvent;
+
     fn subscribe(&self) -> broadcast::Receiver<HyprEvent> {
         self.event_sender.subscribe()
     }
@@ -64,10 +66,6 @@ impl Hyprland {
             recv_sock,
             sender_sock,
         }
-    }
-
-    pub fn subscribe(&self) -> broadcast::Receiver<HyprEvent> {
-        self.event_sender.subscribe()
     }
 
     pub async fn query(&self, request: &[u8]) -> Result<String> {

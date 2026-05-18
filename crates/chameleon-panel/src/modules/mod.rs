@@ -26,6 +26,16 @@ pub struct Metadata {
     pub orientation: Orientation,
 }
 
+impl Metadata {
+    pub fn new_rc(monitor: Monitor, orientation: Orientation) -> Rc<Self> {
+        Self {
+            monitor,
+            orientation,
+        }
+        .into()
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("unsupported device: {0}")]
