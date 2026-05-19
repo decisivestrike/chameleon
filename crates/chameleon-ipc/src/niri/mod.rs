@@ -1,5 +1,5 @@
 use crate::compositor::Compositor;
-use gtkio::future::{spawn, spawn_blocking};
+use gtkio::future::spawn_blocking;
 use niri_ipc::socket::Socket;
 use niri_ipc::{Event, Request, Response};
 use std::io;

@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 gtk.workspace = true
-gtke.workspace = true
 gtkio.workspace = true
 serde = { workspace = true, features = ["derive", "rc"] }
 toml.workspace = true

@@ -1,5 +1,6 @@
 use crate::config::BatteryRules;
 use crate::modules::{Metadata, PanelModule};
+use anyhow::Result;
 use gtk::Widget;
 use gtk::glib::clone::Downgrade;
 use gtk::glib::object::Cast;
@@ -13,10 +14,7 @@ pub struct Battery;
 impl PanelModule for Battery {
     type Rules = BatteryRules;
 
-    fn create(
-        rules: Self::Rules,
-        _: Rc<Metadata>,
-    ) -> Result<Widget, super::Error> {
+    fn create(rules: Self::Rules, _: Rc<Metadata>) -> Result<Widget> {
         let battery_label = gtk::Label::builder()
             .name(Self::NAME)
             .css_classes(["module"])

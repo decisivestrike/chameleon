@@ -4,8 +4,7 @@ pub use clock::Clock;
 pub mod battery;
 pub use battery::Battery;
 
-// pub mod workspaces;
-// pub use workspaces::Workspaces;
+pub mod workspaces;
 
 pub mod keyboard_layout;
 pub use keyboard_layout::KeyboardLayout;
@@ -15,10 +14,10 @@ pub use keyboard_layout::KeyboardLayout;
 
 pub mod separator;
 
-use gtk::Orientation;
+use anyhow::Result;
 use gtk::gdk::Monitor;
+use gtk::{Orientation, Widget};
 use std::rc::Rc;
-use thiserror::Error;
 
 #[derive(Debug, Clone)]
 pub struct Metadata {
@@ -36,19 +35,8 @@ impl Metadata {
     }
 }
 
-#[derive(Error, Debug)]
-pub enum Error {
-    #[error("unsupported device: {0}")]
-    UnsupportedDevice(&'static str),
-    #[error("unsupported compositor: {0}")]
-    UnsupportedCompositor(&'static str),
-}
-
 pub trait PanelModule {
     type Rules;
 
-    fn create(
-        rules: Self::Rules,
-        meta: Rc<Metadata>,
-    ) -> Result<gtk::Widget, Error>;
+    fn create(rules: Self::Rules, meta: Rc<Metadata>) -> Result<Widget>;
 }

@@ -6,8 +6,6 @@ members = ["crates/*"]
 chameleon_shared = { path = "crates/chameleon-shared" }
 chameleon-ipc = { path = "crates/chameleon-ipc" }
 
-# My stuff for gtk
-gtke = { path = "crates/gtke" }
 gtkio = { path = "crates/gtkio" }
 
 argh = "0.1.19"

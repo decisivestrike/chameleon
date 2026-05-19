@@ -1,4 +1,5 @@
 use crate::modules::{Metadata, PanelModule};
+use anyhow::Result;
 use chameleon_ipc::KEYBOARD_LAYOUT;
 use gtk::glib::clone;
 use gtk::glib::object::Cast;
@@ -10,7 +11,7 @@ pub struct KeyboardLayout;
 impl PanelModule for KeyboardLayout {
     type Rules = ();
 
-    fn create(_: Self::Rules, _: Rc<Metadata>) -> Result<Widget, super::Error> {
+    fn create(_: Self::Rules, _: Rc<Metadata>) -> Result<Widget> {
         let kb_layout = gtk::Label::builder()
             .name(Self::NAME)
             .css_classes(["module"])

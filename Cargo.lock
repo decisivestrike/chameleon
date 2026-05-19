@@ -259,7 +259,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "gtk4",
- "gtke",
  "gtkio",
  "log",
  "niri-ipc",
@@ -280,7 +279,6 @@ dependencies = [
  "freedesktop-desktop-entry",
  "gtk4",
  "gtk4-layer-shell",
- "gtke",
  "gtkio",
  "libc",
  "nucleo",
@@ -302,7 +300,6 @@ dependencies = [
  "gdk-pixbuf",
  "gtk4",
  "gtk4-layer-shell",
- "gtke",
  "gtkio",
  "indexmap",
  "serde",
@@ -327,7 +324,6 @@ dependencies = [
  "dashmap",
  "gtk4",
  "gtk4-layer-shell",
- "gtke",
  "gtkio",
  "libpulse-binding",
  "serde",
@@ -348,7 +344,6 @@ dependencies = [
  "chameleon_shared",
  "gtk4",
  "gtk4-layer-shell",
- "gtke",
  "serde",
  "tracing",
  "tracing-subscriber",
@@ -360,7 +355,6 @@ version = "0.1.0"
 dependencies = [
  "futures",
  "gtk4",
- "gtke",
  "gtkio",
  "inotify",
  "resolve-path",
@@ -1059,23 +1053,6 @@ dependencies = [
  "libc",
  "pango-sys",
  "system-deps",
-]
-
-[[package]]
-name = "gtke"
-version = "0.1.0"
-dependencies = [
- "gtk4",
- "gtke-macros",
-]
-
-[[package]]
-name = "gtke-macros"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]

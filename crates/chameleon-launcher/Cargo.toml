@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 argh.workspace = true
 gtk.workspace = true
-gtke.workspace = true
 gtkio.workspace = true
 tokio.workspace = true
 layer_shell.workspace = true

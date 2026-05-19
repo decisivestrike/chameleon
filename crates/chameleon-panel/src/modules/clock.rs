@@ -1,5 +1,6 @@
 use crate::config::ClockRules;
 use crate::modules::{Metadata, PanelModule};
+use anyhow::Result;
 use chrono::Local;
 use gtk::Widget;
 use gtk::glib::clone::Downgrade;
@@ -13,10 +14,7 @@ pub struct Clock;
 impl PanelModule for Clock {
     type Rules = ClockRules;
 
-    fn create(
-        rules: ClockRules,
-        _meta: Rc<Metadata>,
-    ) -> Result<Widget, super::Error> {
+    fn create(rules: ClockRules, _meta: Rc<Metadata>) -> Result<Widget> {
         let clock = gtk::Label::builder()
             .name("clock")
             .css_classes(["module"])

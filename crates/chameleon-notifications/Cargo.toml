@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 chameleon_shared.workspace = true
 
-gtke.workspace = true
 gtkio.workspace = true
 
 argh.workspace = true

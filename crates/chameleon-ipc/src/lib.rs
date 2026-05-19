@@ -36,8 +36,6 @@ impl CompositorVariant {
     }
 }
 
-// pub static WORKSPACES: LazyLock<BroadcastWorker> = LazyLock::new(|| {});
-
 pub static KEYBOARD_LAYOUT: LazyLock<WatchWorker<String>> =
     LazyLock::new(|| match &*COMPOSITOR {
         CompositorVariant::Hyprland(hyprland) => {
