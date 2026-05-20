@@ -254,6 +254,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "chameleon-hyprland"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "chameleon-ipc"
 version = "0.1.0"
 dependencies = [
