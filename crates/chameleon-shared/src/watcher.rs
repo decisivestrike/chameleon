@@ -1,7 +1,7 @@
+use crate::Css;
+use crate::css::StylePriority;
 use futures::StreamExt;
 use gtk::glib::{self, clone};
-use gtke::Css;
-use gtke::css::StylePriority;
 use gtkio::future::spawn;
 use inotify::{Inotify, WatchDescriptor, WatchMask};
 use std::collections::HashMap;

@@ -4,6 +4,7 @@ members = ["crates/*"]
 
 [workspace.dependencies]
 chameleon_shared = { path = "crates/chameleon-shared" }
+chameleon-hyprland = { path = "crates/chameleon-hyprland" }
 chameleon-ipc = { path = "crates/chameleon-ipc" }
 
 gtkio = { path = "crates/gtkio" }

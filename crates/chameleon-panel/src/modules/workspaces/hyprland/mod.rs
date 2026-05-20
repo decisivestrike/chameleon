@@ -9,7 +9,7 @@ use crate::modules::workspaces::hyprland::manager::{
 use crate::modules::{Metadata, PanelModule};
 use anyhow::{Result, bail};
 use chameleon_ipc::hyprland::Hyprland;
-use chameleon_ipc::{COMPOSITOR, CompositorVariant};
+use chameleon_ipc::{COMPOSITOR, Compositor};
 use glib::clone::Downgrade;
 use gtk::glib::Object;
 use gtk::glib::object::Cast;
@@ -63,7 +63,7 @@ impl PanelModule for HyprlandWorkspaces {
     type Rules = WorkspacesRules;
 
     fn create(rules: Self::Rules, meta: Rc<Metadata>) -> Result<Widget> {
-        if let CompositorVariant::Hyprland(hyprland) = &*COMPOSITOR {
+        if let Compositor::Hyprland(hyprland) = &*COMPOSITOR {
             let manager =
                 MANAGER.get_or_init(|| WorkspacesManager::new(hyprland));
 

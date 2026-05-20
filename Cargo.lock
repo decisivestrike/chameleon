@@ -262,6 +262,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
+ "tokio-stream",
  "tracing",
 ]
 
@@ -286,7 +287,6 @@ name = "chameleon-launcher"
 version = "0.1.0"
 dependencies = [
  "argh",
- "chameleon-ipc",
  "chameleon_shared",
  "freedesktop-desktop-entry",
  "gtk4",
@@ -330,7 +330,7 @@ dependencies = [
  "anyhow",
  "arc-swap",
  "argh",
- "chameleon-ipc",
+ "chameleon-hyprland",
  "chameleon_shared",
  "chrono",
  "dashmap",
