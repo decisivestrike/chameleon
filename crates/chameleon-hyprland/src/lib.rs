@@ -10,14 +10,13 @@ use crate::socket::Socket;
 use anyhow::Result;
 use std::env::var;
 use std::path::PathBuf;
-use std::sync::OnceLock;
+use std::sync::Arc;
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 use tokio::sync::broadcast::{
     self, Receiver as BroadcastReceiver, Sender as BroadcastSender,
 };
-
-static EVENT_LISTENER: OnceLock<BroadcastSender<HyprEvent>> = OnceLock::new();
+use tokio::task::JoinHandle;
 
 #[derive(Debug)]
 pub struct Hyprland {
@@ -29,47 +28,37 @@ pub struct Hyprland {
     /// Socket for listening events
     ///
     /// `$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock`
-    sender_sock: PathBuf,
+    sender_sock: Arc<PathBuf>,
+
+    el: Option<EventListener>,
 }
 
 impl Hyprland {
     pub fn new(his: String) -> Self {
-        let xdg_runtime_dir = var("XDG_RUNTIME_DIR")
+        let runtime_dir = var("XDG_RUNTIME_DIR")
             .expect("XDG_RUNTIME_DIR not set — not in a desktop session?");
 
-        let recv_sock =
-            format!("{xdg_runtime_dir}/hypr/{his}/.socket.sock").into();
+        let recv_sock = format!("{runtime_dir}/hypr/{his}/.socket.sock").into();
         let sender_sock =
-            format!("{xdg_runtime_dir}/hypr/{his}/.socket2.sock").into();
+            Arc::new(format!("{runtime_dir}/hypr/{his}/.socket2.sock").into());
 
         Self {
             recv_sock,
             sender_sock,
+            el: None,
         }
     }
 
     pub async fn connect(&self) -> io::Result<Socket> {
-        Socket::connect_to(&self.sender_sock).await
+        Socket::connect_to(&*self.sender_sock).await
     }
 
-    pub async fn subscribe(&self) -> io::Result<BroadcastReceiver<HyprEvent>> {
-        let sender = EVENT_LISTENER.get_or_init(|| {
-            let mut sock = tokio::block_on(self.connect())?;
-            let sender = broadcast::Sender::new(32);
-            let sender_clone = sender.clone();
+    pub fn subscribe(&mut self) -> BroadcastReceiver<HyprEvent> {
+        if self.el.is_none() {
+            self.el = Some(EventListener::new(self.sender_sock.clone()));
+        }
 
-            tokio::spawn(async move {
-                loop {
-                    if let Ok(Some(event)) = sock.wait_event().await {
-                        sender.send(event).unwrap();
-                    }
-                }
-            });
-
-            sender_clone
-        });
-
-        Ok(sender.subscribe())
+        self.el.as_ref().unwrap().subscribe()
     }
 
     /// Issue a lua string to execute dynamically.
@@ -89,7 +78,7 @@ impl Hyprland {
     }
 
     async fn query(&self, request: &[u8]) -> Result<String> {
-        let mut stream = UnixStream::connect(&self.recv_sock).await?;
+        let mut stream = UnixStream::connect(&*self.recv_sock).await?;
         stream.write_all(request).await?;
 
         let mut data = String::new();
@@ -99,7 +88,7 @@ impl Hyprland {
     }
 
     async fn command(&self, command: &[u8]) -> Result<()> {
-        let mut stream = UnixStream::connect(&self.recv_sock).await?;
+        let mut stream = UnixStream::connect(&*self.recv_sock).await?;
         stream.write_all(command).await?;
 
         Ok(())
@@ -128,5 +117,36 @@ impl Default for Hyprland {
     fn default() -> Self {
         let his = var("HYPRLAND_INSTANCE_SIGNATURE").unwrap();
         Self::new(his)
+    }
+}
+
+#[derive(Debug)]
+pub struct EventListener {
+    handle: JoinHandle<()>,
+    sender: BroadcastSender<HyprEvent>,
+}
+
+impl EventListener {
+    pub fn new(path: Arc<PathBuf>) -> Self {
+        let sender = broadcast::Sender::new(32);
+
+        let handle = tokio::spawn({
+            let sender = sender.clone();
+            async move {
+                let mut sock = Socket::connect_to(&*path).await.unwrap();
+
+                loop {
+                    if let Ok(Some(event)) = sock.wait_event().await {
+                        sender.send(event).unwrap();
+                    }
+                }
+            }
+        });
+
+        Self { handle, sender }
+    }
+
+    pub fn subscribe(&self) -> BroadcastReceiver<HyprEvent> {
+        self.sender.subscribe()
     }
 }

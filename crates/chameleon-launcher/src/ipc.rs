@@ -1,4 +1,3 @@
-use gtk::glib;
 use std::io::Write;
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
@@ -7,9 +6,8 @@ use std::sync::LazyLock;
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::UnixListener;
+use tokio::sync::mpsc;
 use tracing::{debug, error, info};
-
-use crate::LAUNCHER;
 
 static SOCKET_FOLDER: LazyLock<PathBuf> =
     LazyLock::new(|| PathBuf::from("/tmp/chameleon"));
@@ -18,7 +16,7 @@ static SOCKET_PATH: LazyLock<PathBuf> =
     LazyLock::new(|| SOCKET_FOLDER.join("launcher.sock"));
 
 /// ipc
-pub async fn wait_toggle_command() {
+pub async fn wait_toggle_command(sender: mpsc::Sender<()>) {
     if !SOCKET_FOLDER.exists() {
         fs::create_dir(&*SOCKET_FOLDER).await.unwrap();
     }
@@ -38,10 +36,10 @@ pub async fn wait_toggle_command() {
 
         match lines.next_line().await {
             Ok(Some(_line)) => {
-                glib::idle_add_once(toggle_launcher);
+                sender.send(()).await.unwrap();
             }
             _ => (),
-        }
+        };
     }
 }
 
@@ -61,10 +59,4 @@ pub fn send_toggle_command() -> ! {
     }
 
     exit(0);
-}
-
-fn toggle_launcher() {
-    if let Some(launcher) = &*LAUNCHER.read().unwrap() {
-        launcher.toggle_visibility();
-    }
 }

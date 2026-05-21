@@ -1,104 +1,105 @@
 use crate::entry_object::ApplicationEntry;
-use gtk::glib::object::Cast;
-use gtk::prelude::{BoxExt, WidgetExt};
-use gtk::{self, Orientation};
-use gtke::Component;
+use gtk::glib;
+use gtk::glib::Object;
+use gtk::glib::subclass::types::ObjectSubclassIsExt;
 
-#[derive(Debug, Component)]
-pub struct Card {
-    icon: gtk::Image,
-    name: gtk::Label,
-    comment: gtk::Label,
+mod imp {
+    use gtk::pango::{self, EllipsizeMode, WrapMode};
+    use gtk::prelude::{BoxExt, OrientableExt, WidgetExt};
+    use gtk::subclass::prelude::*;
+    use gtk::{Orientation, glib};
 
-    #[root]
-    container: gtk::Box,
+    pub struct CardImp {
+        pub icon: gtk::Image,
+        pub name: gtk::Label,
+        pub comment: gtk::Label,
+    }
+
+    impl Default for CardImp {
+        fn default() -> Self {
+            let icon = gtk::Image::builder()
+                .icon_size(gtk::IconSize::Large)
+                .pixel_size(48)
+                .halign(gtk::Align::Center)
+                .valign(gtk::Align::Start)
+                .build();
+
+            let name = gtk::Label::builder()
+                .xalign(0.0)
+                .css_classes(["name"])
+                .build();
+
+            let comment = gtk::Label::builder()
+                .single_line_mode(true)
+                .max_width_chars(60)
+                .ellipsize(pango::EllipsizeMode::End)
+                .xalign(0.0)
+                .css_classes(["comment"])
+                .build();
+
+            Self {
+                icon,
+                name,
+                comment,
+            }
+        }
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for CardImp {
+        const NAME: &'static str = "LauncherAppCard";
+        type Type = super::Card;
+        type ParentType = gtk::Box;
+    }
+
+    impl ObjectImpl for CardImp {
+        fn constructed(&self) {
+            self.parent_constructed();
+
+            let text_container = gtk::Box::builder()
+                .orientation(Orientation::Vertical)
+                .spacing(4)
+                .css_classes(["text-container"])
+                .build();
+
+            text_container.append(&self.name);
+            text_container.append(&self.comment);
+
+            let obj = self.obj();
+            obj.set_hexpand(false);
+            obj.set_vexpand(false);
+            obj.set_width_request(600); // later
+            obj.set_orientation(Orientation::Horizontal);
+            obj.set_spacing(12);
+            obj.add_css_class("app");
+
+            obj.append(&self.icon);
+            obj.append(&text_container);
+        }
+    }
+
+    impl WidgetImpl for CardImp {}
+
+    impl BoxImpl for CardImp {}
+}
+
+glib::wrapper! {
+    pub struct Card(ObjectSubclass<imp::CardImp>)
+        @extends gtk::Box, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Orientable;
 }
 
 impl Card {
     pub fn new() -> Self {
-        let icon = gtk::Image::builder()
-            .icon_size(gtk::IconSize::Large)
-            .pixel_size(48)
-            .halign(gtk::Align::Center)
-            .valign(gtk::Align::Start)
-            .build();
-
-        let name = gtk::Label::builder()
-            .xalign(0.0)
-            .css_classes(["name"])
-            .build();
-
-        let comment = gtk::Label::builder()
-            .wrap(true)
-            .xalign(0.0)
-            .overflow(gtk::Overflow::Hidden)
-            .css_classes(["comment"])
-            .build();
-
-        let text_container = gtk::Box::builder()
-            .orientation(Orientation::Vertical)
-            .spacing(4)
-            .css_classes(["text-container"])
-            .build();
-
-        text_container.append(&name);
-        text_container.append(&comment);
-
-        let container = gtk::Box::builder()
-            .orientation(Orientation::Horizontal)
-            .spacing(12)
-            .css_classes(["app"])
-            .build();
-
-        container.append(&icon);
-        container.append(&text_container);
-
-        Self {
-            icon,
-            name,
-            comment,
-            container,
-        }
+        Object::builder().build()
     }
 
-    pub fn setup(&self, entry: &ApplicationEntry) {
-        self.icon.set_icon_name(Some(&entry.icon()));
-        self.name.set_text(&entry.name());
-        self.comment.set_text(&entry.comment());
-    }
-}
+    pub fn set_data(&self, entry: &ApplicationEntry) {
+        let imp = self.imp();
 
-impl From<gtk::Box> for Card {
-    fn from(container: gtk::Box) -> Self {
-        let icon = container
-            .first_child()
-            .expect("Icon should exist")
-            .downcast::<gtk::Image>()
-            .expect("First child should be Image");
+        imp.icon.set_icon_name(Some(&entry.icon()));
+        imp.name.set_text(&entry.name());
 
-        let text_container = container
-            .last_child()
-            .expect("Text container should exist")
-            .downcast::<gtk::Box>()
-            .expect("Second child should be Box");
-
-        let name = text_container
-            .first_child()
-            .expect("Name label should exist")
-            .downcast::<gtk::Label>()
-            .expect("First text child should be Label");
-
-        let comment = text_container
-            .last_child()
-            .expect("Comment label should exist")
-            .downcast::<gtk::Label>()
-            .expect("Second text child should be Label");
-
-        Self {
-            icon,
-            name,
-            comment,
-            container,
-        }
+        imp.comment.set_text(&entry.comment());
     }
 }

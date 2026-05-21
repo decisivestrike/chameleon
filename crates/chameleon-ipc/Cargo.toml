@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+chameleon-hyprland.workspace = true
 anyhow.workspace = true
 gtk.workspace = true
 gtkio.workspace = true
-log.workspace = true
+tracing.workspace = true
 tokio.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 niri-ipc = "26.4.0"
 tokio-stream = { version = "0.1.18", features = ["sync"] }
-tracing.workspace = true

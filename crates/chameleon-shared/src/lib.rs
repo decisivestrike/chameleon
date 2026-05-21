@@ -3,10 +3,9 @@ pub mod errors;
 pub mod utils;
 pub mod watcher;
 
+use crate::css::{Css, StylePriority};
 use futures::StreamExt;
 use gtk::glib::{self, clone};
-use gtke::Css;
-use gtke::css::StylePriority;
 use inotify::{Inotify, WatchMask};
 use std::env::home_dir;
 use std::path::PathBuf;
@@ -25,10 +24,6 @@ pub static CHAMELEON_CONFIG_ROOT: LazyLock<PathBuf> =
 /// Themes
 pub static CHAMELEON_THEMES_ROOT: LazyLock<PathBuf> =
     LazyLock::new(|| CHAMELEON_CONFIG_ROOT.join("themes"));
-
-/// Presets
-pub static CHAMELEON_PRESETS_ROOT: LazyLock<PathBuf> =
-    LazyLock::new(|| CHAMELEON_CONFIG_ROOT.join("presets"));
 
 pub async fn styles_watcher(styles_path: PathBuf) {
     let inotify =

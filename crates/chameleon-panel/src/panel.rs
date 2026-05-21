@@ -10,6 +10,7 @@ use gtk::{Orientation, gdk, glib};
 use layer_shell::{Edge, LayerShell};
 
 mod imp {
+    use super::*;
     use gtk::glib;
     use gtk::prelude::*;
     use gtk::subclass::prelude::*;

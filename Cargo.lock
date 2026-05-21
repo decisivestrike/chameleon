@@ -271,9 +271,9 @@ name = "chameleon-ipc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chameleon-hyprland",
  "gtk4",
  "gtkio",
- "log",
  "niri-ipc",
  "serde",
  "serde_json",
