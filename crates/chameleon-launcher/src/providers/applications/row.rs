@@ -1,7 +1,8 @@
-use crate::entry_object::ApplicationEntry;
 use gtk::glib;
 use gtk::glib::Object;
 use gtk::glib::subclass::types::ObjectSubclassIsExt;
+
+use crate::providers::applications::entry::ApplicationEntry;
 
 mod imp {
     use gtk::pango::{self};

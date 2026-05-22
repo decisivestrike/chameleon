@@ -1,14 +1,46 @@
-mod imp;
-
 use freedesktop_desktop_entry::DesktopEntry;
 use glib::Object;
 use gtk::glib;
 use thiserror::Error;
 
+mod imp {
+    use super::*;
+    use glib::Properties;
+    use gtk::prelude::*;
+    use gtk::subclass::prelude::*;
+    use std::cell::{Cell, RefCell};
+
+    #[derive(Properties, Default)]
+    #[properties(wrapper_type = super::ApplicationEntry)]
+    pub struct ApplicationEntryImp {
+        #[property(get, set)]
+        name: RefCell<String>,
+        #[property(get, set)]
+        exec: RefCell<String>,
+        #[property(get, set)]
+        comment: RefCell<String>,
+        #[property(get, set)]
+        icon: RefCell<String>,
+        #[property(get, set)]
+        terminal: Cell<bool>,
+        #[property(get, set, default = -1)]
+        fuzzy_score: Cell<i32>,
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for ApplicationEntryImp {
+        const NAME: &'static str = "ChameleonDesktopEntryObject";
+        type Type = super::ApplicationEntry;
+    }
+
+    #[glib::derived_properties]
+    impl ObjectImpl for ApplicationEntryImp {}
+}
+
 const TRUE_LITERAL: &str = "true";
 
 glib::wrapper! {
-    pub struct ApplicationEntry(ObjectSubclass<imp::EntryObject>);
+    pub struct ApplicationEntry(ObjectSubclass<imp::ApplicationEntryImp>);
 }
 
 #[derive(Debug, Error)]

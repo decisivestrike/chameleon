@@ -6,7 +6,7 @@ use gtk::glib::{Object, clone};
 use gtk::prelude::*;
 use gtk::{
     Align, EventControllerKey, PolicyType, PropagationPhase, ScrolledWindow,
-    glib,
+    StackTransitionType, glib,
 };
 use layer_shell::{KeyboardMode, Layer, LayerShell};
 use std::cell::RefCell;
@@ -53,6 +53,9 @@ mod imp {
 
             container.append(&self.searchbar);
             container.append(&self.stack);
+
+            // container
+            //     .append(&gtk::Separator::new(gtk::Orientation::Horizontal));
 
             let obj = self.obj();
             obj.init_layer_shell();
@@ -101,6 +104,10 @@ impl Launcher {
             .build();
 
         let imp = launcher.imp();
+        imp.stack.set_interpolate_size(false);
+        imp.stack.set_transition_duration(0);
+        imp.stack.set_transition_type(StackTransitionType::None);
+
         imp.searchbar
             .set_placeholder_text(Some(&config.searchbar_placeholder));
 

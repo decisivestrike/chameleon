@@ -1,5 +1,5 @@
 use super::ApplicationRow;
-use crate::entry_object::ApplicationEntry;
+use crate::providers::applications::entry::ApplicationEntry;
 use gtk::prelude::*;
 use gtk::{ListItem, SignalListItemFactory};
 
@@ -10,17 +10,16 @@ impl Factory {
     pub fn new() -> SignalListItemFactory {
         let factory = SignalListItemFactory::new();
 
-        factory.connect_setup(move |_, list_item| {
+        factory.connect_setup(move |_, obj| {
             let card = ApplicationRow::new();
 
-            list_item
-                .downcast_ref::<ListItem>()
+            obj.downcast_ref::<ListItem>()
                 .expect("Needs to be ListItem")
                 .set_child(Some(&card));
         });
 
-        factory.connect_bind(move |_, list_item| {
-            let list_item = list_item
+        factory.connect_bind(move |_, obj| {
+            let list_item = obj
                 .downcast_ref::<ListItem>()
                 .expect("Needs to be ListItem");
 
@@ -29,12 +28,12 @@ impl Factory {
                 .and_downcast::<ApplicationEntry>()
                 .expect("The item has to be an EntryInfo");
 
-            let card = list_item
+            let app_row = list_item
                 .child()
                 .and_downcast::<ApplicationRow>()
                 .expect("The child has to be a Card");
 
-            card.set_data(&entry_info);
+            app_row.set_data(&entry_info);
         });
 
         factory
