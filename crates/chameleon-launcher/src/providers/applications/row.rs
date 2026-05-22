@@ -4,18 +4,18 @@ use gtk::glib::Object;
 use gtk::glib::subclass::types::ObjectSubclassIsExt;
 
 mod imp {
-    use gtk::pango::{self, EllipsizeMode, WrapMode};
+    use gtk::pango::{self};
     use gtk::prelude::{BoxExt, OrientableExt, WidgetExt};
     use gtk::subclass::prelude::*;
     use gtk::{Orientation, glib};
 
-    pub struct CardImp {
+    pub struct ApplicationRowImp {
         pub icon: gtk::Image,
         pub name: gtk::Label,
         pub comment: gtk::Label,
     }
 
-    impl Default for CardImp {
+    impl Default for ApplicationRowImp {
         fn default() -> Self {
             let icon = gtk::Image::builder()
                 .icon_size(gtk::IconSize::Large)
@@ -46,13 +46,13 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for CardImp {
+    impl ObjectSubclass for ApplicationRowImp {
         const NAME: &'static str = "LauncherAppCard";
-        type Type = super::Card;
+        type Type = super::ApplicationRow;
         type ParentType = gtk::Box;
     }
 
-    impl ObjectImpl for CardImp {
+    impl ObjectImpl for ApplicationRowImp {
         fn constructed(&self) {
             self.parent_constructed();
 
@@ -68,7 +68,7 @@ mod imp {
             let obj = self.obj();
             obj.set_hexpand(false);
             obj.set_vexpand(false);
-            obj.set_width_request(600); // later
+            obj.set_width_request(500); // later
             obj.set_orientation(Orientation::Horizontal);
             obj.set_spacing(12);
             obj.add_css_class("app");
@@ -78,18 +78,18 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for CardImp {}
+    impl WidgetImpl for ApplicationRowImp {}
 
-    impl BoxImpl for CardImp {}
+    impl BoxImpl for ApplicationRowImp {}
 }
 
 glib::wrapper! {
-    pub struct Card(ObjectSubclass<imp::CardImp>)
+    pub struct ApplicationRow(ObjectSubclass<imp::ApplicationRowImp>)
         @extends gtk::Box, gtk::Widget,
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Orientable;
 }
 
-impl Card {
+impl ApplicationRow {
     pub fn new() -> Self {
         Object::builder().build()
     }
@@ -99,7 +99,6 @@ impl Card {
 
         imp.icon.set_icon_name(Some(&entry.icon()));
         imp.name.set_text(&entry.name());
-
         imp.comment.set_text(&entry.comment());
     }
 }

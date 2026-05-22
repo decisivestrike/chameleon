@@ -1,13 +1,11 @@
-mod card;
 mod cli;
 mod config;
 mod entry_object;
-pub mod factory;
 pub mod ipc;
 mod launcher;
+mod providers;
 
 use crate::cli::Args;
-use crate::config::LauncherConfig;
 use crate::ipc::{send_toggle_command, wait_toggle_command};
 use crate::launcher::Launcher;
 use chameleon_shared::css::{Css, StylePriority};
@@ -39,7 +37,14 @@ fn main() {
         exit(1);
     };
 
-    let config: LauncherConfig = read_config(&config_path).unwrap();
+    let config = match read_config(&config_path) {
+        Ok(config) => config,
+        Err(e) => {
+            error!("{}", e);
+            exit(1);
+        }
+    };
+
     let launcher = Launcher::new(config);
     let (sender, mut receiver) = mpsc::channel::<()>(8);
 

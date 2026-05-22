@@ -2,21 +2,19 @@ use glib::Properties;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-
 use std::cell::{Cell, RefCell};
-use std::rc::Rc;
 
 #[derive(Properties, Default)]
 #[properties(wrapper_type = super::ApplicationEntry)]
 pub struct EntryObject {
     #[property(get, set)]
-    name: Rc<RefCell<String>>,
+    name: RefCell<String>,
     #[property(get, set)]
-    exec: Rc<RefCell<String>>,
+    exec: RefCell<String>,
     #[property(get, set)]
-    comment: Rc<RefCell<String>>,
+    comment: RefCell<String>,
     #[property(get, set)]
-    icon: Rc<RefCell<String>>,
+    icon: RefCell<String>,
     #[property(get, set)]
     terminal: Cell<bool>,
 }

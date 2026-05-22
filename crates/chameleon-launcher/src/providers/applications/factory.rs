@@ -1,4 +1,4 @@
-use crate::card::Card;
+use super::ApplicationRow;
 use crate::entry_object::ApplicationEntry;
 use gtk::prelude::*;
 use gtk::{ListItem, SignalListItemFactory};
@@ -11,7 +11,7 @@ impl Factory {
         let factory = SignalListItemFactory::new();
 
         factory.connect_setup(move |_, list_item| {
-            let card = Card::new();
+            let card = ApplicationRow::new();
 
             list_item
                 .downcast_ref::<ListItem>()
@@ -31,7 +31,7 @@ impl Factory {
 
             let card = list_item
                 .child()
-                .and_downcast::<Card>()
+                .and_downcast::<ApplicationRow>()
                 .expect("The child has to be a Card");
 
             card.set_data(&entry_info);

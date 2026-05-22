@@ -1,61 +1,33 @@
 use crate::config::LauncherConfig;
-use crate::entry_object::ApplicationEntry;
-use freedesktop_desktop_entry::desktop_entries;
+use crate::providers::Provider;
 use gtk::gdk::Key;
 use gtk::glib::subclass::types::ObjectSubclassIsExt;
 use gtk::glib::{Object, clone};
 use gtk::prelude::*;
 use gtk::{
-    EventControllerKey, ListScrollFlags, ListView, PolicyType, ScrolledWindow,
-    SingleSelection, gio, glib,
+    Align, EventControllerKey, PolicyType, PropagationPhase, ScrolledWindow,
+    glib,
 };
 use layer_shell::{KeyboardMode, Layer, LayerShell};
-use nucleo::{Config, Matcher, Utf32Str};
 use std::cell::RefCell;
-use std::cmp::Ordering;
-use std::env::home_dir;
-use std::os::unix::process::CommandExt;
-use std::process::{Command, Stdio};
-use tracing::{error, info};
+use std::rc::Rc;
 
 mod imp {
     use super::*;
-    use crate::factory::Factory;
     use gtk::glib;
     use gtk::subclass::prelude::*;
-    use std::cell::OnceCell;
+    use std::collections::HashMap;
+    use std::rc::Rc;
 
-    #[derive(glib::Properties)]
+    #[derive(Default, glib::Properties)]
     #[properties(wrapper_type = super::Launcher)]
     pub struct LauncherImp {
-        pub apps: Vec<ApplicationEntry>,
         pub searchbar: gtk::Entry,
-        pub selection_model: SingleSelection,
-        pub list_view: ListView,
-        pub list_store: gio::ListStore,
-        pub config: OnceCell<LauncherConfig>,
-    }
+        pub stack: gtk::Stack,
+        pub providers: RefCell<HashMap<String, Rc<dyn Provider>>>,
 
-    impl Default for LauncherImp {
-        fn default() -> Self {
-            let list_store = gio::ListStore::new::<ApplicationEntry>();
-            let selection_model =
-                SingleSelection::new(Some(list_store.clone()));
-
-            let list_view = ListView::builder()
-                .model(&selection_model)
-                .factory(&Factory::new())
-                .build();
-
-            Self {
-                apps: super::Launcher::find_apps(&["en".to_string()]),
-                searchbar: Default::default(),
-                config: OnceCell::new(),
-                selection_model,
-                list_view,
-                list_store,
-            }
-        }
+        #[property(get, set)]
+        active_provider_name: RefCell<Option<String>>,
     }
 
     #[glib::object_subclass]
@@ -65,26 +37,10 @@ mod imp {
         type ParentType = gtk::Window;
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for LauncherImp {
         fn constructed(&self) {
             self.parent_constructed();
-
-            let scrolled_window = ScrolledWindow::builder()
-                .propagate_natural_height(true)
-                .valign(gtk::Align::Start)
-                .hscrollbar_policy(PolicyType::Never)
-                .vscrollbar_policy(PolicyType::Automatic)
-                .can_focus(false)
-                .can_target(false)
-                .min_content_width(480)
-                .max_content_width(720)
-                .min_content_height(0)
-                .max_content_height(420)
-                .hexpand(false)
-                .vexpand(false)
-                .overlay_scrolling(true)
-                .child(&self.list_view)
-                .build();
 
             let container = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
@@ -96,24 +52,26 @@ mod imp {
                 .build();
 
             container.append(&self.searchbar);
-            container.append(&scrolled_window);
+            container.append(&self.stack);
 
-            let window = self.obj();
-            window.init_layer_shell();
-            window.set_default_size(-1, -1); // Auto size
-            window.set_vexpand(false);
-            window.set_hexpand(false);
-            window.set_widget_name("launcher");
-            window.set_namespace(Some("chameleon-launcher"));
-            window.set_layer(Layer::Top);
-            window.set_keyboard_mode(if true {
+            let obj = self.obj();
+            obj.init_layer_shell();
+            obj.set_default_size(-1, -1); // Auto size
+            obj.set_vexpand(false);
+            obj.set_hexpand(false);
+            obj.set_widget_name("launcher");
+            obj.set_namespace(Some("chameleon-launcher"));
+
+            // TODO: Make configurable
+            obj.set_layer(Layer::Top);
+            obj.set_keyboard_mode(if true {
                 KeyboardMode::Exclusive
             } else {
                 KeyboardMode::OnDemand
             });
 
-            window.set_child(Some(&container));
-            window.set_focusable(true);
+            obj.set_child(Some(&container));
+            obj.set_focusable(true);
         }
     }
 
@@ -132,32 +90,73 @@ impl Launcher {
     pub fn new(config: LauncherConfig) -> Self {
         let launcher: Self = Object::builder().build();
 
+        launcher
+            .bind_property(
+                "active-provider-name",
+                &launcher.imp().stack,
+                "visible-child-name",
+            )
+            .bidirectional()
+            .sync_create()
+            .build();
+
         let imp = launcher.imp();
         imp.searchbar
-            .set_placeholder_text(Some(&*config.placeholder));
-        imp.config.set(config).unwrap();
+            .set_placeholder_text(Some(&config.searchbar_placeholder));
+
+        let providers = config.instantiate_providers();
+
+        for p in providers.into_iter() {
+            let scrolled_window = ScrolledWindow::builder()
+                .propagate_natural_height(true)
+                .valign(Align::Start)
+                .hscrollbar_policy(PolicyType::Never)
+                .vscrollbar_policy(PolicyType::Automatic)
+                .can_focus(false)
+                .can_target(false)
+                .min_content_width(480)
+                .max_content_width(720)
+                .min_content_height(0)
+                .max_content_height(420)
+                .hexpand(false)
+                .vexpand(false)
+                .overlay_scrolling(true)
+                .child(&p.view())
+                .build();
+
+            launcher
+                .imp()
+                .stack
+                .add_named(&scrolled_window, Some(p.name()));
+
+            launcher
+                .imp()
+                .providers
+                .borrow_mut()
+                .insert(p.name().to_string(), p);
+        }
+
+        // Config
+        imp.stack.set_visible_child_name("applications");
 
         // On enter hit
-        imp.searchbar.connect_activate(clone!(
+        let _handler_id = imp.searchbar.connect_activate(clone!(
             #[strong]
             launcher,
             move |_| {
-                let maybe_entry = launcher
-                    .imp()
-                    .selection_model
-                    .selected_item()
-                    .and_downcast::<ApplicationEntry>();
-
-                if let Some(entry) = maybe_entry {
-                    launcher.toggle_visibility();
-                    launcher.open(&entry.exec(), entry.terminal());
-                }
+                launcher.active_provider().map(|p| p.invoke_action()).map(
+                    |invoked| {
+                        if invoked {
+                            launcher.toggle_visibility()
+                        }
+                    },
+                );
             }
         ));
 
         // Exit on esc
-        let controller = EventControllerKey::new();
-        controller.connect_key_pressed(clone!(
+        let esc_controller = EventControllerKey::new();
+        esc_controller.connect_key_pressed(clone!(
             #[strong]
             launcher,
             move |_, key, _, _| {
@@ -169,68 +168,29 @@ impl Launcher {
                 }
             }
         ));
-        controller.set_propagation_phase(gtk::PropagationPhase::Capture);
-        launcher.add_controller(controller);
+        esc_controller.set_propagation_phase(PropagationPhase::Capture);
+        launcher.add_controller(esc_controller);
 
-        // Sort + filter
-        let matcher = RefCell::new(Matcher::new(Config::DEFAULT));
-        let query = imp.searchbar.text().to_string();
-        launcher.filter_and_sort(&matcher, &query);
+        // Initial
+        launcher.active_provider().map(|p| p.update_model(""));
 
         imp.searchbar.connect_changed(clone!(
             #[strong]
             launcher,
             move |searchbar| {
                 let query = searchbar.text().to_string();
-                launcher.filter_and_sort(&matcher, &query);
+                launcher.active_provider().map(|p| p.update_model(&query));
             }
         ));
 
         launcher
     }
 
-    fn filter_and_sort(&self, matcher: &RefCell<Matcher>, query: &String) {
-        let mut updated_store: Vec<_> = self
-            .imp()
-            .apps
-            .iter()
-            .filter_map(|app| {
-                let score = matcher.borrow_mut().fuzzy_match(
-                    Utf32Str::Ascii(app.name().as_bytes()),
-                    Utf32Str::Ascii(query.as_bytes()),
-                )?;
+    fn active_provider(&self) -> Option<Rc<dyn Provider>> {
+        let name = self.active_provider_name()?;
+        let providers = self.imp().providers.borrow();
 
-                Some((app.clone(), score))
-            })
-            .collect();
-
-        updated_store.sort_by(|first, second| {
-            let first_score = first.1;
-            let second_score = second.1;
-
-            let score_cmp = second_score.cmp(&first_score);
-
-            let first_name = first.0.name();
-            let second_name = second.0.name();
-
-            match score_cmp {
-                Ordering::Equal => first_name.cmp(&second_name),
-                _ => score_cmp,
-            }
-        });
-
-        let updated_store: Vec<_> =
-            updated_store.into_iter().map(|e| e.0).collect();
-
-        let len = self.imp().list_store.n_items();
-        self.imp().list_store.splice(0, len, &updated_store);
-
-        let model = self.imp().list_view.model().unwrap();
-        if model.n_items() > 0 {
-            self.imp()
-                .list_view
-                .scroll_to(0, ListScrollFlags::SELECT, None);
-        }
+        Some(providers.get(&name)?.clone())
     }
 
     pub fn toggle_visibility(&self) {
@@ -240,62 +200,8 @@ impl Launcher {
             self.present();
         } else {
             self.set_visible(target_visibility);
-
-            let imp = self.imp();
-            imp.searchbar.set_text("");
-            imp.selection_model.set_selected(0);
-            imp.list_view.scroll_to(0, ListScrollFlags::FOCUS, None);
-        }
-    }
-
-    fn find_apps(locales: &[String]) -> Vec<ApplicationEntry> {
-        desktop_entries(locales)
-            .into_iter()
-            .filter_map(|desktop_entry| {
-                ApplicationEntry::try_from(desktop_entry).ok()
-            })
-            .collect()
-    }
-
-    fn open(&self, name: &str, terminal: bool) {
-        let name = name.to_string();
-        let config = self.imp().config.get().unwrap();
-
-        let mut command = if terminal && let Some(cmd) = &config.terminal_cmd {
-            let mut command = Command::new(&cmd);
-            command.arg(&name);
-
-            command
-        } else {
-            let mut command = Command::new("sh");
-            command.arg("-c").arg(&name);
-
-            command
-        };
-
-        let command = command
-            .current_dir(home_dir().expect("can get $HOME"))
-            .env_remove("RUST_LOG")
-            .env_remove("RUST_BACKTRACE")
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
-
-        if config.detach {
-            unsafe {
-                command.pre_exec(|| {
-                    if libc::setsid() == -1 {
-                        error!("setsid")
-                    }
-
-                    Ok(())
-                });
-            }
-        }
-
-        match command.spawn() {
-            Ok(_) => info!("App '{name}' spawned"),
-            Err(e) => error!("Can't spawn '{name}'. Error: {e}"),
+            self.imp().searchbar.set_text("");
+            self.active_provider().map(|p| p.reset());
         }
     }
 }
