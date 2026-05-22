@@ -17,7 +17,7 @@ use gtk::{
     ListView, SingleSelection, SortListModel, SorterChange, gio,
 };
 use nucleo::{Matcher, Utf32Str};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::env::home_dir;
 use std::os::unix::process::CommandExt;
@@ -30,6 +30,8 @@ pub struct ApplicationProvider {
     pub sorter: CustomSorter,
     pub selection_model: SingleSelection,
     pub view: ListView,
+
+    pub last_query_len: Cell<usize>,
 
     pub config: ApplicationProviderConfig,
     pub matcher: RefCell<Matcher>,
@@ -56,9 +58,17 @@ impl Provider for ApplicationProvider {
             entry.set_fuzzy_score(score);
         }
 
-        self.filter.changed(FilterChange::Different);
-        self.sorter.changed(SorterChange::Different);
+        let query_len = query.len();
 
+        if query_len < self.last_query_len.get() {
+            self.filter.changed(FilterChange::LessStrict);
+            self.sorter.changed(SorterChange::LessStrict);
+        } else {
+            self.filter.changed(FilterChange::MoreStrict);
+            self.sorter.changed(SorterChange::MoreStrict);
+        }
+
+        self.last_query_len.set(query_len);
         self.reset()
     }
 
@@ -146,6 +156,7 @@ impl ApplicationProvider {
             sorter,
             config,
             matcher: Default::default(),
+            last_query_len: Default::default(),
         }
     }
 
