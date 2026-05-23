@@ -29,8 +29,8 @@ pub async fn wait_toggle_command(sender: mpsc::Sender<()>) {
     info!("Listening {:?}", *SOCKET_PATH);
 
     loop {
-        let (stream, addr) = listener.accept().await.unwrap();
-        debug!("Connection from {addr:?}");
+        let (stream, _) = listener.accept().await.unwrap();
+        debug!("Toggle");
 
         let mut lines = BufReader::new(stream).lines();
 

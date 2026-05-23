@@ -1,14 +1,13 @@
 mod row;
 pub use row::ApplicationRow;
 
-mod factory;
-pub use factory::Factory;
-
 mod entry;
 
 use crate::config::ApplicationProviderConfig;
 use crate::providers::Provider;
 use crate::providers::applications::entry::ApplicationEntry;
+use crate::providers::factory::Factory;
+use crate::providers::utils::{filter, sorter};
 use freedesktop_desktop_entry::desktop_entries;
 use gtk::glib::object::Cast;
 use gtk::prelude::*;
@@ -105,26 +104,16 @@ impl ApplicationProvider {
             Self::find_apps(&["en".to_string()]).into_iter().collect();
 
         // filter
-        let filter = CustomFilter::new(move |obj| {
-            let app_entry = obj
-                .downcast_ref::<ApplicationEntry>()
-                .expect("The object needs to be of type `ApplicationEntry`.");
+        let filter =
+            filter::<ApplicationEntry>(|entry| entry.fuzzy_score() != -1);
 
-            app_entry.fuzzy_score() != -1
-        });
-        let filter_model =
-            FilterListModel::new(Some(store.clone()), Some(filter.clone()));
+        let filter_model = FilterListModel::builder()
+            .model(&store)
+            .filter(&filter)
+            .build();
 
         // sort
-        let sorter = CustomSorter::new(move |obj_1, obj_2| {
-            let first = obj_1
-                .downcast_ref::<ApplicationEntry>()
-                .expect("The object needs to be of type `ApplicationEntry`.");
-
-            let second = obj_2
-                .downcast_ref::<ApplicationEntry>()
-                .expect("The object needs to be of type `ApplicationEntry`.");
-
+        let sorter = sorter::<ApplicationEntry>(move |first, second| {
             let first_score = first.fuzzy_score();
             let second_score = second.fuzzy_score();
 
@@ -137,15 +126,15 @@ impl ApplicationProvider {
                 }
                 score => score,
             }
-            .into()
         });
         let sort_model =
             SortListModel::new(Some(filter_model), Some(sorter.clone()));
 
         let selection_model = SingleSelection::new(Some(sort_model.clone()));
+
         let view = ListView::builder()
             .model(&selection_model)
-            .factory(&Factory::new())
+            .factory(&Factory::new::<ApplicationEntry, ApplicationRow>())
             .build();
 
         Self {
@@ -169,9 +158,7 @@ impl ApplicationProvider {
             .collect()
     }
 
-    fn open_app(&self, name: &str, is_terminal: bool) {
-        let name = name.to_string();
-
+    fn open_app(&self, name: &String, is_terminal: bool) {
         let mut command =
             if is_terminal && let Some(cmd) = &self.config.terminal_cmd {
                 let mut command = Command::new(&cmd);

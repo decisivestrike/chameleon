@@ -44,9 +44,6 @@ fn main() {
         }
     };
 
-    let settings = gtk::Settings::default().unwrap();
-    settings.set_gtk_enable_animations(false);
-
     let launcher = Launcher::new(config);
     let (sender, mut receiver) = mpsc::channel::<()>(8);
 

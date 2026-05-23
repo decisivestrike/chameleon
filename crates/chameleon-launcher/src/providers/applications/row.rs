@@ -1,8 +1,8 @@
+use crate::providers::Bindable;
+use crate::providers::applications::entry::ApplicationEntry;
 use gtk::glib;
 use gtk::glib::Object;
 use gtk::glib::subclass::types::ObjectSubclassIsExt;
-
-use crate::providers::applications::entry::ApplicationEntry;
 
 mod imp {
     use gtk::pango::{self};
@@ -94,12 +94,22 @@ impl ApplicationRow {
     pub fn new() -> Self {
         Object::builder().build()
     }
+}
 
-    pub fn set_data(&self, entry: &ApplicationEntry) {
+impl Bindable for ApplicationRow {
+    type Data = ApplicationEntry;
+
+    fn bind_data(&self, entry: &Self::Data) {
         let imp = self.imp();
 
         imp.icon.set_icon_name(Some(&entry.icon()));
         imp.name.set_text(&entry.name());
         imp.comment.set_text(&entry.comment());
+    }
+}
+
+impl Default for ApplicationRow {
+    fn default() -> Self {
+        Self::new()
     }
 }

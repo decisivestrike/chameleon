@@ -14,8 +14,8 @@ use std::rc::Rc;
 
 mod imp {
     use super::*;
-    use gtk::glib;
     use gtk::subclass::prelude::*;
+    use gtk::{Orientation, glib};
     use std::collections::HashMap;
     use std::rc::Rc;
 
@@ -43,16 +43,18 @@ mod imp {
             self.parent_constructed();
 
             let container = gtk::Box::builder()
-                .orientation(gtk::Orientation::Vertical)
-                .valign(gtk::Align::Start)
-                .hexpand(false)
-                .vexpand(false)
+                .orientation(Orientation::Vertical)
+                .valign(Align::Fill)
+                .halign(Align::Fill)
+                .hexpand(true)
+                .vexpand(true)
                 .homogeneous(false)
                 .spacing(0)
                 .build();
 
             container.append(&self.searchbar);
             container.append(&self.stack);
+            container.set_widget_name("launcher");
 
             // container
             //     .append(&gtk::Separator::new(gtk::Orientation::Horizontal));
@@ -62,8 +64,8 @@ mod imp {
             obj.set_default_size(-1, -1); // Auto size
             obj.set_vexpand(false);
             obj.set_hexpand(false);
-            obj.set_widget_name("launcher");
             obj.set_namespace(Some("chameleon-launcher"));
+            obj.set_widget_name("launcher-window");
 
             // TODO: Make configurable
             obj.set_layer(Layer::Top);
@@ -75,6 +77,9 @@ mod imp {
 
             obj.set_child(Some(&container));
             obj.set_focusable(true);
+
+            // obj.set_anchor(Edge::Bottom, true);
+            // obj.set_margin(Edge::Bottom, 50);
         }
     }
 
@@ -116,14 +121,15 @@ impl Launcher {
         for p in providers.into_iter() {
             let scrolled_window = ScrolledWindow::builder()
                 .propagate_natural_height(true)
-                .valign(Align::Start)
+                .halign(Align::Fill)
+                .valign(Align::Fill)
                 .hscrollbar_policy(PolicyType::Never)
                 .vscrollbar_policy(PolicyType::Automatic)
                 .can_focus(false)
                 .can_target(false)
                 .min_content_width(480)
                 .max_content_width(720)
-                .min_content_height(0)
+                .min_content_height(50)
                 .max_content_height(420)
                 .hexpand(false)
                 .vexpand(false)
@@ -144,7 +150,7 @@ impl Launcher {
         }
 
         // Config
-        imp.stack.set_visible_child_name("applications");
+        imp.stack.set_visible_child_name("wallpapers");
 
         // On enter hit
         let _handler_id = imp.searchbar.connect_activate(clone!(
