@@ -1,18 +1,22 @@
+use gtk::gdk;
 use gtk::glib::{self, Object};
-use std::path::PathBuf;
+use std::path::Path;
 
 mod imp {
     use super::*;
+    use gtk::gdk;
     use gtk::prelude::*;
     use gtk::subclass::prelude::*;
     use std::cell::{Cell, RefCell};
-    use std::path::PathBuf;
 
     #[derive(Default, glib::Properties)]
     #[properties(wrapper_type = super::Wallpaper)]
     pub struct WallpaperImp {
         #[property(get, set)]
-        path: RefCell<PathBuf>,
+        texture: RefCell<Option<gdk::Texture>>,
+
+        #[property(get, set)]
+        picture_name: RefCell<String>,
 
         #[property(get, set, default = -1)]
         fuzzy_score: Cell<i32>,
@@ -33,7 +37,14 @@ glib::wrapper! {
 }
 
 impl Wallpaper {
-    pub fn new(path: PathBuf) -> Self {
-        Object::builder().property("path", path).build()
+    pub fn new(path: impl AsRef<Path>) -> Self {
+        let wallpaper: Self = Object::builder().build();
+        let os_filename = path.as_ref().file_name().unwrap();
+        wallpaper.set_picture_name(os_filename.to_string_lossy());
+
+        let texture = gdk::Texture::from_filename(&path).unwrap();
+        wallpaper.set_texture(texture);
+
+        wallpaper
     }
 }

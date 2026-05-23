@@ -81,10 +81,9 @@ impl Bindable for ImageCell {
 
     fn bind_data(&self, wallpaper: &Self::Data) {
         let imp = self.imp();
-        let path = wallpaper.path();
 
-        imp.picture.set_filename(Some(&path));
-        imp.name.set_text(&path.to_string_lossy());
+        imp.picture.set_paintable(wallpaper.texture().as_ref());
+        imp.name.set_text(&wallpaper.picture_name());
     }
 }
 

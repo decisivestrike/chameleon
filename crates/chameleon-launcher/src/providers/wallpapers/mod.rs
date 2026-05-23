@@ -9,7 +9,7 @@ use gtk::gio::prelude::{ListModelExt, ListModelExtManual};
 use gtk::glib::object::{Cast, CastNone};
 use gtk::prelude::{FilterExt, SorterExt};
 use gtk::{
-    CustomFilter, CustomSorter, FilterChange, FilterListModel, GridView,
+    Align, CustomFilter, CustomSorter, FilterChange, FilterListModel, GridView,
     ListScrollFlags, SingleSelection, SortListModel, SorterChange,
     StringObject, gio,
 };
@@ -73,8 +73,8 @@ impl WallpapersProvider {
 
             match second_score.cmp(&first_score) {
                 Ordering::Equal => {
-                    let first_name = first.path();
-                    let second_name = second.path();
+                    let first_name = first.picture_name();
+                    let second_name = second.picture_name();
 
                     first_name.cmp(&second_name)
                 }
@@ -87,6 +87,9 @@ impl WallpapersProvider {
         let selection_model = SingleSelection::new(Some(sort_model.clone()));
         let view = GridView::builder()
             .min_columns(3)
+            .max_columns(5)
+            .halign(Align::Fill)
+            .valign(Align::Fill)
             .model(&selection_model)
             .factory(&Factory::new::<Wallpaper, ImageCell>())
             .build();
@@ -114,9 +117,7 @@ impl super::Provider for WallpapersProvider {
         for wallpaper in self.store.iter::<Wallpaper>().map(|e| e.unwrap()) {
             let score = matcher
                 .fuzzy_match(
-                    Utf32Str::Ascii(
-                        wallpaper.path().to_string_lossy().as_bytes(),
-                    ),
+                    Utf32Str::Ascii(wallpaper.picture_name().as_bytes()),
                     Utf32Str::Ascii(query.as_bytes()),
                 )
                 .map(|score| score as i32)
