@@ -18,18 +18,21 @@ mod imp {
     impl Default for ImageCellImp {
         fn default() -> Self {
             let picture = gtk::Picture::builder()
-                .content_fit(ContentFit::Contain)
+                .content_fit(ContentFit::Cover)
+                .width_request(160)
+                .height_request(90)
                 .halign(gtk::Align::Center)
-                .valign(gtk::Align::Start)
-                .height_request(128)
+                .valign(gtk::Align::Center)
+                .name("wallpaper-picture")
                 .build();
 
             let name = gtk::Label::builder()
+                .halign(gtk::Align::Center)
+                .valign(gtk::Align::Center)
                 .single_line_mode(true)
                 .max_width_chars(30)
                 .ellipsize(pango::EllipsizeMode::End)
-                .xalign(0.0)
-                .css_classes(["name"])
+                .name("wallpaper-name")
                 .build();
 
             Self { picture, name }
@@ -52,7 +55,7 @@ mod imp {
             obj.set_vexpand(false);
             obj.set_orientation(Orientation::Vertical);
             obj.set_spacing(0);
-            obj.add_css_class("image-cell");
+            obj.set_widget_name("wallpaper");
 
             obj.append(&self.picture);
             obj.append(&self.name);

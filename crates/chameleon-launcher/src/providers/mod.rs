@@ -22,6 +22,10 @@ pub trait Provider {
     /// Filter -> Sort
     fn update_model(&self, query: &str);
 
+    fn select_below(&self);
+
+    fn len(&self) -> usize;
+
     fn view(&self) -> gtk::ListBase;
 
     fn invoke_action(&self) -> bool;

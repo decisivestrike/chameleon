@@ -11,6 +11,7 @@ use gtk::{
 use layer_shell::{KeyboardMode, Layer, LayerShell};
 use std::cell::RefCell;
 use std::rc::Rc;
+use tracing::info;
 
 mod imp {
     use super::*;
@@ -22,12 +23,13 @@ mod imp {
     #[derive(Default, glib::Properties)]
     #[properties(wrapper_type = super::Launcher)]
     pub struct LauncherImp {
-        pub searchbar: gtk::Entry,
-        pub stack: gtk::Stack,
-        pub providers: RefCell<HashMap<String, Rc<dyn Provider>>>,
+        pub container: gtk::Box,
 
-        #[property(get, set)]
-        active_provider_name: RefCell<Option<String>>,
+        pub searchbar: gtk::Entry,
+        pub switcher: gtk::StackSwitcher,
+        pub stack: gtk::Stack,
+        pub count: gtk::Label,
+        pub providers: RefCell<HashMap<String, Rc<dyn Provider>>>,
     }
 
     #[glib::object_subclass]
@@ -42,22 +44,26 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            let container = gtk::Box::builder()
-                .orientation(Orientation::Vertical)
-                .valign(Align::Fill)
-                .halign(Align::Fill)
-                .hexpand(true)
-                .vexpand(true)
-                .homogeneous(false)
-                .spacing(0)
-                .build();
+            self.container.set_orientation(Orientation::Vertical);
+            self.container.set_valign(Align::Fill);
+            self.container.set_halign(Align::Fill);
+            self.container.set_hexpand(true);
+            self.container.set_vexpand(true);
+            self.container.set_homogeneous(false);
+            self.container.set_spacing(0);
 
-            container.append(&self.searchbar);
-            container.append(&self.stack);
-            container.set_widget_name("launcher");
+            self.switcher.set_stack(Some(&self.stack));
 
-            // container
-            //     .append(&gtk::Separator::new(gtk::Orientation::Horizontal));
+            self.container.append(&self.searchbar);
+            self.container.append(&self.switcher);
+            self.container.append(&self.stack);
+            self.container.set_widget_name("launcher");
+            self.container
+                .append(&gtk::Separator::new(gtk::Orientation::Horizontal));
+            self.container.append(&self.count);
+
+            self.stack.set_hhomogeneous(false);
+            self.stack.set_vhomogeneous(false);
 
             let obj = self.obj();
             obj.init_layer_shell();
@@ -75,11 +81,8 @@ mod imp {
                 KeyboardMode::OnDemand
             });
 
-            obj.set_child(Some(&container));
+            obj.set_child(Some(&self.container));
             obj.set_focusable(true);
-
-            // obj.set_anchor(Edge::Bottom, true);
-            // obj.set_margin(Edge::Bottom, 50);
         }
     }
 
@@ -98,16 +101,6 @@ impl Launcher {
     pub fn new(config: LauncherConfig) -> Self {
         let launcher: Self = Object::builder().build();
 
-        launcher
-            .bind_property(
-                "active-provider-name",
-                &launcher.imp().stack,
-                "visible-child-name",
-            )
-            .bidirectional()
-            .sync_create()
-            .build();
-
         let imp = launcher.imp();
         imp.stack.set_interpolate_size(false);
         imp.stack.set_transition_duration(0);
@@ -118,7 +111,18 @@ impl Launcher {
 
         let providers = config.instantiate_providers();
 
-        for p in providers.into_iter() {
+        fn capitalize_unicode(s: &str) -> String {
+            let mut chars = s.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first) => {
+                    first.to_uppercase().collect::<String>()
+                        + chars.as_str().to_lowercase().as_str()
+                }
+            }
+        }
+
+        for p in providers.into_iter().rev() {
             let scrolled_window = ScrolledWindow::builder()
                 .propagate_natural_height(true)
                 .halign(Align::Fill)
@@ -126,7 +130,7 @@ impl Launcher {
                 .hscrollbar_policy(PolicyType::Never)
                 .vscrollbar_policy(PolicyType::Automatic)
                 .can_focus(false)
-                .can_target(false)
+                .can_target(true)
                 .min_content_width(480)
                 .max_content_width(1200)
                 .min_content_height(0)
@@ -134,13 +138,15 @@ impl Launcher {
                 .hexpand(false)
                 .vexpand(false)
                 .overlay_scrolling(true)
+                .name(p.name())
                 .child(&p.view())
                 .build();
 
-            launcher
-                .imp()
-                .stack
-                .add_named(&scrolled_window, Some(p.name()));
+            launcher.imp().stack.add_titled(
+                &scrolled_window,
+                Some(p.name()),
+                &capitalize_unicode(p.name()),
+            );
 
             launcher
                 .imp()
@@ -150,57 +156,86 @@ impl Launcher {
         }
 
         // Config
-        imp.stack.set_visible_child_name("wallpapers");
+        // imp.stack.set_visible_child_name("applications");
 
-        // On enter hit
-        let _handler_id = imp.searchbar.connect_activate(clone!(
-            #[strong]
-            launcher,
-            move |_| {
-                launcher.active_provider().map(|p| p.invoke_action()).map(
-                    |invoked| {
-                        if invoked {
-                            launcher.toggle_visibility()
-                        }
-                    },
-                );
-            }
-        ));
-
-        // Exit on esc
-        let esc_controller = EventControllerKey::new();
-        esc_controller.connect_key_pressed(clone!(
+        let root_controller = EventControllerKey::new();
+        root_controller.connect_key_pressed(clone!(
             #[strong]
             launcher,
             move |_, key, _, _| {
-                if key == Key::Escape {
-                    launcher.toggle_visibility();
-                    glib::Propagation::Stop
-                } else {
-                    glib::Propagation::Proceed
+                match key {
+                    Key::Left => glib::Propagation::Stop,
+                    Key::Down => {
+                        if let Some(provider) = launcher.active_provider() {
+                            provider.select_below();
+                        }
+                        glib::Propagation::Stop
+                    }
+                    Key::Tab => {
+                        // let container = &launcher.imp().container;
+                        // container.focus_child().map(|focused| {
+                        //     container.set_focus_child(focused.next_sibling())
+                        // });
+
+                        glib::Propagation::Stop
+                    }
+                    Key::Return => {
+                        launcher
+                            .active_provider()
+                            .map(|p| p.invoke_action())
+                            .map(|invoked| {
+                                if invoked {
+                                    launcher.toggle_visibility()
+                                }
+                            });
+                        glib::Propagation::Stop
+                    }
+                    Key::Escape => {
+                        launcher.toggle_visibility();
+                        glib::Propagation::Stop
+                    }
+                    _ => glib::Propagation::Proceed,
                 }
             }
         ));
-        esc_controller.set_propagation_phase(PropagationPhase::Capture);
-        launcher.add_controller(esc_controller);
-
-        // Initial
-        launcher.active_provider().map(|p| p.update_model(""));
+        root_controller.set_propagation_phase(PropagationPhase::Capture);
+        launcher.add_controller(root_controller);
 
         imp.searchbar.connect_changed(clone!(
             #[strong]
             launcher,
             move |searchbar| {
-                let query = searchbar.text().to_string();
-                launcher.active_provider().map(|p| p.update_model(&query));
+                let query = searchbar.text();
+                launcher.update_model(&query);
+            }
+        ));
+
+        imp.stack.connect_visible_child_name_notify(clone!(
+            #[strong]
+            launcher,
+            move |stack| {
+                if let Some(name) = stack.visible_child_name() {
+                    info!("Active provider: {}", name);
+                }
+                let searchbar = &launcher.imp().searchbar;
+                let query = searchbar.text();
+                launcher.update_model(&query);
             }
         ));
 
         launcher
     }
 
+    fn update_model(&self, query: &str) {
+        if let Some(provider) = self.active_provider() {
+            info!("Update: {}, {}", provider.name(), query);
+            provider.update_model(&query);
+            self.imp().count.set_label(&provider.len().to_string())
+        }
+    }
+
     fn active_provider(&self) -> Option<Rc<dyn Provider>> {
-        let name = self.active_provider_name()?;
+        let name = self.imp().stack.visible_child_name()?.to_string();
         let providers = self.imp().providers.borrow();
 
         Some(providers.get(&name)?.clone())

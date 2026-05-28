@@ -81,6 +81,8 @@ impl Provider for ApplicationProvider {
             .selected_item()
             .and_downcast::<ApplicationEntry>();
 
+        info!("Entry: {:?}", maybe_entry.as_ref().map(|e| e.name()));
+
         match maybe_entry {
             Some(entry) => {
                 self.open_app(&entry.exec(), entry.terminal());
@@ -91,9 +93,22 @@ impl Provider for ApplicationProvider {
     }
 
     fn reset(&self) {
-        if self.selection_model.n_items() > 0 {
+        if self.len() > 0 {
             self.selection_model.set_selected(0);
             self.view.scroll_to(0, ListScrollFlags::SELECT, None);
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.selection_model.n_items() as usize
+    }
+
+    fn select_below(&self) {
+        let i = self.selection_model.selected() + 1;
+
+        if (i as usize) < self.len() {
+            self.selection_model.set_selected(i);
+            self.view.scroll_to(i, ListScrollFlags::SELECT, None);
         }
     }
 }

@@ -5,13 +5,14 @@ use crate::providers::factory::Factory;
 use crate::providers::utils::{filter, sorter};
 use crate::providers::wallpapers::image_cell::ImageCell;
 use crate::providers::wallpapers::wallpaper::Wallpaper;
+use gtk::gio::ListStore;
 use gtk::gio::prelude::{ListModelExt, ListModelExtManual};
+use gtk::glib::clone;
 use gtk::glib::object::{Cast, CastNone};
 use gtk::prelude::{FilterExt, SorterExt};
 use gtk::{
     Align, CustomFilter, CustomSorter, FilterChange, FilterListModel, GridView,
-    ListScrollFlags, SingleSelection, SortListModel, SorterChange,
-    StringObject, gio,
+    ListScrollFlags, SingleSelection, SortListModel, SorterChange, gio, glib,
 };
 use nucleo::{Matcher, Utf32Str};
 use std::cell::{Cell, RefCell};
@@ -52,11 +53,26 @@ fn get_image_paths(root: &str) -> Vec<PathBuf> {
 
 impl WallpapersProvider {
     pub fn new() -> Self {
-        let store: gio::ListStore =
-            get_image_paths("/home/inqlog/Pictures/wallpapers/nature")
-                .into_iter()
-                .map(Wallpaper::new)
-                .collect();
+        let store: gio::ListStore = ListStore::new::<Wallpaper>();
+
+        let paths = get_image_paths("/home/inqlog/Pictures/wallpapers/pixel");
+
+        glib::idle_add_local_once(clone!(
+            #[strong]
+            store,
+            move || {
+                for path in paths.into_iter() {
+                    glib::idle_add_local_once(clone!(
+                        #[strong]
+                        store,
+                        move || {
+                            let wallpaper = Wallpaper::new(path);
+                            store.append(&wallpaper);
+                        }
+                    ));
+                }
+            }
+        ));
 
         // filter
         let filter = filter::<Wallpaper>(|entry| entry.fuzzy_score() != -1);
@@ -86,7 +102,7 @@ impl WallpapersProvider {
 
         let selection_model = SingleSelection::new(Some(sort_model.clone()));
         let view = GridView::builder()
-            .min_columns(3)
+            .min_columns(5)
             .max_columns(5)
             .halign(Align::Fill)
             .valign(Align::Fill)
@@ -148,13 +164,22 @@ impl super::Provider for WallpapersProvider {
         let maybe_path = self
             .selection_model
             .selected_item()
-            .and_downcast::<StringObject>();
+            .and_downcast::<Wallpaper>();
 
         match maybe_path {
             Some(path) => {
                 Command::new("awww")
                     .arg("img")
-                    .arg(path.string())
+                    .args(["--transition-fps", "120"])
+                    .args(["--transition-type", "wipe"])
+                    .args(["--transition-angle", "30"])
+                    .args(["--transition-duration", "0.8"])
+                    .args(["--transition-step", "40"])
+                    .args(["--transition-bezier", "0.42,0.0,1.0,1.0"])
+                    .arg(format!(
+                        "/home/inqlog/Pictures/wallpapers/pixel/{}",
+                        path.picture_name()
+                    ))
                     .spawn()
                     .expect("awww command failed to start");
 
@@ -165,9 +190,22 @@ impl super::Provider for WallpapersProvider {
     }
 
     fn reset(&self) {
-        if self.selection_model.n_items() > 0 {
+        if self.len() > 0 {
             self.selection_model.set_selected(0);
             self.view.scroll_to(0, ListScrollFlags::SELECT, None);
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.selection_model.n_items() as usize
+    }
+
+    fn select_below(&self) {
+        let i = self.selection_model.selected() + 1;
+
+        if (i as usize) < self.len() {
+            self.selection_model.set_selected(i);
+            self.view.scroll_to(i, ListScrollFlags::SELECT, None);
         }
     }
 }
