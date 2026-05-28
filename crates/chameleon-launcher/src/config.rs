@@ -3,6 +3,8 @@ use crate::providers::applications::ApplicationProvider;
 use crate::providers::wallpapers::WallpapersProvider;
 use serde::Deserialize;
 use std::collections::HashSet;
+use std::env::home_dir;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -14,12 +16,26 @@ pub struct ApplicationProviderConfig {
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+pub struct WallpapersProviderConfig {
+    #[serde(default = "default_wallpapers_path")]
+    pub path: PathBuf,
+}
+
+fn default_wallpapers_path() -> PathBuf {
+    home_dir().unwrap().join("/Pictures")
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct LauncherConfig {
     pub searchbar_placeholder: String,
     pub providers: ProviderList,
 
     #[serde(rename = "applications")]
     pub applications_provider_config: ApplicationProviderConfig,
+
+    #[serde(rename = "wallpapers")]
+    pub wallpapers_provider_config: WallpapersProviderConfig,
 }
 
 impl LauncherConfig {
@@ -27,6 +43,7 @@ impl LauncherConfig {
         let Self {
             providers,
             applications_provider_config,
+            wallpapers_provider_config,
             ..
         } = self;
 
@@ -39,9 +56,9 @@ impl LauncherConfig {
                         applications_provider_config.clone(),
                     ))
                 }
-                ProviderVariant::Wallpapers => {
-                    Rc::new(WallpapersProvider::new())
-                }
+                ProviderVariant::Wallpapers => Rc::new(
+                    WallpapersProvider::new(wallpapers_provider_config.clone()),
+                ),
             };
 
             provider_instances.push(instance);

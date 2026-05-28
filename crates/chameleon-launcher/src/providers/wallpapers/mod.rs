@@ -1,6 +1,8 @@
+mod cache;
 mod image_cell;
 mod wallpaper;
 
+use crate::config::WallpapersProviderConfig;
 use crate::providers::factory::Factory;
 use crate::providers::utils::{filter, sorter};
 use crate::providers::wallpapers::image_cell::ImageCell;
@@ -27,6 +29,7 @@ pub struct WallpapersProvider {
     pub sorter: CustomSorter,
     pub selection_model: SingleSelection,
     pub view: GridView,
+    pub wallpapers_path: String,
 
     pub last_query_len: Cell<usize>,
 
@@ -52,10 +55,12 @@ fn get_image_paths(root: &str) -> Vec<PathBuf> {
 }
 
 impl WallpapersProvider {
-    pub fn new() -> Self {
+    pub fn new(config: WallpapersProviderConfig) -> Self {
         let store: gio::ListStore = ListStore::new::<Wallpaper>();
 
-        let paths = get_image_paths("/home/inqlog/Pictures/wallpapers/pixel");
+        let wallpapers_path =
+            config.path.as_path().to_string_lossy().to_string();
+        let paths = get_image_paths(&wallpapers_path);
 
         glib::idle_add_local_once(clone!(
             #[strong]
@@ -112,6 +117,7 @@ impl WallpapersProvider {
 
         Self {
             selection_model,
+            wallpapers_path,
             view,
             store,
             filter,
@@ -177,7 +183,8 @@ impl super::Provider for WallpapersProvider {
                     .args(["--transition-step", "40"])
                     .args(["--transition-bezier", "0.42,0.0,1.0,1.0"])
                     .arg(format!(
-                        "/home/inqlog/Pictures/wallpapers/pixel/{}",
+                        "{}/{}",
+                        self.wallpapers_path,
                         path.picture_name()
                     ))
                     .spawn()

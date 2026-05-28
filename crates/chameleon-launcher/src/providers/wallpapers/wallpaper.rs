@@ -7,6 +7,8 @@ use std::path::PathBuf;
 use tokio::sync::oneshot;
 use tracing::{error, info};
 
+use crate::providers::wallpapers::cache::{load_from_cache, save_to_cache};
+
 mod imp {
     use super::*;
     use gtk::gdk;
@@ -48,32 +50,53 @@ impl Wallpaper {
         let os_filename = path.file_name().unwrap();
         wallpaper.set_picture_name(os_filename.to_string_lossy());
 
+        let width = 160;
+        let height = 90;
+        let aspect_ratio = width as f32 / height as f32;
+
         let (sender, receiver) = oneshot::channel();
 
         RUNTIME.spawn_blocking(move || {
-            let os_filename = path.file_name().unwrap();
-            let name = os_filename.to_string_lossy();
-            info!("Loading image: {}", name);
+            // 1. Пытаемся загрузить из кэша
+            let preview_img = match load_from_cache(&path, width, height) {
+                Some(img) => img,
+                None => {
+                    // 2. Нет в кэше — генерируем из оригинала
+                    info!("Нет в кэше, генерируем для: {}", path.display());
 
-            let img = match ImageReader::open(&path).unwrap().decode() {
-                Ok(img) => img,
-                Err(e) => {
-                    error!("Image '{}': {}", name, e);
-                    return;
+                    let img = match ImageReader::open(&path).unwrap().decode() {
+                        Ok(img) => img,
+                        Err(e) => {
+                            error!("Ошибка загрузки {}: {}", path.display(), e);
+                            return;
+                        }
+                    };
+
+                    let cropped = Self::set_aspect_ratio(&img, aspect_ratio);
+                    let preview = cropped.resize_exact(
+                        width,
+                        height,
+                        FilterType::Triangle,
+                    );
+
+                    if let Err(e) =
+                        save_to_cache(&preview, &path, width, height)
+                    {
+                        error!(
+                            "Не удалось сохранить кэш для {}: {}",
+                            path.display(),
+                            e
+                        );
+                    }
+
+                    preview
                 }
             };
 
-            let width = 160;
-            let height = 90;
+            // 3. Преобразуем DynamicImage в MemoryTexture
+            let texture = Self::img_to_texture(&preview_img);
 
-            let aspect_ratio = width as f32 / height as f32;
-
-            let resized = Self::resize_by_crop(&img, aspect_ratio);
-            let preview =
-                resized.resize_exact(width, height, FilterType::Triangle);
-
-            let texture = Self::img_to_texture(&preview);
-
+            // 4. Отправляем в канал
             sender.send(texture).unwrap();
         });
 
@@ -103,7 +126,7 @@ impl Wallpaper {
         )
     }
 
-    fn resize_by_crop(img: &DynamicImage, aspect_ratio: f32) -> DynamicImage {
+    fn set_aspect_ratio(img: &DynamicImage, aspect_ratio: f32) -> DynamicImage {
         let (w, h) = img.dimensions();
         let current_ratio = w as f32 / h as f32;
 

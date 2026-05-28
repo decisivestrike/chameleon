@@ -28,6 +28,7 @@ mod imp {
         pub searchbar: gtk::Entry,
         pub switcher: gtk::StackSwitcher,
         pub stack: gtk::Stack,
+        pub separator: gtk::Separator,
         pub count: gtk::Label,
         pub providers: RefCell<HashMap<String, Rc<dyn Provider>>>,
     }
@@ -58,8 +59,9 @@ mod imp {
             self.container.append(&self.switcher);
             self.container.append(&self.stack);
             self.container.set_widget_name("launcher");
-            self.container
-                .append(&gtk::Separator::new(gtk::Orientation::Horizontal));
+
+            self.separator.set_orientation(Orientation::Horizontal);
+            self.container.append(&self.separator);
             self.container.append(&self.count);
 
             self.stack.set_hhomogeneous(false);
@@ -230,7 +232,16 @@ impl Launcher {
         if let Some(provider) = self.active_provider() {
             info!("Update: {}, {}", provider.name(), query);
             provider.update_model(&query);
-            self.imp().count.set_label(&provider.len().to_string())
+
+            if provider.len() > 0 {
+                let label = format!("{}", provider.len().to_string());
+                self.imp().count.set_label(&label);
+                self.imp().separator.set_visible(true);
+                self.imp().count.set_visible(true);
+            } else {
+                self.imp().separator.set_visible(false);
+                self.imp().count.set_visible(false);
+            }
         }
     }
 
