@@ -1,8 +1,7 @@
 use crate::providers::Bindable;
 use crate::providers::wallpapers::wallpaper::Wallpaper;
-use gtk::glib;
-use gtk::glib::Object;
 use gtk::glib::subclass::types::ObjectSubclassIsExt;
+use gtk::glib::{self, Object, clone};
 
 mod imp {
     use gtk::pango::{self};
@@ -85,7 +84,29 @@ impl Bindable for ImageCell {
     fn bind_data(&self, wallpaper: &Self::Data) {
         let imp = self.imp();
 
-        imp.picture.set_paintable(wallpaper.texture().as_ref());
+        if let Some(paintable) = wallpaper.texture().as_ref() {
+            imp.picture.set_paintable(Some(paintable));
+        } else {
+            glib::timeout_add_seconds_local(
+                1,
+                clone!(
+                    #[strong(rename_to=cell)]
+                    self,
+                    #[strong]
+                    wallpaper,
+                    move || {
+                        if let Some(paintable) = wallpaper.texture().as_ref() {
+                            cell.imp().picture.set_paintable(Some(paintable));
+
+                            glib::ControlFlow::Break
+                        } else {
+                            glib::ControlFlow::Continue
+                        }
+                    }
+                ),
+            );
+        }
+
         imp.name.set_text(&wallpaper.picture_name());
     }
 }
