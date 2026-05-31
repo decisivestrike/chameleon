@@ -12,6 +12,7 @@ pub use keyboard_layout::KeyboardLayout;
 pub mod pulseaudio;
 pub use pulseaudio::Pulseaudio;
 
+pub mod mpris;
 pub mod separator;
 pub mod tray;
 

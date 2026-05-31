@@ -150,35 +150,28 @@ fn create_subscribe_callback(
                 let introspector_clone = introspector.clone();
 
                 let sender = sender.clone();
-                introspector.get_server_info(Box::new(
-                    move |server_info: &ServerInfo| {
-                        if let Some(sink_name) = &server_info.default_sink_name
-                        {
-                            let sender = sender.clone();
-                            introspector_clone.get_sink_info_by_name(
-                                sink_name,
-                                Box::new(
-                                    move |result: ListResult<&SinkInfo>| {
-                                        if let ListResult::Item(sink_info) =
-                                            result
-                                        {
-                                            *ACTIVE_SINK_INDEX
-                                                .write()
-                                                .unwrap() =
-                                                Some(sink_info.index);
 
-                                            create_result_handler(
-                                                sender.clone(),
-                                            )(
-                                                ListResult::Item(sink_info)
-                                            );
-                                        }
-                                    },
-                                ),
-                            );
-                        }
-                    },
-                ));
+                let cb = move |server_info: &ServerInfo| {
+                    if let Some(sink_name) = &server_info.default_sink_name {
+                        let sender = sender.clone();
+
+                        let cb = move |result: ListResult<&SinkInfo>| {
+                            if let ListResult::Item(sink_info) = result {
+                                *ACTIVE_SINK_INDEX.write().unwrap() =
+                                    Some(sink_info.index);
+
+                                create_result_handler(sender.clone())(
+                                    ListResult::Item(sink_info),
+                                );
+                            }
+                        };
+
+                        introspector_clone
+                            .get_sink_info_by_name(sink_name, Box::new(cb));
+                    }
+                };
+
+                introspector.get_server_info(Box::new(cb));
             }
             (Some(Facility::Server), Some(Operation::Removed), i) => {
                 *ACTIVE_SINK_INDEX.write().unwrap() = Some(i);

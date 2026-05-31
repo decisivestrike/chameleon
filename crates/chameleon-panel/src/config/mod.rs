@@ -16,6 +16,7 @@ pub enum Module {
     Pulseaudio,
     Separator,
     Tray,
+    Mpris,
 }
 
 impl fmt::Display for Module {
@@ -31,6 +32,7 @@ impl fmt::Display for Module {
                 Module::Pulseaudio => "pulseaudio",
                 Module::Separator => "separator",
                 Module::Tray => "tray",
+                Module::Mpris => "mpris",
             }
         )
     }

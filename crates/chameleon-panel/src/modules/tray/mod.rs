@@ -1,3 +1,4 @@
+use crate::modules::PanelModule;
 use gtk::gdk::{MemoryFormat, MemoryTexture};
 use gtk::glib::object::Cast;
 use gtk::glib::subclass::types::ObjectSubclassIsExt;
@@ -5,8 +6,6 @@ use gtk::glib::{self, Object, clone};
 use gtk::prelude::BoxExt;
 use system_tray::client::Event;
 use system_tray::item::StatusNotifierItem;
-
-use crate::modules::PanelModule;
 
 mod imp {
     use gtk::glib;

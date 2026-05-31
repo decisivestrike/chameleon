@@ -29,3 +29,4 @@ tracing-subscriber.workspace = true
 arc-swap = "1.9.1"
 sysinfo = "0.39.2"
 system-tray = "0.8.6"
+mpris = "2.1.0"

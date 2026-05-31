@@ -1,4 +1,5 @@
 use crate::config::{Module, Position, Rules};
+use crate::modules::mpris::Mpris;
 use crate::modules::separator::Separator;
 use crate::modules::tray::Tray;
 use crate::modules::workspaces::HyprlandWorkspaces;
@@ -7,7 +8,6 @@ use crate::modules::{
 };
 use gtk::gdk::prelude::MonitorExt;
 use gtk::glib::Object;
-use gtk::glib::object::Cast;
 use gtk::prelude::{BoxExt, GtkWindowExt, OrientableExt};
 use gtk::subclass::prelude::*;
 use gtk::{Orientation, gdk, glib};
@@ -17,7 +17,6 @@ mod imp {
     use super::*;
     use gtk::glib;
     use gtk::prelude::*;
-    use gtk::subclass::prelude::*;
     use layer_shell::{KeyboardMode, LayerShell};
 
     #[derive(Default)]
@@ -140,6 +139,7 @@ impl Panel {
                 Module::Pulseaudio => Pulseaudio::create((), meta),
                 Module::Separator => Separator::create((), meta),
                 Module::Tray => Tray::create((), meta),
+                Module::Mpris => Mpris::create((), meta),
             }
         };
 
