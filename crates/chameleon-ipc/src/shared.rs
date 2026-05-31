@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 pub static KEYBOARD_LAYOUT: LazyLock<WatchWorker<String>> =
     LazyLock::new(|| match &*COMPOSITOR {
         CompositorVariant::Hyprland(hyprland) => {

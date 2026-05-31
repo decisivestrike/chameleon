@@ -7,15 +7,15 @@ pub mod services;
 use crate::cli::Args;
 use crate::config::Rules;
 use crate::panel::Panel;
+use chameleon_shared::css::{Css, StylePriority};
 use chameleon_shared::init_tracing_subscriber;
 use chameleon_shared::utils::read_config;
 use chameleon_shared::watcher::FilesWatcher;
-use gtk::gdk::Monitor;
+use gtk::gdk::prelude::DisplayExt;
+use gtk::gdk::{self};
 use gtk::glib;
+use gtk::glib::object::Cast;
 use gtk::prelude::GtkWindowExt;
-use gtke::Css;
-use gtke::css::StylePriority;
-use gtke::monitor::GtkeMonitorExt;
 use std::process::exit;
 use tracing::{debug, error, info};
 
@@ -48,7 +48,13 @@ fn main() {
     info!("Setup panels...");
     let mut panels = Vec::new();
 
-    for monitor in Monitor::each().into_iter() {
+    let display = gdk::Display::default().expect("No display");
+
+    for monitor in display
+        .monitors()
+        .into_iter()
+        .filter_map(|obj| obj.ok()?.downcast::<gdk::Monitor>().ok())
+    {
         let panel = Panel::new(rules.clone(), monitor);
         panel.present();
 
