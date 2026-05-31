@@ -1,4 +1,5 @@
 use crate::config::{Module, Position, Rules};
+use crate::modules::launcher_toggle::LauncherToggle;
 use crate::modules::mpris::Mpris;
 use crate::modules::separator::Separator;
 use crate::modules::tray::Tray;
@@ -140,6 +141,7 @@ impl Panel {
                 Module::Separator => Separator::create((), meta),
                 Module::Tray => Tray::create((), meta),
                 Module::Mpris => Mpris::create((), meta),
+                Module::LauncherToggle => LauncherToggle::create((), meta),
             }
         };
 

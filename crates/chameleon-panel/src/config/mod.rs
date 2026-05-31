@@ -17,6 +17,7 @@ pub enum Module {
     Separator,
     Tray,
     Mpris,
+    LauncherToggle,
 }
 
 impl fmt::Display for Module {
@@ -33,6 +34,7 @@ impl fmt::Display for Module {
                 Module::Separator => "separator",
                 Module::Tray => "tray",
                 Module::Mpris => "mpris",
+                Module::LauncherToggle => "launcher toggle",
             }
         )
     }

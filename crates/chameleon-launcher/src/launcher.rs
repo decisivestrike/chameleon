@@ -77,7 +77,7 @@ mod imp {
 
             // TODO: Make configurable
             obj.set_layer(Layer::Top);
-            obj.set_keyboard_mode(if true {
+            obj.set_keyboard_mode(if false {
                 KeyboardMode::Exclusive
             } else {
                 KeyboardMode::OnDemand
