@@ -14,7 +14,7 @@ tokio.workspace = true
 gtk.workspace = true
 layer_shell.workspace = true
 serde.workspace = true
-zbus = { version = "5.14.0", default-features = false, features = ["tokio"] }
+zbus.workspace = true
 indexmap = "2.14.0"
 thiserror.workspace = true
 gdk-pixbuf = "0.22.0"

@@ -1,12 +1,9 @@
 pub mod modules;
-use arc_swap::{ArcSwap, Guard};
-use chameleon_shared::utils::read_config;
 pub use modules::*;
 
 use layer_shell::Layer;
 use serde::Deserialize;
 use std::fmt;
-use std::sync::{Arc, LazyLock, OnceLock};
 
 /// All panel modules
 #[derive(Clone, Debug, Deserialize)]
@@ -18,6 +15,7 @@ pub enum Module {
     KeyboardLayout,
     Pulseaudio,
     Separator,
+    Tray,
 }
 
 impl fmt::Display for Module {
@@ -32,6 +30,7 @@ impl fmt::Display for Module {
                 Module::KeyboardLayout => "keyboard layout",
                 Module::Pulseaudio => "pulseaudio",
                 Module::Separator => "separator",
+                Module::Tray => "tray",
             }
         )
     }

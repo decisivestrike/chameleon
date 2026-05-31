@@ -13,6 +13,7 @@ pub mod pulseaudio;
 pub use pulseaudio::Pulseaudio;
 
 pub mod separator;
+pub mod tray;
 
 use anyhow::Result;
 use gtk::gdk::Monitor;

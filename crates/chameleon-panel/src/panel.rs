@@ -1,5 +1,6 @@
 use crate::config::{Module, Position, Rules};
 use crate::modules::separator::Separator;
+use crate::modules::tray::Tray;
 use crate::modules::workspaces::HyprlandWorkspaces;
 use crate::modules::{
     Battery, Clock, KeyboardLayout, Metadata, PanelModule, Pulseaudio,
@@ -138,6 +139,7 @@ impl Panel {
                 Module::KeyboardLayout => KeyboardLayout::create((), meta),
                 Module::Pulseaudio => Pulseaudio::create((), meta),
                 Module::Separator => Separator::create((), meta),
+                Module::Tray => Tray::create((), meta),
             }
         };
 

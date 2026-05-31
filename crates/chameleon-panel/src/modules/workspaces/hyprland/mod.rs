@@ -101,7 +101,7 @@ impl HyprlandWorkspaces {
     ) -> Self {
         let workspaces: Self = Object::builder().build();
         workspaces.set_orientation(meta.orientation);
-        workspaces.imp().hyprland.set(hyprland);
+        workspaces.imp().hyprland.set(hyprland).unwrap();
 
         RUNTIME.block_on(async {
             let wss: Vec<Workspace> = hyprland

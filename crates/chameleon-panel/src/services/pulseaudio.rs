@@ -10,7 +10,7 @@ use std::rc::Rc;
 use std::sync::{LazyLock, RwLock};
 use std::thread;
 use tokio::sync::watch;
-use tracing::error;
+use tracing::{error, info};
 
 const DEFAULT_SINK_NAME: &str = "@DEFAULT_SINK@";
 static ACTIVE_SINK_INDEX: RwLock<Option<u32>> = RwLock::new(None);
@@ -87,7 +87,7 @@ fn listen_pa_events(sender: watch::Sender<CurrentSink>) -> ! {
     context.borrow().introspect().get_server_info(Box::new(
         move |server_info: &ServerInfo| {
             if let Some(sink_name) = &server_info.default_sink_name {
-                println!("Default sink name: {}", sink_name);
+                info!("Default sink name: {}", sink_name);
 
                 let sink_name_clone = sink_name.clone();
                 ctx_clone.borrow().introspect().get_sink_info_by_name(
@@ -128,15 +128,15 @@ fn create_subscribe_callback(
     let introspector = Rc::new(introspector);
 
     Box::new(move |facility, operation, index| {
-        if matches!(facility, Some(Facility::Sink) | Some(Facility::Server)) {
-            println!(
-                "{:?} {:?} {}\n Default: {:?}",
-                facility,
-                operation,
-                index,
-                ACTIVE_SINK_INDEX.read().unwrap()
-            );
-        }
+        // if matches!(facility, Some(Facility::Sink) | Some(Facility::Server))
+        // {     println!(
+        //         "{:?} {:?} {}\n Default: {:?}",
+        //         facility,
+        //         operation,
+        //         index,
+        //         ACTIVE_SINK_INDEX.read().unwrap()
+        //     );
+        // }
 
         match (facility, operation, index) {
             (

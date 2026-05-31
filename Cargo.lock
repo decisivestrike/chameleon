@@ -509,6 +509,7 @@ dependencies = [
  "serde",
  "suukon",
  "sysinfo",
+ "system-tray",
  "thiserror 2.0.18",
  "tokio",
  "tokio-util",
@@ -2552,6 +2553,21 @@ dependencies = [
  "pkg-config",
  "toml",
  "version-compare",
+]
+
+[[package]]
+name = "system-tray"
+version = "0.8.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "959ed14210c918cd8712fc9cfeb86eb9a9c02f82546567ef62191919dfdf8a8b"
+dependencies = [
+ "cfg-if",
+ "futures-lite",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "zbus",
 ]
 
 [[package]]
