@@ -3,15 +3,15 @@ use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{glib, pango};
 use gtkio::RUNTIME;
-use std::cell::RefCell;
 use tokio::sync::mpsc;
 
 mod imp {
     use super::*;
+    use tracing::error;
 
     #[derive(Default)]
     pub struct MprisImp {
-        label: RefCell<gtk::Label>,
+        label: gtk::Label,
     }
 
     #[glib::object_subclass]
@@ -27,15 +27,31 @@ mod imp {
 
             let widget = self.obj();
 
-            // Настройка внешнего вида
             widget.set_orientation(gtk::Orientation::Horizontal);
             widget.set_spacing(6);
 
-            let label = gtk::Label::new(None);
-            label.set_ellipsize(pango::EllipsizeMode::End);
-            label.set_halign(gtk::Align::Center);
-            widget.append(&label);
-            self.label.replace(label);
+            let lmb_play_pause = gtk::GestureClick::new();
+            lmb_play_pause.set_button(1);
+            lmb_play_pause.connect_pressed(|_gesture, _n_press, _x, _y| {
+                if let Err(e) = CLIENT.toggle_play_pause() {
+                    error!("Toggle play/pause error: {}", e);
+                }
+            });
+            self.label.add_controller(lmb_play_pause);
+
+            let rmb_next_track = gtk::GestureClick::new();
+            rmb_next_track.set_button(3);
+            rmb_next_track.connect_pressed(|_gesture, _n_press, _x, _y| {
+                if let Err(e) = CLIENT.next() {
+                    error!("Next track error: {}", e);
+                }
+            });
+            self.label.add_controller(rmb_next_track);
+
+            self.label.set_ellipsize(pango::EllipsizeMode::End);
+            self.label.set_halign(gtk::Align::Center);
+
+            widget.append(&self.label);
 
             let (sender, mut receiver) = mpsc::channel::<String>(1);
             let label = self.label.clone();
@@ -43,7 +59,7 @@ mod imp {
             glib::spawn_future_local(async move {
                 loop {
                     if let Some(title) = receiver.recv().await {
-                        label.borrow().set_label(&title);
+                        label.set_label(&title);
                     }
                 }
             });
@@ -58,18 +74,17 @@ mod imp {
                                 let maybe_track = *boxed_track;
 
                                 if let Some(track) = maybe_track {
-                                    let title =
-                                        track.title.unwrap_or_else(|| {
-                                            "No Title".to_string()
-                                        });
-
-                                    let artist =
-                                        track.artist.unwrap_or_else(|| {
-                                            "Unknown".to_string()
-                                        });
-
                                     let title_text =
-                                        format!("{} - {}", title, artist);
+                                        if let Some(title) = track.title {
+                                            let artist =
+                                                track.artist.unwrap_or_else(
+                                                    || "Unknown".to_string(),
+                                                );
+
+                                            format!("{} - {}", title, artist)
+                                        } else {
+                                            String::new()
+                                        };
 
                                     sender.send(title_text).await.unwrap();
                                 }
@@ -83,6 +98,7 @@ mod imp {
     }
 
     impl WidgetImpl for MprisImp {}
+
     impl BoxImpl for MprisImp {}
 }
 

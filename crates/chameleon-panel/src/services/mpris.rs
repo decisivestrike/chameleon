@@ -297,6 +297,17 @@ macro_rules! command {
     };
 }
 
+impl Client {
+    pub fn toggle_play_pause(&self) -> Result<()> {
+        if let Some(player) = self.get_player() {
+            player.play_pause()?;
+        } else {
+            error!("No active player");
+        }
+        Ok(())
+    }
+}
+
 impl MusicClient for Client {
     fn play(&self) -> Result<()> {
         command!(self, play);
