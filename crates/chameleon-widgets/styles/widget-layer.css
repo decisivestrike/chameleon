@@ -1,9 +1,0 @@
-#widget-layer,
-#widget-layer>#widget-wrapper {
-    all: unset;
-    margin: 0px;
-    padding: 0px;
-    border: none;
-    color: transparent;
-    background-color: transparent;
-}

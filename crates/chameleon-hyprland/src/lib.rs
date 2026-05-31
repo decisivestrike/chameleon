@@ -1,5 +1,6 @@
 pub mod event;
 pub use event::HyprEvent;
+use gtkio::RUNTIME;
 
 pub mod entities;
 pub mod socket;
@@ -10,7 +11,7 @@ use crate::socket::Socket;
 use anyhow::Result;
 use std::env::var;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 use tokio::sync::broadcast::{
@@ -30,7 +31,7 @@ pub struct Hyprland {
     /// `$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock`
     sender_sock: Arc<PathBuf>,
 
-    el: Option<EventListener>,
+    el: RwLock<Option<EventListener>>,
 }
 
 impl Hyprland {
@@ -45,7 +46,7 @@ impl Hyprland {
         Self {
             recv_sock,
             sender_sock,
-            el: None,
+            el: Default::default(),
         }
     }
 
@@ -53,12 +54,13 @@ impl Hyprland {
         Socket::connect_to(&*self.sender_sock).await
     }
 
-    pub fn subscribe(&mut self) -> BroadcastReceiver<HyprEvent> {
-        if self.el.is_none() {
-            self.el = Some(EventListener::new(self.sender_sock.clone()));
+    pub fn subscribe(&self) -> BroadcastReceiver<HyprEvent> {
+        if self.el.read().unwrap().is_none() {
+            let mut el = self.el.write().unwrap();
+            *el = Some(EventListener::new(self.sender_sock.clone()));
         }
 
-        self.el.as_ref().unwrap().subscribe()
+        self.el.read().unwrap().as_ref().unwrap().subscribe()
     }
 
     /// Issue a lua string to execute dynamically.
@@ -122,7 +124,7 @@ impl Default for Hyprland {
 
 #[derive(Debug)]
 pub struct EventListener {
-    handle: JoinHandle<()>,
+    _handle: JoinHandle<()>,
     sender: BroadcastSender<HyprEvent>,
 }
 
@@ -130,7 +132,7 @@ impl EventListener {
     pub fn new(path: Arc<PathBuf>) -> Self {
         let sender = broadcast::Sender::new(32);
 
-        let handle = tokio::spawn({
+        let _handle = RUNTIME.spawn({
             let sender = sender.clone();
             async move {
                 let mut sock = Socket::connect_to(&*path).await.unwrap();
@@ -143,7 +145,7 @@ impl EventListener {
             }
         });
 
-        Self { handle, sender }
+        Self { _handle, sender }
     }
 
     pub fn subscribe(&self) -> BroadcastReceiver<HyprEvent> {

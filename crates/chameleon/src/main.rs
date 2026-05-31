@@ -6,7 +6,7 @@ mod process_manager;
 use crate::cli::{Args, CliCommand, StartCommand};
 use crate::preset::Preset;
 use crate::process_manager::ProcessManager;
-use chameleon_shared::{CHAMELEON_PRESETS_ROOT, HOME, init_tracing_subscriber};
+use chameleon_shared::{HOME, init_tracing_subscriber};
 use std::env;
 use std::path::PathBuf;
 use std::sync::LazyLock;
@@ -34,12 +34,6 @@ async fn main() {
 }
 
 async fn start(cmd: StartCommand) {
-    let preset_path = cmd
-        .preset_root
-        .as_ref()
-        .unwrap_or(&*CHAMELEON_PRESETS_ROOT)
-        .join(cmd.preset_name);
-
     let preset = Preset::load(&preset_path);
     let bin_root = cmd.bin_root.as_ref().unwrap_or(&*CHAMELEON_BIN_ROOT);
     let mut pm = ProcessManager::default();

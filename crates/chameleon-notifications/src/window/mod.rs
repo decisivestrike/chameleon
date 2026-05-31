@@ -2,18 +2,38 @@ pub mod content;
 pub use content::NotificationContent;
 
 use crate::config::WindowRules;
+use gtk::glib::{self, Object};
 use gtk::prelude::*;
-use gtk::{self, Window};
-use gtke::WindowComponent;
+use gtk::subclass::prelude::*;
+use gtk::{self};
 use layer_shell::{Edge, LayerShell};
 
 const NAMESPACE: &str = "chameleon-notifications";
 
-#[derive(Clone, WindowComponent)]
-pub struct NotificationWindow {
-    pub content: NotificationContent,
-    #[root]
-    pub window: Window,
+mod imp {
+    use super::*;
+
+    #[derive(Default)]
+    pub struct NotificationWindowImp;
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for NotificationWindowImp {
+        const NAME: &'static str = "NotificationWindow";
+        type Type = super::NotificationWindow;
+        type ParentType = gtk::Window;
+    }
+
+    impl ObjectImpl for NotificationWindowImp {}
+
+    impl WidgetImpl for NotificationWindowImp {}
+
+    impl WindowImpl for NotificationWindowImp {}
+}
+
+glib::wrapper! {
+    pub struct NotificationWindow(ObjectSubclass<imp::NotificationWindowImp>)
+        @extends gtk::Window, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Native, gtk::Root, gtk::ShortcutManager;
 }
 
 impl NotificationWindow {
@@ -23,31 +43,25 @@ impl NotificationWindow {
         content: NotificationContent,
         window_rules: &WindowRules,
     ) -> Self {
-        let window = Window::new();
-        Self::setup_layershell(&window, window_rules);
-
-        window.set_child(Some(content.as_ref()));
-        window.set_widget_name(Self::NAME);
-
-        Self { content, window }
+        let obj: Self = Object::builder().build();
+        obj.setup_layershell(window_rules);
+        obj.set_content(content);
+        obj.set_widget_name(Self::NAME);
+        obj
     }
 
     pub fn set_content(&self, content: NotificationContent) {
-        self.window.set_child(Some(content.as_ref()));
+        self.set_child(Some(&content));
     }
 
-    pub fn window(&self) -> gtk::Window {
-        self.window.clone()
-    }
+    fn setup_layershell(&self, window_rules: &WindowRules) {
+        self.init_layer_shell();
+        self.set_namespace(Some(NAMESPACE));
 
-    fn setup_layershell(window: &Window, window_rules: &WindowRules) {
-        window.init_layer_shell();
-        window.set_namespace(Some(NAMESPACE));
+        self.set_anchor(Edge::Top, true);
+        self.set_margin(Edge::Top, window_rules.vgap.into());
 
-        window.set_anchor(Edge::Top, true);
-        window.set_margin(Edge::Top, window_rules.vgap.into());
-
-        window.set_anchor(Edge::Right, true);
-        window.set_margin(Edge::Right, window_rules.hgap.into());
+        self.set_anchor(Edge::Right, true);
+        self.set_margin(Edge::Right, window_rules.hgap.into());
     }
 }

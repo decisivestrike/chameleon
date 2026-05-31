@@ -1,9 +1,10 @@
 use crate::modules::{Metadata, PanelModule};
 use anyhow::Result;
-use chameleon_ipc::KEYBOARD_LAYOUT;
+use chameleon_ipc::shared::KEYBOARD_LAYOUT;
 use gtk::glib::clone;
 use gtk::glib::object::Cast;
 use gtk::{Widget, glib};
+use gtkio::workers::WatchWorker;
 use std::rc::Rc;
 
 pub struct KeyboardLayout;

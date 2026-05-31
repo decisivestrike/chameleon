@@ -1,7 +1,7 @@
 use crate::window::NotificationWindow;
+use gtk::glib::object::Cast;
 use gtk::glib::{self, SourceId, clone};
 use gtk::prelude::{GtkWindowExt, WidgetExt};
-use gtke::WindowComponent;
 use gtkio::MAIN_CONTEXT;
 use indexmap::IndexMap;
 use layer_shell::{Edge, LayerShell};
@@ -161,7 +161,7 @@ impl Entry {
     }
 
     fn window(&self) -> gtk::Window {
-        self.window.window()
+        self.window.clone().upcast()
     }
 }
 

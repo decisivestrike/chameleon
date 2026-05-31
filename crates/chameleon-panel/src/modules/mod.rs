@@ -9,8 +9,8 @@ pub mod workspaces;
 pub mod keyboard_layout;
 pub use keyboard_layout::KeyboardLayout;
 
-// pub mod pulseaudio;
-// pub use pulseaudio::Pulseaudio;
+pub mod pulseaudio;
+pub use pulseaudio::Pulseaudio;
 
 pub mod separator;
 

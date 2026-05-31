@@ -1,6 +1,9 @@
 use crate::config::{Module, Position, Rules};
 use crate::modules::separator::Separator;
-use crate::modules::{Battery, Clock, KeyboardLayout, Metadata, PanelModule};
+use crate::modules::workspaces::HyprlandWorkspaces;
+use crate::modules::{
+    Battery, Clock, KeyboardLayout, Metadata, PanelModule, Pulseaudio,
+};
 use gtk::gdk::prelude::MonitorExt;
 use gtk::glib::Object;
 use gtk::glib::object::Cast;
@@ -129,9 +132,11 @@ impl Panel {
             match module {
                 Module::Clock => Clock::create(clock.clone(), meta),
                 Module::Battery => Battery::create(battery.clone(), meta),
-                Module::Workspaces => Ok(gtk::Box::builder().build().upcast()),
+                Module::Workspaces => {
+                    HyprlandWorkspaces::create(workspaces.clone(), meta)
+                }
                 Module::KeyboardLayout => KeyboardLayout::create((), meta),
-                Module::Pulseaudio => Ok(gtk::Box::builder().build().upcast()),
+                Module::Pulseaudio => Pulseaudio::create((), meta),
                 Module::Separator => Separator::create((), meta),
             }
         };

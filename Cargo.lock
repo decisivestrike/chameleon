@@ -421,6 +421,7 @@ name = "chameleon-hyprland"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "gtkio",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -497,6 +498,7 @@ dependencies = [
  "arc-swap",
  "argh",
  "chameleon-hyprland",
+ "chameleon-ipc",
  "chameleon_shared",
  "chrono",
  "dashmap",
@@ -510,19 +512,6 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tokio-util",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "chameleon-widgets"
-version = "0.1.0"
-dependencies = [
- "argh",
- "chameleon_shared",
- "gtk4",
- "gtk4-layer-shell",
- "serde",
  "tracing",
  "tracing-subscriber",
 ]

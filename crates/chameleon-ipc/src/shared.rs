@@ -1,8 +1,13 @@
+use crate::{COMPOSITOR, Compositor};
+use chameleon_hyprland::HyprEvent;
+use gtkio::RUNTIME;
 use std::sync::LazyLock;
+use tokio::sync::watch;
+use tracing::error;
 
-pub static KEYBOARD_LAYOUT: LazyLock<WatchWorker<String>> =
+pub static KEYBOARD_LAYOUT: LazyLock<watch::Sender<String>> =
     LazyLock::new(|| match &*COMPOSITOR {
-        CompositorVariant::Hyprland(hyprland) => {
+        Compositor::Hyprland(hyprland) => {
             let devices = RUNTIME.block_on(hyprland.devices()).unwrap();
             let active_keymap = devices
                 .keyboards
@@ -11,23 +16,25 @@ pub static KEYBOARD_LAYOUT: LazyLock<WatchWorker<String>> =
                 .unwrap()
                 .active_keymap;
 
-            WatchWorker::new(active_keymap, {
-                let mut receiver = hyprland.subscribe();
-                async move |sender| {
-                    loop {
-                        if let Ok(event) = receiver.recv().await
-                            && let HyprEvent::ActiveLayout {
-                                layout_name, ..
-                            } = event
-                        {
-                            if let Err(e) = sender.send(layout_name) {
-                                error!("{}", e);
-                            }
+            let sender = watch::Sender::new(active_keymap);
+
+            let sender_clone = sender.clone();
+            let mut receiver = hyprland.subscribe();
+
+            RUNTIME.spawn(async move {
+                loop {
+                    if let Ok(event) = receiver.recv().await
+                        && let HyprEvent::ActiveLayout { layout_name, .. } =
+                            event
+                    {
+                        if let Err(e) = sender_clone.send(layout_name) {
+                            error!("{}", e);
                         }
                     }
                 }
-            })
+            });
+
+            sender
         }
-        CompositorVariant::Niri(niri) => unreachable!(),
-        CompositorVariant::Unknown => panic!("U should use Hyprland or Niri"),
+        Compositor::Unsupported => todo!(),
     });

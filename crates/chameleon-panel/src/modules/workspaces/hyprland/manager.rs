@@ -1,7 +1,5 @@
-use crate::modules::workspaces::SPECIAL_WORKSPACE_ID;
-use crate::modules::workspaces::event::WorkspaceEvent;
-use chameleon_ipc::compositor::Compositor;
-use chameleon_ipc::hyprland::{HyprEvent, Hyprland, Workspace};
+use chameleon_hyprland::entities::Workspace;
+use chameleon_hyprland::{HyprEvent, Hyprland};
 use chameleon_shared::errors::MonitorError;
 use dashmap::DashMap;
 use gtk::gdk;
@@ -10,6 +8,9 @@ use gtkio::future::spawn;
 use std::sync::OnceLock;
 use tokio::sync::mpsc;
 use tracing::{error, warn};
+
+use crate::modules::workspaces::hyprland::SPECIAL_WORKSPACE_ID;
+use crate::modules::workspaces::hyprland::event::WorkspaceEvent;
 
 pub(super) static MANAGER: OnceLock<WorkspacesManager> = OnceLock::new();
 

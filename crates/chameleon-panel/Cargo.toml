@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 argh.workspace = true
+chameleon-ipc.workspace = true
 chameleon-hyprland.workspace = true
 chameleon_shared.workspace = true
 thiserror.workspace = true

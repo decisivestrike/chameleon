@@ -8,11 +8,14 @@ use crate::modules::workspaces::hyprland::manager::{
 };
 use crate::modules::{Metadata, PanelModule};
 use anyhow::{Result, bail};
-use chameleon_ipc::hyprland::Hyprland;
+use chameleon_hyprland::Hyprland;
+use chameleon_hyprland::entities::Workspace;
 use chameleon_ipc::{COMPOSITOR, Compositor};
 use glib::clone::Downgrade;
+use gtk::gdk::prelude::MonitorExt;
 use gtk::glib::Object;
 use gtk::glib::object::Cast;
+use gtk::glib::subclass::types::ObjectSubclassIsExt;
 use gtk::prelude::{BoxExt, OrientableExt, WidgetExt};
 use gtk::{GestureClick, Label, Widget, glib};
 use gtkio::RUNTIME;
@@ -24,12 +27,17 @@ use tracing::{debug, error};
 const SPECIAL_WORKSPACE_ID: i32 = -98;
 
 mod imp {
+    use std::sync::OnceLock;
+
+    use chameleon_hyprland::Hyprland;
     use gtk::glib;
     use gtk::prelude::WidgetExt;
     use gtk::subclass::prelude::*;
 
     #[derive(Default)]
-    pub struct HyprlandWorkspacesImp;
+    pub struct HyprlandWorkspacesImp {
+        pub hyprland: OnceLock<&'static Hyprland>,
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for HyprlandWorkspacesImp {
@@ -93,11 +101,20 @@ impl HyprlandWorkspaces {
     ) -> Self {
         let workspaces: Self = Object::builder().build();
         workspaces.set_orientation(meta.orientation);
+        workspaces.imp().hyprland.set(hyprland);
 
         RUNTIME.block_on(async {
-            for ws in
-                hyprland.workspaces_on_monitor(&meta.monitor).await.unwrap()
-            {
+            let wss: Vec<Workspace> = hyprland
+                .workspaces()
+                .await
+                .unwrap()
+                .into_iter()
+                .filter(|w| {
+                    w.monitor == meta.monitor.connector().unwrap().to_string()
+                })
+                .collect();
+
+            for ws in wss {
                 if ws.id != SPECIAL_WORKSPACE_ID {
                     workspaces.add_workspace_button(ws.id);
                 }
@@ -144,7 +161,7 @@ impl HyprlandWorkspaces {
         let button = Label::new(Some(&label));
         let event_controller = GestureClick::new();
 
-        let hyprland = self.hyprland;
+        let hyprland = *self.imp().hyprland.get().unwrap();
 
         event_controller.connect_pressed(move |_, _, _, _| {
             // On click
