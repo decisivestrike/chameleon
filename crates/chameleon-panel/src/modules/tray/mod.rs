@@ -3,25 +3,29 @@ use gtk::gdk::{MemoryFormat, MemoryTexture};
 use gtk::glib::object::Cast;
 use gtk::glib::subclass::types::ObjectSubclassIsExt;
 use gtk::glib::{self, Object, clone};
-use gtk::prelude::BoxExt;
-use system_tray::client::Event;
-use system_tray::item::StatusNotifierItem;
+use gtk::prelude::{BoxExt, WidgetExt};
+use system_tray::client::{Event, UpdateEvent};
+use system_tray::item::IconPixmap;
 
 mod imp {
     use gtk::glib;
     use gtk::prelude::{BoxExt, WidgetExt};
     use gtk::subclass::prelude::*;
     use gtkio::RUNTIME;
+    use std::cell::RefCell;
+    use std::collections::HashMap;
     use system_tray::client::Client;
 
     pub struct TrayImp {
         pub client: Client,
+        pub items: RefCell<HashMap<String, gtk::Image>>,
     }
 
     impl Default for TrayImp {
         fn default() -> Self {
             Self {
                 client: RUNTIME.block_on(Client::new()).unwrap(),
+                items: Default::default(),
             }
         }
     }
@@ -81,12 +85,40 @@ impl Tray {
                     // println!("{:#?}", event);
 
                     match event {
-                        Event::Add(_, item) => {
-                            let icon = item_to_icon(&item);
-                            tray.append(&icon);
+                        Event::Add(name, item) => {
+                            if let Some(pixmaps) = item.icon_pixmap {
+                                let icon = pixmaps_to_icon(&pixmaps);
+                                tray.append(&icon);
+                                tray.imp()
+                                    .items
+                                    .borrow_mut()
+                                    .insert(name, icon);
+                            }
                         }
-                        Event::Update(_, _) => (),
-                        Event::Remove(_) => (),
+                        Event::Update(name, event) => match event {
+                            UpdateEvent::Icon {
+                                icon_name: _,
+                                icon_pixmap,
+                            } => {
+                                if let Some(pixmaps) = icon_pixmap {
+                                    let texture = pixmaps_to_texture(&pixmaps);
+
+                                    let items = tray.imp().items.borrow_mut();
+                                    let image = items.get(&name);
+
+                                    image.map(|i| {
+                                        i.set_paintable(Some(&texture))
+                                    });
+                                }
+                            }
+                            _ => (),
+                        },
+                        Event::Remove(name) => {
+                            let icon =
+                                tray.imp().items.borrow_mut().remove(&name);
+
+                            icon.map(|i| i.unparent());
+                        }
                     };
                 }
             }
@@ -96,29 +128,34 @@ impl Tray {
         let initial_items = mu.lock().unwrap();
 
         for (item, _tray_menu) in initial_items.values() {
-            let icon = item_to_icon(item);
-            tray.append(&icon);
+            if let Some(ref pixmaps) = item.icon_pixmap {
+                let icon = pixmaps_to_icon(&pixmaps);
+                tray.append(&icon);
+            }
         }
 
         tray
     }
 }
 
-fn item_to_icon(item: &StatusNotifierItem) -> gtk::Image {
-    let pixmaps = item.icon_pixmap.as_ref().unwrap();
+fn pixmaps_to_texture(pixmaps: &Vec<IconPixmap>) -> MemoryTexture {
     let pixmap = pixmaps
         .iter()
         .max_by(|a, b| a.width.cmp(&b.width))
         .unwrap()
         .clone();
 
-    let texture = MemoryTexture::new(
+    MemoryTexture::new(
         pixmap.width,
         pixmap.height,
         MemoryFormat::A8r8g8b8Premultiplied,
         &glib::Bytes::from_owned(pixmap.pixels),
         (pixmap.width * 4) as usize,
-    );
+    )
+}
+
+fn pixmaps_to_icon(pixmaps: &Vec<IconPixmap>) -> gtk::Image {
+    let texture = pixmaps_to_texture(pixmaps);
 
     gtk::Image::builder()
         .paintable(&texture)

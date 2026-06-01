@@ -7,11 +7,44 @@ use tokio::sync::mpsc;
 
 mod imp {
     use super::*;
-    use tracing::error;
+    use gtk::ContentFit;
+    use gtk::gdk::Texture;
+    use gtk::gdk_pixbuf::Pixbuf;
+    use tracing::{error, info};
 
-    #[derive(Default)]
     pub struct MprisImp {
         label: gtk::Label,
+        cover: gtk::Picture,
+        popover: gtk::Popover,
+        popover_content: gtk::Box,
+    }
+
+    impl Default for MprisImp {
+        fn default() -> Self {
+            let cover = gtk::Picture::builder()
+                .content_fit(ContentFit::ScaleDown)
+                .width_request(128)
+                .height_request(128)
+                .build();
+
+            let label = gtk::Label::new(None);
+
+            let popover_content = gtk::Box::new(gtk::Orientation::Vertical, 10);
+            popover_content.append(&cover);
+
+            let popover = gtk::Popover::builder().has_arrow(false).build();
+
+            popover.set_child(Some(&popover_content));
+            popover.unparent();
+            popover.set_parent(&label);
+
+            Self {
+                label,
+                cover,
+                popover,
+                popover_content,
+            }
+        }
     }
 
     #[glib::object_subclass]
@@ -25,10 +58,13 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            let widget = self.obj();
+            let obj = self.obj();
+            obj.append(&self.label);
+            obj.set_orientation(gtk::Orientation::Horizontal);
+            obj.set_spacing(6);
 
-            widget.set_orientation(gtk::Orientation::Horizontal);
-            widget.set_spacing(6);
+            self.label.set_ellipsize(pango::EllipsizeMode::End);
+            self.label.set_halign(gtk::Align::Center);
 
             let lmb_play_pause = gtk::GestureClick::new();
             lmb_play_pause.set_button(1);
@@ -39,6 +75,16 @@ mod imp {
             });
             self.label.add_controller(lmb_play_pause);
 
+            let mmb_toggle_popover = gtk::GestureClick::new();
+            mmb_toggle_popover.set_button(2);
+            mmb_toggle_popover.connect_pressed({
+                let popover_clone = self.popover.clone();
+                move |_gesture, _n_press, _x, _y| {
+                    popover_clone.popup();
+                }
+            });
+            self.label.add_controller(mmb_toggle_popover);
+
             let rmb_next_track = gtk::GestureClick::new();
             rmb_next_track.set_button(3);
             rmb_next_track.connect_pressed(|_gesture, _n_press, _x, _y| {
@@ -48,18 +94,26 @@ mod imp {
             });
             self.label.add_controller(rmb_next_track);
 
-            self.label.set_ellipsize(pango::EllipsizeMode::End);
-            self.label.set_halign(gtk::Align::Center);
-
-            widget.append(&self.label);
-
-            let (sender, mut receiver) = mpsc::channel::<String>(1);
-            let label = self.label.clone();
+            let (sender, mut receiver) =
+                mpsc::channel::<(String, Option<String>)>(1);
+            let tray = self.obj().clone();
 
             glib::spawn_future_local(async move {
                 loop {
-                    if let Some(title) = receiver.recv().await {
-                        label.set_label(&title);
+                    if let Some((title, cover_path)) = receiver.recv().await {
+                        tray.imp().label.set_label(&title);
+
+                        if let Some(path) = cover_path
+                            && let Ok(pixbuf) =
+                                Pixbuf::from_file_at_scale(path, 128, 128, true)
+                        {
+                            let buffer =
+                                pixbuf.save_to_bufferv("png", &[]).unwrap();
+                            let bytes = glib::Bytes::from_owned(buffer);
+                            let texture = Texture::from_bytes(&bytes).unwrap();
+
+                            tray.imp().cover.set_paintable(Some(&texture));
+                        }
                     }
                 }
             });
@@ -86,7 +140,22 @@ mod imp {
                                             String::new()
                                         };
 
-                                    sender.send(title_text).await.unwrap();
+                                    let cover_path = {
+                                        if let Some(mut path) = track.cover_path
+                                        {
+                                            path.drain(..7);
+
+                                            Some(path)
+                                        } else {
+                                            None
+                                        }
+                                    };
+
+                                    let message = (title_text, cover_path);
+
+                                    info!("{:#?}", message);
+
+                                    sender.send(message).await.unwrap();
                                 }
                             }
                             _ => (),
@@ -104,7 +173,7 @@ mod imp {
 
 glib::wrapper! {
     pub struct Mpris(ObjectSubclass<imp::MprisImp>)
-        @extends gtk::Widget, gtk::Box,
+        @extends gtk::Box, gtk::Widget,
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Orientable;
 }
 

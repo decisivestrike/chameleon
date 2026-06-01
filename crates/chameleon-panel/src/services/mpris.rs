@@ -254,7 +254,7 @@ impl Client {
         Ok(())
     }
 
-    fn get_player(&self) -> Option<Player> {
+    pub fn get_player(&self) -> Option<Player> {
         let player_name = self.current_player.lock().unwrap();
         let player_name = player_name.as_ref();
 
