@@ -7,4 +7,5 @@ edition = "2024"
 chameleon_shared.workspace = true
 
 gtk.workspace = true
+gtkio.workspace = true
 layer_shell.workspace = true

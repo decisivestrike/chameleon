@@ -1,11 +1,14 @@
 use std::collections::HashSet;
+use std::env::home_dir;
 use std::fs;
 
 use chameleon_shared::css::{Css, StylePriority};
+use chameleon_shared::styles_watcher;
 use gtk::glib::Object;
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
 use gtk::{gio, glib};
+use gtkio::future::spawn;
 use layer_shell::{Edge, Layer, LayerShell};
 
 mod imp {
@@ -33,6 +36,7 @@ mod imp {
             win.set_decorated(false);
             win.set_resizable(false);
             win.set_widget_name("dock-window");
+            win.set_namespace(Some("chameleon-dock"));
 
             // Layer shell
             win.init_layer_shell();
@@ -102,8 +106,12 @@ fn main() {
 
     let dock = Dock::new();
 
-    Css::load("/home/inqlog/.config/chameleon/styles.css")
-        .apply(StylePriority::User);
+    let home = home_dir().unwrap();
+
+    let css_path = format!("{}/.config/chameleon/styles.css", home.display());
+    Css::load(&css_path).apply(StylePriority::User);
+
+    spawn(styles_watcher(css_path.into()));
 
     dock.populate_apps();
     dock.present();

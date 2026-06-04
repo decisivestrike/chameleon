@@ -414,6 +414,7 @@ dependencies = [
  "chameleon_shared",
  "gtk4",
  "gtk4-layer-shell",
+ "gtkio",
 ]
 
 [[package]]
