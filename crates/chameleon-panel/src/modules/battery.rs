@@ -1,10 +1,11 @@
 use crate::config::BatteryRules;
 use crate::modules::{Metadata, PanelModule};
-use anyhow::Result;
+use anyhow::{Result, bail};
 use gtk::Widget;
 use gtk::glib::clone::Downgrade;
 use gtk::glib::object::Cast;
 use gtk::glib::{self, ControlFlow, clone};
+use gtkio::RUNTIME;
 use std::rc::Rc;
 
 const BAT: &str = "BAT1";
@@ -15,25 +16,32 @@ impl PanelModule for Battery {
     type Rules = BatteryRules;
 
     fn create(rules: Self::Rules, _: Rc<Metadata>) -> Result<Widget> {
-        let battery_label = gtk::Label::builder()
-            .name(Self::NAME)
-            .css_classes(["module"])
-            .build();
+        if let Ok(label) =
+            RUNTIME.block_on(Self::formatted_charge(BAT, &rules.icons))
+        {
+            let battery_label = gtk::Label::builder()
+                .label(label)
+                .name(Self::NAME)
+                .css_classes(["module"])
+                .build();
 
-        glib::timeout_add_seconds_local(60, {
-            let battery_weak = battery_label.downgrade();
-            let rules = Rc::new(rules);
-            move || {
-                if let Some(battery_label) = battery_weak.upgrade() {
-                    Battery::update_label(battery_label, rules.clone());
-                    ControlFlow::Continue
-                } else {
-                    ControlFlow::Break
+            glib::timeout_add_seconds_local(60, {
+                let battery_weak = battery_label.downgrade();
+                let rules = Rc::new(rules);
+                move || {
+                    if let Some(battery_label) = battery_weak.upgrade() {
+                        Battery::update_label(battery_label, rules.clone());
+                        ControlFlow::Continue
+                    } else {
+                        ControlFlow::Break
+                    }
                 }
-            }
-        });
+            });
 
-        Ok(battery_label.upcast())
+            Ok(battery_label.upcast())
+        } else {
+            bail!("No bat found")
+        }
     }
 }
 
@@ -66,7 +74,9 @@ impl Battery {
     async fn charge(bat: &str) -> anyhow::Result<u8> {
         let battery_path = format!("/sys/class/power_supply/{}/capacity", bat);
 
-        let charge_str = tokio::fs::read_to_string(battery_path).await?;
+        let charge_str = RUNTIME
+            .spawn(tokio::fs::read_to_string(battery_path))
+            .await??;
 
         let charge = charge_str
             .trim()
