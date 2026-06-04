@@ -5,6 +5,7 @@ mod wallpaper;
 use crate::config::WallpapersProviderConfig;
 use crate::providers::factory::Factory;
 use crate::providers::utils::{filter, sorter};
+use crate::providers::wallpapers::cache::cache_filename;
 use crate::providers::wallpapers::image_cell::ImageCell;
 use crate::providers::wallpapers::wallpaper::Wallpaper;
 use gtk::gio::ListStore;
@@ -19,7 +20,8 @@ use gtk::{
 use nucleo::{Matcher, Utf32Str};
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
-use std::path::PathBuf;
+use std::env::home_dir;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use walkdir::WalkDir;
 
@@ -29,7 +31,9 @@ pub struct WallpapersProvider {
     pub sorter: CustomSorter,
     pub selection_model: SingleSelection,
     pub view: GridView,
+
     pub wallpapers_path: String,
+    pub change_wallpapers_cmd: String,
 
     pub last_query_len: Cell<usize>,
 
@@ -118,6 +122,7 @@ impl WallpapersProvider {
         Self {
             selection_model,
             wallpapers_path,
+            change_wallpapers_cmd: config.change_command,
             view,
             store,
             filter,
@@ -174,21 +179,38 @@ impl super::Provider for WallpapersProvider {
 
         match maybe_path {
             Some(path) => {
-                Command::new("awww")
-                    .arg("img")
-                    .args(["--transition-fps", "120"])
-                    .args(["--transition-type", "wipe"])
-                    .args(["--transition-angle", "30"])
-                    .args(["--transition-duration", "0.8"])
-                    .args(["--transition-step", "40"])
-                    .args(["--transition-bezier", "0.42,0.0,1.0,1.0"])
-                    .arg(format!(
-                        "{}/{}",
-                        self.wallpapers_path,
-                        path.picture_name()
-                    ))
+                let full_wp_path =
+                    format!("{}/{}", self.wallpapers_path, path.picture_name());
+
+                let replaced = self
+                    .change_wallpapers_cmd
+                    .replace("{{image}}", &full_wp_path);
+                let (command, args) = replaced.split_once(" ").unwrap();
+
+                Command::new(command)
+                    .args(args.split_whitespace())
                     .spawn()
-                    .expect("awww command failed to start");
+                    .expect("command failed to start");
+
+                if true {
+                    Command::new("matugen")
+                        .args([
+                            "image",
+                            "--source-color-index",
+                            "0",
+                            &format!(
+                                "{}/.cache/chameleon/thumbnails/{}",
+                                home_dir().unwrap().to_string_lossy(),
+                                cache_filename(
+                                    Path::new(&full_wp_path),
+                                    160,
+                                    90
+                                )
+                            ),
+                        ])
+                        .spawn()
+                        .expect("command failed to start");
+                }
 
                 true
             }

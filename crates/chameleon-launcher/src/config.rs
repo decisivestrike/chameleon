@@ -19,10 +19,17 @@ pub struct ApplicationProviderConfig {
 pub struct WallpapersProviderConfig {
     #[serde(default = "default_wallpapers_path")]
     pub path: PathBuf,
+
+    #[serde(default = "default_change_command")]
+    pub change_command: String,
 }
 
 fn default_wallpapers_path() -> PathBuf {
     home_dir().unwrap().join("/Pictures")
+}
+
+fn default_change_command() -> String {
+    "awww img {{image}}".to_string()
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
