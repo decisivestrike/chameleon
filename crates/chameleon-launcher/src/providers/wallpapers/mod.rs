@@ -182,13 +182,16 @@ impl super::Provider for WallpapersProvider {
                 let full_wp_path =
                     format!("{}/{}", self.wallpapers_path, path.picture_name());
 
-                let replaced = self
-                    .change_wallpapers_cmd
-                    .replace("{{image}}", &full_wp_path);
-                let (command, args) = replaced.split_once(" ").unwrap();
+                let (command, args) =
+                    self.change_wallpapers_cmd.split_once(" ").unwrap();
+
+                let args: Vec<&str> = args
+                    .split_whitespace()
+                    .map(|s| if s == "{{image}}" { &full_wp_path } else { s })
+                    .collect();
 
                 Command::new(command)
-                    .args(args.split_whitespace())
+                    .args(args)
                     .spawn()
                     .expect("command failed to start");
 
@@ -198,6 +201,8 @@ impl super::Provider for WallpapersProvider {
                             "image",
                             "--source-color-index",
                             "0",
+                            "--fallback-color",
+                            "#808080",
                             &format!(
                                 "{}/.cache/chameleon/thumbnails/{}",
                                 home_dir().unwrap().to_string_lossy(),

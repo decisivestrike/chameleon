@@ -54,6 +54,8 @@ mod imp {
             self.container.set_spacing(0);
 
             self.switcher.set_stack(Some(&self.stack));
+            self.switcher.set_hexpand(false);
+            self.switcher.set_halign(Align::Center);
 
             self.container.append(&self.searchbar);
             self.container.append(&self.switcher);

@@ -8,7 +8,7 @@ mod imp {
     use gtk::pango::{self};
     use gtk::prelude::{BoxExt, OrientableExt, WidgetExt};
     use gtk::subclass::prelude::*;
-    use gtk::{Orientation, glib};
+    use gtk::{Align, Orientation, glib};
 
     pub struct ApplicationRowImp {
         pub icon: gtk::Image,
@@ -27,7 +27,7 @@ mod imp {
 
             let name = gtk::Label::builder()
                 .xalign(0.0)
-                .css_classes(["name"])
+                .css_classes(["app-name"])
                 .build();
 
             let comment = gtk::Label::builder()
@@ -35,7 +35,7 @@ mod imp {
                 .max_width_chars(60)
                 .ellipsize(pango::EllipsizeMode::End)
                 .xalign(0.0)
-                .css_classes(["comment"])
+                .css_classes(["app-comment"])
                 .build();
 
             Self {
@@ -59,6 +59,8 @@ mod imp {
 
             let text_container = gtk::Box::builder()
                 .orientation(Orientation::Vertical)
+                .halign(Align::Center)
+                .valign(Align::Center)
                 .spacing(4)
                 .css_classes(["text-container"])
                 .build();
