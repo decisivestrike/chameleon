@@ -87,8 +87,8 @@ impl Battery {
     }
 
     fn format(charge: u8, icons: &Vec<String>) -> String {
-        let divider = 100.0 / icons.len() as f32;
-        let i = (charge as f32 / divider).round() as usize;
+        let i =
+            (charge as f32 / 100.0 * (icons.len() - 1) as f32).round() as usize;
 
         format!("{} {}%", icons[i], charge)
     }

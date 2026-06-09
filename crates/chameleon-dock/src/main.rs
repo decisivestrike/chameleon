@@ -36,10 +36,10 @@ mod imp {
             win.set_decorated(false);
             win.set_resizable(false);
             win.set_widget_name("dock-window");
-            win.set_namespace(Some("chameleon-dock"));
 
             // Layer shell
             win.init_layer_shell();
+            win.set_namespace(Some("chameleon-dock"));
             win.set_layer(Layer::Bottom);
             win.set_anchor(Edge::Bottom, true);
             win.set_margin(Edge::Bottom, 40);
