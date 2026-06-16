@@ -3,6 +3,8 @@ use glib::Object;
 use gtk::glib;
 use thiserror::Error;
 
+use crate::providers::ItemData;
+
 mod imp {
     use super::*;
     use glib::Properties;
@@ -35,6 +37,20 @@ mod imp {
 
     #[glib::derived_properties]
     impl ObjectImpl for ApplicationEntryImp {}
+}
+
+impl ItemData for ApplicationEntry {
+    fn id(&self) -> String {
+        self.name()
+    }
+
+    fn fuzzy_score(&self) -> i32 {
+        self.fuzzy_score()
+    }
+
+    fn set_fuzzy_score(&self, score: i32) {
+        self.set_fuzzy_score(score);
+    }
 }
 
 const TRUE_LITERAL: &str = "true";

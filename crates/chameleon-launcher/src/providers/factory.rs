@@ -1,5 +1,5 @@
-use gtk::glib::object::{Cast, CastNone, IsA};
-use gtk::glib::{self};
+use crate::providers::{ItemData, ItemView};
+use gtk::glib::object::{Cast, CastNone};
 use gtk::prelude::ListItemExt;
 use gtk::{ListItem, SignalListItemFactory};
 
@@ -8,8 +8,8 @@ pub struct Factory;
 impl Factory {
     pub fn new<Data, Widget>() -> SignalListItemFactory
     where
-        Data: IsA<glib::Object>,
-        Widget: super::Bindable<Data = Data> + Default,
+        Data: ItemData,
+        Widget: ItemView<Data = Data> + Default,
     {
         let factory = SignalListItemFactory::new();
 
@@ -36,7 +36,7 @@ impl Factory {
                 .and_downcast::<Widget>()
                 .expect("Needs to be Widget");
 
-            widget.bind_data(&data);
+            widget.bind(&data);
         });
 
         factory

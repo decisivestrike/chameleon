@@ -1,6 +1,5 @@
-use crate::providers::Provider;
 use crate::providers::applications::ApplicationProvider;
-use crate::providers::wallpapers::WallpapersProvider;
+use crate::providers::{Provider, WallpapersProvider};
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::env::home_dir;

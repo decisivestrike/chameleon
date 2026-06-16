@@ -1,4 +1,4 @@
-use crate::providers::Bindable;
+use crate::providers::ItemView;
 use crate::providers::wallpapers::wallpaper::Wallpaper;
 use gtk::glib::subclass::types::ObjectSubclassIsExt;
 use gtk::glib::{self, Object, clone};
@@ -78,10 +78,10 @@ impl ImageCell {
     }
 }
 
-impl Bindable for ImageCell {
+impl ItemView for ImageCell {
     type Data = Wallpaper;
 
-    fn bind_data(&self, wallpaper: &Self::Data) {
+    fn bind(&self, wallpaper: &Self::Data) {
         let imp = self.imp();
 
         if let Some(paintable) = wallpaper.texture().as_ref() {

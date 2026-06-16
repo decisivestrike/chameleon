@@ -1,5 +1,5 @@
-use crate::providers::Bindable;
 use crate::providers::applications::entry::ApplicationEntry;
+use crate::providers::{Bindable, ItemView};
 use gtk::glib;
 use gtk::glib::Object;
 use gtk::glib::subclass::types::ObjectSubclassIsExt;
@@ -98,10 +98,10 @@ impl ApplicationRow {
     }
 }
 
-impl Bindable for ApplicationRow {
+impl ItemView for ApplicationRow {
     type Data = ApplicationEntry;
 
-    fn bind_data(&self, entry: &Self::Data) {
+    fn bind(&self, entry: &Self::Data) {
         let imp = self.imp();
 
         imp.icon.set_icon_name(Some(&entry.icon()));

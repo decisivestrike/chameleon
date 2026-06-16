@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use tokio::sync::oneshot;
 use tracing::{error, info};
 
+use crate::providers::ItemData;
 use crate::providers::wallpapers::cache::{load_from_cache, save_to_cache};
 
 mod imp {
@@ -145,5 +146,19 @@ impl Wallpaper {
 
             img.crop_imm(0, y, w, new_h)
         }
+    }
+}
+
+impl ItemData for Wallpaper {
+    fn id(&self) -> String {
+        self.picture_name()
+    }
+
+    fn fuzzy_score(&self) -> i32 {
+        self.fuzzy_score()
+    }
+
+    fn set_fuzzy_score(&self, score: i32) {
+        self.set_fuzzy_score(score)
     }
 }
