@@ -36,7 +36,6 @@ pub fn ensure_cache_dir() -> io::Result<()> {
 }
 
 /// Загружает превью из кэша (если существует) в виде `DynamicImage`.
-/// Возвращает `Some(img)` или `None`.
 pub fn load_from_cache(
     path: &Path,
     width: u32,

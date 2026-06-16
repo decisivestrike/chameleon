@@ -262,7 +262,7 @@ impl Launcher {
         } else {
             self.set_visible(target_visibility);
             self.imp().searchbar.set_text("");
-            self.active_provider().map(|p| p.reset());
+            self.active_provider().map(|p| p.reset_selection());
         }
     }
 }

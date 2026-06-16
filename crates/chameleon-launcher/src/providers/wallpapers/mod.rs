@@ -1,43 +1,75 @@
-mod cache;
-mod image_cell;
-mod wallpaper;
+pub mod cache;
+pub mod image_cell;
+pub mod wallpaper;
 
 use crate::config::WallpapersProviderConfig;
 use crate::providers::factory::Factory;
-use crate::providers::utils::{filter, sorter};
 use crate::providers::wallpapers::cache::cache_filename;
 use crate::providers::wallpapers::image_cell::ImageCell;
 use crate::providers::wallpapers::wallpaper::Wallpaper;
+use crate::providers::{ItemData, Provider, ProviderBase, View};
 use gtk::gio::ListStore;
-use gtk::gio::prelude::{ListModelExt, ListModelExtManual};
 use gtk::glib::clone;
-use gtk::glib::object::{Cast, CastNone};
-use gtk::prelude::{FilterExt, SorterExt};
-use gtk::{
-    Align, CustomFilter, CustomSorter, FilterChange, FilterListModel, GridView,
-    ListScrollFlags, SingleSelection, SortListModel, SorterChange, gio, glib,
-};
-use nucleo::{Matcher, Utf32Str};
-use std::cell::{Cell, RefCell};
-use std::cmp::Ordering;
+use gtk::glib::object::CastNone;
+use gtk::glib::subclass::types::ObjectSubclassIsExt;
+use gtk::{Align, GridView, gio, glib};
 use std::env::home_dir;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use walkdir::WalkDir;
 
+impl ItemData for Wallpaper {
+    fn id(&self) -> String {
+        self.picture_name()
+    }
+
+    fn fuzzy_score(&self) -> i32 {
+        self.fuzzy_score()
+    }
+
+    fn set_fuzzy_score(&self, score: i32) {
+        self.set_fuzzy_score(score)
+    }
+}
+
+impl super::ItemView for ImageCell {
+    type Data = Wallpaper;
+
+    fn bind(&self, wallpaper: &Self::Data) {
+        let imp = self.imp();
+
+        if let Some(paintable) = wallpaper.texture().as_ref() {
+            imp.picture.set_paintable(Some(paintable));
+        } else {
+            glib::timeout_add_seconds_local(
+                1,
+                clone!(
+                    #[strong(rename_to=cell)]
+                    self,
+                    #[strong]
+                    wallpaper,
+                    move || {
+                        if let Some(paintable) = wallpaper.texture().as_ref() {
+                            cell.imp().picture.set_paintable(Some(paintable));
+
+                            glib::ControlFlow::Break
+                        } else {
+                            glib::ControlFlow::Continue
+                        }
+                    }
+                ),
+            );
+        }
+
+        imp.name.set_text(&wallpaper.picture_name());
+    }
+}
+
 pub struct WallpapersProvider {
-    pub store: gio::ListStore,
-    pub filter: CustomFilter,
-    pub sorter: CustomSorter,
-    pub selection_model: SingleSelection,
-    pub view: GridView,
+    base: ProviderBase<Wallpaper>,
 
     pub wallpapers_path: String,
     pub change_wallpapers_cmd: String,
-
-    pub last_query_len: Cell<usize>,
-
-    pub matcher: RefCell<Matcher>,
 }
 
 fn get_image_paths(root: &str) -> Vec<PathBuf> {
@@ -83,163 +115,105 @@ impl WallpapersProvider {
             }
         ));
 
-        // filter
-        let filter = filter::<Wallpaper>(|entry| entry.fuzzy_score() != -1);
+        let base = ProviderBase::new(store, |m| {
+            let grid = GridView::builder()
+                .min_columns(5)
+                .max_columns(5)
+                .halign(Align::Fill)
+                .valign(Align::Fill)
+                .model(m)
+                .factory(&Factory::new::<Wallpaper, ImageCell>())
+                .build();
 
-        let filter_model = FilterListModel::builder()
-            .model(&store)
-            .filter(&filter)
-            .build();
-
-        // sort
-        let sorter = sorter::<Wallpaper>(move |first, second| {
-            let first_score = first.fuzzy_score();
-            let second_score = second.fuzzy_score();
-
-            match second_score.cmp(&first_score) {
-                Ordering::Equal => {
-                    let first_name = first.picture_name();
-                    let second_name = second.picture_name();
-
-                    first_name.cmp(&second_name)
-                }
-                score => score,
-            }
+            View::Grid(grid)
         });
-        let sort_model =
-            SortListModel::new(Some(filter_model), Some(sorter.clone()));
-
-        let selection_model = SingleSelection::new(Some(sort_model.clone()));
-        let view = GridView::builder()
-            .min_columns(5)
-            .max_columns(5)
-            .halign(Align::Fill)
-            .valign(Align::Fill)
-            .model(&selection_model)
-            .factory(&Factory::new::<Wallpaper, ImageCell>())
-            .build();
 
         Self {
-            selection_model,
+            base,
             wallpapers_path,
             change_wallpapers_cmd: config.change_command,
-            view,
-            store,
-            filter,
-            sorter,
-            matcher: Default::default(),
-            last_query_len: Default::default(),
         }
+    }
+
+    fn call_change_wallpaper_cmd(&self, full_wp_path: &str) {
+        let (command, args) =
+            self.change_wallpapers_cmd.split_once(" ").unwrap();
+
+        let args: Vec<&str> = args
+            .split_whitespace()
+            .map(|s| if s == "{{image}}" { &full_wp_path } else { s })
+            .collect();
+
+        Command::new(command)
+            .args(args)
+            .spawn()
+            .expect("command failed to start");
+    }
+
+    fn call_matugen(&self, full_wp_path: &str) {
+        Command::new("matugen")
+            .args([
+                "image",
+                "--source-color-index",
+                "0",
+                "--type",
+                "scheme-fidelity",
+                "--fallback-color",
+                "#808080",
+                &format!(
+                    "{}/.cache/chameleon/thumbnails/{}",
+                    home_dir().unwrap().to_string_lossy(),
+                    cache_filename(Path::new(&full_wp_path), 160, 90)
+                ),
+            ])
+            .spawn()
+            .expect("command failed to start");
     }
 }
 
-impl super::Provider for WallpapersProvider {
+impl Provider for WallpapersProvider {
     fn name(&self) -> &'static str {
-        "wallpapers"
+        "wallpaper"
     }
 
     fn update_model(&self, query: &str) {
-        let mut matcher = self.matcher.borrow_mut();
+        self.base.update_model(query);
+    }
 
-        for wallpaper in self.store.iter::<Wallpaper>().map(|e| e.unwrap()) {
-            let score = matcher
-                .fuzzy_match(
-                    Utf32Str::Ascii(wallpaper.picture_name().as_bytes()),
-                    Utf32Str::Ascii(query.as_bytes()),
-                )
-                .map(|score| score as i32)
-                .unwrap_or(-1);
+    fn select_below(&self) {}
 
-            wallpaper.set_fuzzy_score(score);
-        }
-
-        let query_len = query.len();
-
-        if query_len < self.last_query_len.get() {
-            self.filter.changed(FilterChange::LessStrict);
-            self.sorter.changed(SorterChange::LessStrict);
-        } else {
-            self.filter.changed(FilterChange::MoreStrict);
-            self.sorter.changed(SorterChange::MoreStrict);
-        }
-
-        self.last_query_len.set(query_len);
-        self.reset()
+    fn len(&self) -> usize {
+        self.base.len()
     }
 
     fn view(&self) -> gtk::ListBase {
-        self.view.clone().upcast()
+        self.base.view()
     }
 
     fn invoke_action(&self) -> bool {
         let maybe_path = self
+            .base
             .selection_model
             .selected_item()
             .and_downcast::<Wallpaper>();
 
-        match maybe_path {
-            Some(path) => {
-                let full_wp_path =
-                    format!("{}/{}", self.wallpapers_path, path.picture_name());
+        if let Some(path) = maybe_path {
+            let full_wp_path =
+                format!("{}/{}", self.wallpapers_path, path.picture_name());
 
-                let (command, args) =
-                    self.change_wallpapers_cmd.split_once(" ").unwrap();
+            self.call_change_wallpaper_cmd(&full_wp_path);
 
-                let args: Vec<&str> = args
-                    .split_whitespace()
-                    .map(|s| if s == "{{image}}" { &full_wp_path } else { s })
-                    .collect();
-
-                Command::new(command)
-                    .args(args)
-                    .spawn()
-                    .expect("command failed to start");
-
-                if true {
-                    Command::new("matugen")
-                        .args([
-                            "image",
-                            "--source-color-index",
-                            "0",
-                            "--fallback-color",
-                            "#808080",
-                            &format!(
-                                "{}/.cache/chameleon/thumbnails/{}",
-                                home_dir().unwrap().to_string_lossy(),
-                                cache_filename(
-                                    Path::new(&full_wp_path),
-                                    160,
-                                    90
-                                )
-                            ),
-                        ])
-                        .spawn()
-                        .expect("command failed to start");
-                }
-
-                true
+            if true {
+                self.call_matugen(&full_wp_path);
             }
-            None => false,
+
+            true
+        } else {
+            false
         }
     }
 
-    fn reset(&self) {
-        if self.len() > 0 {
-            self.selection_model.set_selected(0);
-            self.view.scroll_to(0, ListScrollFlags::SELECT, None);
-        }
-    }
-
-    fn len(&self) -> usize {
-        self.selection_model.n_items() as usize
-    }
-
-    fn select_below(&self) {
-        let i = self.selection_model.selected() + 1;
-
-        if (i as usize) < self.len() {
-            self.selection_model.set_selected(i);
-            self.view.scroll_to(i, ListScrollFlags::SELECT, None);
-        }
+    fn reset_selection(&self) {
+        self.base.reset_selection();
     }
 }

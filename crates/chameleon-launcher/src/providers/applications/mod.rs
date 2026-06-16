@@ -68,7 +68,7 @@ impl Provider for ApplicationProvider {
         }
 
         self.last_query_len.set(query_len);
-        self.reset()
+        self.reset_selection()
     }
 
     fn view(&self) -> gtk::ListBase {
@@ -92,7 +92,7 @@ impl Provider for ApplicationProvider {
         }
     }
 
-    fn reset(&self) {
+    fn reset_selection(&self) {
         if self.len() > 0 {
             self.selection_model.set_selected(0);
             self.view.scroll_to(0, ListScrollFlags::SELECT, None);
