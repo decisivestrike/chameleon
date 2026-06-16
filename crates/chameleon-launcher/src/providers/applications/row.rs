@@ -1,5 +1,5 @@
+use crate::providers::ItemView;
 use crate::providers::applications::entry::ApplicationEntry;
-use crate::providers::{Bindable, ItemView};
 use gtk::glib;
 use gtk::glib::Object;
 use gtk::glib::subclass::types::ObjectSubclassIsExt;

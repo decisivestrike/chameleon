@@ -1,3 +1,6 @@
+use crate::providers::ItemData;
+use crate::providers::utils::{filter, sorter};
+use crate::providers::view::View;
 use gtk::gio::prelude::{ListModelExt, ListModelExtManual};
 use gtk::prelude::{FilterExt, SorterExt};
 use gtk::{
@@ -8,10 +11,6 @@ use nucleo::{Matcher, Utf32Str};
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::marker::PhantomData;
-
-use crate::providers::ItemData;
-use crate::providers::utils::{filter, sorter};
-use crate::providers::view::View;
 
 pub struct ProviderBase<D>
 where
