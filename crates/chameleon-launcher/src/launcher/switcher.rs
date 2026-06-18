@@ -69,9 +69,9 @@ impl ProviderSwitcher {
             let page = page.clone();
 
             move |button| {
+                switcher.set_active_index(index);
                 switcher.set_active_page(&page);
                 switcher.set_active_button(button);
-                switcher.set_active_index(index);
             }
         });
 

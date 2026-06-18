@@ -10,6 +10,7 @@ use tracing::info;
 
 mod imp {
     use super::*;
+    use crate::launcher::LauncherSearchbar;
     use crate::launcher::switcher::ProviderSwitcher;
     use crate::providers::Provider;
     use gtk::prelude::OrientableExt;
@@ -18,10 +19,9 @@ mod imp {
 
     #[derive(Default)]
     pub struct LauncherContentImp {
-        pub searchbar: gtk::Entry,
+        pub searchbar: LauncherSearchbar,
         pub switcher: ProviderSwitcher,
         pub stack: gtk::Stack,
-        pub count: gtk::Label,
         pub providers: RefCell<Vec<Rc<dyn Provider>>>,
     }
 
@@ -59,7 +59,6 @@ mod imp {
             box_.append(&self.searchbar);
             box_.append(&self.switcher);
             box_.append(&self.stack);
-            // provider.append(&self.count);
         }
     }
 
@@ -80,11 +79,13 @@ impl LauncherContent {
         let imp = content.imp();
 
         imp.searchbar
+            .imp()
+            .entry
             .set_placeholder_text(Some(&config.searchbar_placeholder));
 
         let providers = config.instantiate_providers();
 
-        for provider in providers.into_iter() {
+        for (i, provider) in providers.into_iter().enumerate() {
             let scrolled_window = ScrolledWindow::builder()
                 .propagate_natural_height(true)
                 .halign(Align::Fill)
@@ -104,11 +105,15 @@ impl LauncherContent {
                 .child(&provider.view())
                 .build();
 
+            if i == 0 {
+                imp.searchbar.set_items_count(provider.len() as u64);
+            }
+
             imp.switcher.append_page(&provider.name(), &scrolled_window);
             imp.providers.borrow_mut().push(provider);
         }
 
-        imp.searchbar.connect_changed(clone!(
+        imp.searchbar.entry().connect_changed(clone!(
             #[strong]
             content,
             move |searchbar| {
@@ -133,7 +138,7 @@ impl LauncherContent {
 
     pub fn update_model_from_query(&self) {
         let searchbar = &self.imp().searchbar;
-        let query = searchbar.text();
+        let query = searchbar.query();
         self.update_model(&query);
     }
 
@@ -143,22 +148,17 @@ impl LauncherContent {
     }
 
     pub fn reset_state(&self) {
-        self.imp().searchbar.set_text("");
+        self.imp().searchbar.clear();
         self.active_provider().reset_selection();
     }
 
     fn update_model(&self, query: &str) {
         let provider = self.active_provider();
-        info!("Update: {}, {}", provider.name(), query);
+
+        info!("Update {}: '{}'", provider.name(), query);
         provider.update_model(&query);
 
-        if provider.len() > 0 {
-            let label = format!("{}", provider.len().to_string());
-            self.imp().count.set_label(&label);
-            self.imp().count.set_visible(true);
-        } else {
-            self.imp().count.set_visible(false);
-        }
+        self.imp().searchbar.set_items_count(provider.len() as u64);
     }
 
     fn active_provider(&self) -> Rc<dyn Provider> {
