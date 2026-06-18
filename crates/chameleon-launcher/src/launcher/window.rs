@@ -41,11 +41,7 @@ mod imp {
             window.init_layer_shell();
             window.set_namespace(Some("chameleon-launcher"));
             window.set_layer(Layer::Top);
-            window.set_keyboard_mode(if false {
-                KeyboardMode::Exclusive
-            } else {
-                KeyboardMode::OnDemand
-            });
+            window.set_keyboard_mode(KeyboardMode::Exclusive);
         }
     }
 
@@ -79,11 +75,7 @@ impl Launcher {
                     //     glib::Propagation::Stop
                     // }
                     Key::Tab => {
-                        // let container = &launcher.imp().container;
-                        // container.focus_child().map(|focused| {
-                        //     container.set_focus_child(focused.next_sibling())
-                        // });
-
+                        launcher.next_provider();
                         glib::Propagation::Stop
                     }
                     Key::Return => {
@@ -102,6 +94,21 @@ impl Launcher {
         launcher.add_controller(root_controller);
 
         launcher
+    }
+
+    pub fn toggle_visibility(&self) {
+        let target_visibility = !self.get_visible();
+
+        if target_visibility {
+            self.present();
+        } else {
+            self.set_visible(target_visibility);
+            self.root().reset_state();
+        }
+    }
+
+    fn update_model(&self) {
+        self.root().update_model_from_query();
     }
 
     fn init(&self, config: LauncherConfig) {
@@ -125,18 +132,7 @@ impl Launcher {
         }
     }
 
-    pub fn update_model(&self) {
-        self.root().update_model_from_query();
-    }
-
-    pub fn toggle_visibility(&self) {
-        let target_visibility = !self.get_visible();
-
-        if target_visibility {
-            self.present();
-        } else {
-            self.set_visible(target_visibility);
-            self.root().reset_state();
-        }
+    fn next_provider(&self) {
+        self.root().imp().switcher.next_provider();
     }
 }

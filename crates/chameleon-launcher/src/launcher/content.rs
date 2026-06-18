@@ -11,6 +11,7 @@ use tracing::info;
 
 mod imp {
     use super::*;
+    use crate::launcher::switcher::ProviderSwitcher;
     use crate::providers::Provider;
     use gtk::prelude::OrientableExt;
     use gtk::subclass::prelude::*;
@@ -19,7 +20,7 @@ mod imp {
     #[derive(Default)]
     pub struct LauncherContentImp {
         pub searchbar: gtk::Entry,
-        pub switcher: gtk::StackSwitcher,
+        pub switcher: ProviderSwitcher,
         pub stack: gtk::Stack,
         pub count: gtk::Label,
         pub providers: RefCell<HashMap<String, Rc<dyn Provider>>>,
@@ -42,7 +43,7 @@ mod imp {
             self.stack.set_transition_duration(0);
             self.stack.set_transition_type(StackTransitionType::None);
 
-            self.switcher.set_stack(Some(&self.stack));
+            self.switcher.set_stack(&self.stack);
             self.switcher.set_hexpand(false);
             self.switcher.set_halign(Align::Center);
 
@@ -59,7 +60,7 @@ mod imp {
             box_.append(&self.searchbar);
             box_.append(&self.switcher);
             box_.append(&self.stack);
-            box_.append(&self.count);
+            // provider.append(&self.count);
         }
     }
 
@@ -84,18 +85,7 @@ impl LauncherContent {
 
         let providers = config.instantiate_providers();
 
-        fn capitalize_unicode(s: &str) -> String {
-            let mut chars = s.chars();
-            match chars.next() {
-                None => String::new(),
-                Some(first) => {
-                    first.to_uppercase().collect::<String>()
-                        + chars.as_str().to_lowercase().as_str()
-                }
-            }
-        }
-
-        for p in providers.into_iter().rev() {
+        for provider in providers.into_iter() {
             let scrolled_window = ScrolledWindow::builder()
                 .propagate_natural_height(true)
                 .halign(Align::Fill)
@@ -111,21 +101,13 @@ impl LauncherContent {
                 .hexpand(false)
                 .vexpand(false)
                 .overlay_scrolling(true)
-                .name(p.name())
-                .child(&p.view())
+                .name(provider.name())
+                .child(&provider.view())
                 .build();
 
-            content.imp().stack.add_titled(
-                &scrolled_window,
-                Some(p.name()),
-                &capitalize_unicode(p.name()),
-            );
-
-            content
-                .imp()
-                .providers
-                .borrow_mut()
-                .insert(p.name().to_string(), p);
+            let name = Self::capitalize(provider.name());
+            imp.switcher.append_page(&name, &scrolled_window);
+            imp.providers.borrow_mut().insert(name, provider);
         }
 
         imp.searchbar.connect_changed(clone!(
@@ -165,6 +147,11 @@ impl LauncherContent {
         }
     }
 
+    pub fn reset_state(&self) {
+        self.imp().searchbar.set_text("");
+        self.active_provider().map(|p| p.reset_selection());
+    }
+
     fn update_model(&self, query: &str) {
         if let Some(provider) = self.active_provider() {
             info!("Update: {}, {}", provider.name(), query);
@@ -180,15 +167,22 @@ impl LauncherContent {
         }
     }
 
-    pub fn reset_state(&self) {
-        self.imp().searchbar.set_text("");
-        self.active_provider().map(|p| p.reset_selection());
-    }
-
     fn active_provider(&self) -> Option<Rc<dyn Provider>> {
         let name = self.imp().stack.visible_child_name()?.to_string();
         let providers = self.imp().providers.borrow();
 
         Some(providers.get(&name)?.clone())
+    }
+
+    fn capitalize(s: &str) -> String {
+        let mut chars = s.chars();
+
+        match chars.next() {
+            None => String::new(),
+            Some(first) => {
+                first.to_uppercase().collect::<String>()
+                    + chars.as_str().to_lowercase().as_str()
+            }
+        }
     }
 }
