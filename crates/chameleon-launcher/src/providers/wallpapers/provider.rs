@@ -122,7 +122,7 @@ impl WallpapersProvider {
 
 impl Provider for WallpapersProvider {
     fn name(&self) -> &'static str {
-        "wallpaper"
+        "Wallpaper"
     }
 
     fn update_model(&self, query: &str) {

@@ -24,7 +24,7 @@ pub struct ApplicationProvider {
 
 impl Provider for ApplicationProvider {
     fn name(&self) -> &'static str {
-        "applications"
+        "Applications"
     }
 
     fn update_model(&self, query: &str) {

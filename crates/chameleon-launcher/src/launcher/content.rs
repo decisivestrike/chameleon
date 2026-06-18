@@ -5,7 +5,6 @@ use gtk::glib::{Object, clone};
 use gtk::prelude::*;
 use gtk::{Align, PolicyType, ScrolledWindow, StackTransitionType, glib};
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 use tracing::info;
 
@@ -23,7 +22,7 @@ mod imp {
         pub switcher: ProviderSwitcher,
         pub stack: gtk::Stack,
         pub count: gtk::Label,
-        pub providers: RefCell<HashMap<String, Rc<dyn Provider>>>,
+        pub providers: RefCell<Vec<Rc<dyn Provider>>>,
     }
 
     #[glib::object_subclass]
@@ -105,9 +104,8 @@ impl LauncherContent {
                 .child(&provider.view())
                 .build();
 
-            let name = Self::capitalize(provider.name());
-            imp.switcher.append_page(&name, &scrolled_window);
-            imp.providers.borrow_mut().insert(name, provider);
+            imp.switcher.append_page(&provider.name(), &scrolled_window);
+            imp.providers.borrow_mut().push(provider);
         }
 
         imp.searchbar.connect_changed(clone!(
@@ -140,49 +138,32 @@ impl LauncherContent {
     }
 
     pub fn invoke_provider_action(&self) -> bool {
-        if let Some(provider) = self.active_provider() {
-            provider.invoke_action()
-        } else {
-            false
-        }
+        let provider = self.active_provider();
+        provider.invoke_action()
     }
 
     pub fn reset_state(&self) {
         self.imp().searchbar.set_text("");
-        self.active_provider().map(|p| p.reset_selection());
+        self.active_provider().reset_selection();
     }
 
     fn update_model(&self, query: &str) {
-        if let Some(provider) = self.active_provider() {
-            info!("Update: {}, {}", provider.name(), query);
-            provider.update_model(&query);
+        let provider = self.active_provider();
+        info!("Update: {}, {}", provider.name(), query);
+        provider.update_model(&query);
 
-            if provider.len() > 0 {
-                let label = format!("{}", provider.len().to_string());
-                self.imp().count.set_label(&label);
-                self.imp().count.set_visible(true);
-            } else {
-                self.imp().count.set_visible(false);
-            }
+        if provider.len() > 0 {
+            let label = format!("{}", provider.len().to_string());
+            self.imp().count.set_label(&label);
+            self.imp().count.set_visible(true);
+        } else {
+            self.imp().count.set_visible(false);
         }
     }
 
-    fn active_provider(&self) -> Option<Rc<dyn Provider>> {
-        let name = self.imp().stack.visible_child_name()?.to_string();
-        let providers = self.imp().providers.borrow();
-
-        Some(providers.get(&name)?.clone())
-    }
-
-    fn capitalize(s: &str) -> String {
-        let mut chars = s.chars();
-
-        match chars.next() {
-            None => String::new(),
-            Some(first) => {
-                first.to_uppercase().collect::<String>()
-                    + chars.as_str().to_lowercase().as_str()
-            }
-        }
+    fn active_provider(&self) -> Rc<dyn Provider> {
+        let imp = self.imp();
+        let i = imp.switcher.active_index();
+        imp.providers.borrow()[i].clone()
     }
 }

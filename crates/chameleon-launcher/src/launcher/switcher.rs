@@ -52,9 +52,7 @@ glib::wrapper! {
 
 impl ProviderSwitcher {
     pub fn new() -> Self {
-        let switcher: Self = Object::builder().build();
-
-        switcher
+        Object::builder().build()
     }
 
     pub fn set_stack(&self, stack: &gtk::Stack) {
@@ -102,7 +100,7 @@ impl ProviderSwitcher {
         self.imp().index.set(value);
     }
 
-    fn active_index(&self) -> usize {
+    pub fn active_index(&self) -> usize {
         self.imp().active_index.get()
     }
 
