@@ -1,7 +1,6 @@
 use crate::providers::applications::ApplicationProvider;
 use crate::providers::{Provider, WallpapersProvider};
 use serde::Deserialize;
-use std::collections::HashSet;
 use std::env::home_dir;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -76,7 +75,7 @@ impl LauncherConfig {
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
-pub struct ProviderList(HashSet<ProviderVariant>);
+pub struct ProviderList(Vec<ProviderVariant>);
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]

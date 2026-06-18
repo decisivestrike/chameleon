@@ -1,7 +1,7 @@
-use gtk::glib;
 use gtk::glib::Object;
 use gtk::glib::subclass::types::ObjectSubclassIsExt;
 use gtk::prelude::*;
+use gtk::{ScrolledWindow, ToggleButton, glib};
 use std::cell::RefCell;
 
 mod imp {
@@ -19,8 +19,8 @@ mod imp {
         pub active_page: RefCell<gtk::ScrolledWindow>,
         pub pages: RefCell<Vec<gtk::ScrolledWindow>>,
 
-        pub active_button: RefCell<gtk::Button>,
-        pub buttons: RefCell<Vec<gtk::Button>>,
+        pub active_button: RefCell<gtk::ToggleButton>,
+        pub buttons: RefCell<Vec<gtk::ToggleButton>>,
 
         pub stack: RefCell<Option<gtk::Stack>>,
     }
@@ -56,7 +56,9 @@ glib::wrapper! {
 
 impl ProviderSwitcher {
     pub fn new() -> Self {
-        Object::builder().build()
+        let switcher: Self = Object::builder().build();
+
+        switcher
     }
 
     pub fn set_stack(&self, stack: &gtk::Stack) {
@@ -64,57 +66,87 @@ impl ProviderSwitcher {
     }
 
     pub fn append_page(&self, name: &str, page: &gtk::ScrolledWindow) {
-        let index = self.imp().index.get();
-        self.imp().index.set(index + 1);
+        let index = self.index();
+        self.set_index(index + 1);
 
-        let button = gtk::Button::with_label(name);
-
+        let button = gtk::ToggleButton::with_label(name);
         button.connect_clicked({
             let switcher = self.clone();
             let page = page.clone();
 
             move |button| {
-                let active_button = switcher.imp().active_button.clone();
-                active_button.borrow().remove_css_class("active");
-                button.add_css_class("active");
-                *active_button.borrow_mut() = button.clone();
-
-                switcher.stack().map(|s| s.set_visible_child(&page));
-                switcher.imp().active_index.set(index);
+                switcher.set_active_page(&page);
+                switcher.set_active_button(button);
+                switcher.set_active_index(index);
             }
         });
 
         self.append(&button);
         self.imp().buttons.borrow_mut().push(button.clone());
+
+        self.add_to_stack(page);
         self.imp().pages.borrow_mut().push(page.clone());
-        self.add_to_stack(page, name);
+
+        if index == 0 {
+            self.set_active_button(&self.button_by_index(0));
+        }
     }
 
     pub fn next_provider(&self) {
-        let imp = self.imp();
+        let active_index = self.active_index();
+        let next_index = (active_index + 1) % self.index();
 
-        let active_index = imp.active_index.get();
-        let next_index = (active_index + 1) % imp.index.get();
+        self.set_active_index(next_index);
+        self.set_active_page(&self.page_by_index(next_index));
+        self.set_active_button(&self.button_by_index(next_index));
+    }
 
-        imp.active_index.set(next_index);
-        self.stack()
-            .map(|s| s.set_visible_child(&imp.pages.borrow()[next_index]));
+    fn index(&self) -> usize {
+        self.imp().index.get()
+    }
 
-        let active_button = self.imp().active_button.clone();
-        active_button.borrow().remove_css_class("active");
+    fn set_index(&self, value: usize) {
+        self.imp().index.set(value);
+    }
 
-        let button = &self.imp().buttons.borrow()[next_index];
-        button.add_css_class("active");
-        *active_button.borrow_mut() = button.clone();
+    fn active_index(&self) -> usize {
+        self.imp().active_index.get()
+    }
+
+    fn set_active_index(&self, index: usize) {
+        self.imp().active_index.set(index);
+    }
+
+    fn active_button(&self) -> gtk::ToggleButton {
+        self.imp().active_button.borrow().clone()
+    }
+
+    fn set_active_button(&self, button: &ToggleButton) {
+        let active_button = self.active_button();
+        active_button.set_active(false);
+        button.set_active(true);
+        *self.imp().active_button.borrow_mut() = button.clone();
+    }
+
+    fn button_by_index(&self, index: usize) -> ToggleButton {
+        self.imp().buttons.borrow()[index].clone()
+    }
+
+    fn set_active_page(&self, page: &ScrolledWindow) {
+        self.stack().map(|s| s.set_visible_child(page));
+    }
+
+    fn page_by_index(&self, index: usize) -> ScrolledWindow {
+        self.imp().pages.borrow()[index].clone()
     }
 
     fn stack(&self) -> Option<gtk::Stack> {
         self.imp().stack.borrow().clone()
     }
 
-    fn add_to_stack(&self, child: &impl IsA<gtk::Widget>, name: &str) {
+    fn add_to_stack(&self, child: &impl IsA<gtk::Widget>) {
         if let Some(stack) = self.imp().stack.borrow_mut().as_mut() {
-            stack.add_named(child, Some(name));
+            stack.add_child(child);
         }
     }
 }

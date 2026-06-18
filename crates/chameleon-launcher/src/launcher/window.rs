@@ -107,10 +107,6 @@ impl Launcher {
         }
     }
 
-    fn update_model(&self) {
-        self.root().update_model_from_query();
-    }
-
     fn init(&self, config: LauncherConfig) {
         let content = LauncherContent::new(config);
         self.set_child(Some(&content));
