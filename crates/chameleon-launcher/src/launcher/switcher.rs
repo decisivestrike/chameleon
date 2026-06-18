@@ -3,26 +3,21 @@ use gtk::glib::subclass::types::ObjectSubclassIsExt;
 use gtk::prelude::*;
 use gtk::{ScrolledWindow, ToggleButton, glib};
 use std::cell::RefCell;
+use std::iter::successors;
 
 mod imp {
     use super::*;
     use gtk::Orientation;
     use gtk::prelude::OrientableExt;
     use gtk::subclass::prelude::*;
-    use std::cell::Cell;
+    use std::cell::{Cell, OnceCell};
 
     #[derive(Default)]
     pub struct ProviderSwitcherImp {
         pub index: Cell<usize>,
         pub active_index: Cell<usize>,
-
-        pub active_page: RefCell<gtk::ScrolledWindow>,
-        pub pages: RefCell<Vec<gtk::ScrolledWindow>>,
-
         pub active_button: RefCell<gtk::ToggleButton>,
-        pub buttons: RefCell<Vec<gtk::ToggleButton>>,
-
-        pub stack: RefCell<Option<gtk::Stack>>,
+        pub stack: OnceCell<gtk::Stack>,
     }
 
     #[glib::object_subclass]
@@ -40,6 +35,7 @@ mod imp {
             box_.set_orientation(Orientation::Horizontal);
             box_.set_spacing(0);
             box_.set_widget_name("switcher");
+            box_.set_can_focus(false);
         }
     }
 
@@ -62,7 +58,7 @@ impl ProviderSwitcher {
     }
 
     pub fn set_stack(&self, stack: &gtk::Stack) {
-        *self.imp().stack.borrow_mut() = Some(stack.clone());
+        let _ = self.imp().stack.set(stack.clone());
     }
 
     pub fn append_page(&self, name: &str, page: &gtk::ScrolledWindow) {
@@ -82,10 +78,7 @@ impl ProviderSwitcher {
         });
 
         self.append(&button);
-        self.imp().buttons.borrow_mut().push(button.clone());
-
-        self.add_to_stack(page);
-        self.imp().pages.borrow_mut().push(page.clone());
+        self.stack().add_child(page);
 
         if index == 0 {
             self.set_active_button(&self.button_by_index(0));
@@ -129,25 +122,33 @@ impl ProviderSwitcher {
     }
 
     fn button_by_index(&self, index: usize) -> ToggleButton {
-        self.imp().buttons.borrow()[index].clone()
+        successors(self.first_child(), |child| child.next_sibling())
+            .nth(index)
+            .expect("must exist")
+            .downcast()
+            .expect("must be a ToggleButton")
     }
 
     fn set_active_page(&self, page: &ScrolledWindow) {
-        self.stack().map(|s| s.set_visible_child(page));
+        self.stack().set_visible_child(page);
     }
 
     fn page_by_index(&self, index: usize) -> ScrolledWindow {
-        self.imp().pages.borrow()[index].clone()
+        let pages = self.stack().pages();
+
+        let stack_page = pages
+            .item(index as u32)
+            .and_downcast::<gtk::StackPage>()
+            .expect("it must be a StackPage");
+
+        stack_page
+            .child()
+            .downcast::<ScrolledWindow>()
+            .expect("it must be a ScrolledWindow")
     }
 
-    fn stack(&self) -> Option<gtk::Stack> {
-        self.imp().stack.borrow().clone()
-    }
-
-    fn add_to_stack(&self, child: &impl IsA<gtk::Widget>) {
-        if let Some(stack) = self.imp().stack.borrow_mut().as_mut() {
-            stack.add_child(child);
-        }
+    fn stack(&self) -> &gtk::Stack {
+        self.imp().stack.get().expect("must be initialized")
     }
 }
 
