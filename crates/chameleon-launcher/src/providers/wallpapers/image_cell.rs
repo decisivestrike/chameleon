@@ -82,10 +82,10 @@ impl ItemView for ImageCell {
     type Data = Wallpaper;
 
     fn bind(&self, wallpaper: &Self::Data) {
-        let imp = self.imp();
-
         if let Some(paintable) = wallpaper.texture().as_ref() {
+            let imp = self.imp();
             imp.picture.set_paintable(Some(paintable));
+            imp.name.set_text(&wallpaper.picture_name());
         } else {
             glib::timeout_add_seconds_local(
                 1,
@@ -96,7 +96,9 @@ impl ItemView for ImageCell {
                     wallpaper,
                     move || {
                         if let Some(paintable) = wallpaper.texture().as_ref() {
-                            cell.imp().picture.set_paintable(Some(paintable));
+                            let imp = cell.imp();
+                            imp.picture.set_paintable(Some(paintable));
+                            imp.name.set_text(&wallpaper.picture_name());
 
                             glib::ControlFlow::Break
                         } else {
@@ -106,8 +108,6 @@ impl ItemView for ImageCell {
                 ),
             );
         }
-
-        imp.name.set_text(&wallpaper.picture_name());
     }
 }
 
