@@ -9,7 +9,6 @@ use crate::providers::{Direction, Provider};
 use gtk::gio::ListStore;
 use gtk::glib::clone;
 use gtk::glib::object::CastNone;
-use gtk::prelude::SelectionModelExt;
 use gtk::{Align, GridView, gio, glib};
 use std::env::home_dir;
 use std::path::{Path, PathBuf};
