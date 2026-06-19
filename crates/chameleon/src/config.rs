@@ -1,28 +1,32 @@
 use chameleon_shared::utils::read_config;
 use serde::Deserialize;
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::process::exit;
+use tracing::error;
 
-#[derive(Default, Deserialize)]
-#[serde(default)]
-pub struct Preset {
-    /// Enabled modules
-    pub enabled: HashSet<Module>,
-
-    /// Path to folder with themes
-    pub themes_root: Option<PathBuf>,
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Config {
+    pub modules: HashSet<Module>,
 
     /// Default theme for preset
-    pub theme: String,
+    pub theme: Option<String>,
 }
 
-impl Preset {
+impl Config {
     pub fn load(path: impl AsRef<Path>) -> Self {
-        read_config(&path).unwrap()
+        match read_config(&path) {
+            Ok(config) => config,
+            Err(e) => {
+                error!("{}", e);
+                exit(1)
+            }
+        }
     }
 }
 
-#[derive(Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum Module {
     Launcher,
