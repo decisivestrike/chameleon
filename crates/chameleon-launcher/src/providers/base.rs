@@ -73,9 +73,9 @@ where
         }
     }
 
-    pub fn update_model(&self, query: &str) {
+    pub fn update_model(&self, query: &str, provider_changed: bool) {
         self.update_fuzzy_score(query);
-        self.update_filter_and_sorter(query);
+        self.update_filter_and_sorter(query, provider_changed);
         self.reset_selection();
     }
 
@@ -111,10 +111,13 @@ where
         }
     }
 
-    fn update_filter_and_sorter(&self, query: &str) {
+    fn update_filter_and_sorter(&self, query: &str, provider_changed: bool) {
         let query_len = query.len();
 
-        if query_len < self.last_query_len.get() {
+        if provider_changed {
+            self.filter.changed(FilterChange::Different);
+            self.sorter.changed(SorterChange::Different);
+        } else if query_len < self.last_query_len.get() {
             self.filter.changed(FilterChange::LessStrict);
             self.sorter.changed(SorterChange::LessStrict);
         } else {

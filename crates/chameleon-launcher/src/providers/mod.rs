@@ -27,7 +27,7 @@ pub trait ItemView: IsA<gtk::Widget> {
 pub trait Provider {
     fn name(&self) -> &'static str;
 
-    fn update_model(&self, query: &str);
+    fn update_model(&self, query: &str, provider_changed: bool);
 
     fn select_below(&self);
 

@@ -12,10 +12,16 @@ mod imp {
     use gtk::subclass::prelude::*;
     use std::cell::{Cell, OnceCell};
 
-    #[derive(Default)]
+    #[derive(Default, glib::Properties)]
+    #[properties(wrapper_type = super::ProviderSwitcher)]
     pub struct ProviderSwitcherImp {
-        pub index: Cell<usize>,
-        pub active_index: Cell<usize>,
+        #[property(get, set)]
+        pub index: Cell<u32>,
+
+        /// Index of current active page and provider
+        #[property(get, set)]
+        pub active_index: Cell<u32>,
+
         pub active_button: RefCell<gtk::ToggleButton>,
         pub stack: OnceCell<gtk::Stack>,
     }
@@ -27,6 +33,7 @@ mod imp {
         type ParentType = gtk::Box;
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for ProviderSwitcherImp {
         fn constructed(&self) {
             self.parent_constructed();
@@ -69,9 +76,9 @@ impl ProviderSwitcher {
             let page = page.clone();
 
             move |button| {
-                switcher.set_active_index(index);
                 switcher.set_active_page(&page);
                 switcher.set_active_button(button);
+                switcher.set_active_index(index);
             }
         });
 
@@ -83,29 +90,13 @@ impl ProviderSwitcher {
         }
     }
 
-    pub fn next_provider(&self) {
+    pub fn next_page(&self) {
         let active_index = self.active_index();
         let next_index = (active_index + 1) % self.index();
 
-        self.set_active_index(next_index);
         self.set_active_page(&self.page_by_index(next_index));
         self.set_active_button(&self.button_by_index(next_index));
-    }
-
-    fn index(&self) -> usize {
-        self.imp().index.get()
-    }
-
-    fn set_index(&self, value: usize) {
-        self.imp().index.set(value);
-    }
-
-    pub fn active_index(&self) -> usize {
-        self.imp().active_index.get()
-    }
-
-    fn set_active_index(&self, index: usize) {
-        self.imp().active_index.set(index);
+        self.set_active_index(next_index);
     }
 
     fn active_button(&self) -> gtk::ToggleButton {
@@ -119,23 +110,23 @@ impl ProviderSwitcher {
         *self.imp().active_button.borrow_mut() = button.clone();
     }
 
-    fn button_by_index(&self, index: usize) -> ToggleButton {
+    fn button_by_index(&self, index: u32) -> ToggleButton {
         successors(self.first_child(), |child| child.next_sibling())
-            .nth(index)
+            .nth(index as usize)
             .expect("must exist")
             .downcast()
             .expect("must be a ToggleButton")
     }
 
-    fn set_active_page(&self, page: &ScrolledWindow) {
+    pub fn set_active_page(&self, page: &impl IsA<gtk::Widget>) {
         self.stack().set_visible_child(page);
     }
 
-    fn page_by_index(&self, index: usize) -> ScrolledWindow {
+    pub fn page_by_index(&self, index: u32) -> ScrolledWindow {
         let pages = self.stack().pages();
 
         let stack_page = pages
-            .item(index as u32)
+            .item(index)
             .and_downcast::<gtk::StackPage>()
             .expect("it must be a StackPage");
 

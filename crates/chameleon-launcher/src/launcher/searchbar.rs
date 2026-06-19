@@ -9,13 +9,12 @@ mod imp {
     use gtk::subclass::prelude::*;
     use gtk::{Align, Orientation};
     use std::cell::Cell;
-    use tracing::info;
 
     #[derive(Default, glib::Properties)]
     #[properties(wrapper_type = super::LauncherSearchbar)]
     pub struct LauncherSearchbarImp {
         #[property(get, set)]
-        items_count: Cell<u64>,
+        items_count: Cell<u32>,
 
         pub entry: gtk::Entry,
         pub counter: gtk::Label,
@@ -51,12 +50,12 @@ mod imp {
             box_.append(&self.counter);
 
             box_.bind_property("items_count", &self.counter, "label")
-                .transform_to(|_, count: u64| Some(count.to_string()))
+                .transform_to(|_, count: u32| Some(count.to_string()))
                 .sync_create()
                 .build();
 
             box_.bind_property("items_count", &self.counter, "visible")
-                .transform_to(|_, count: u64| Some(count > 0))
+                .transform_to(|_, count: u32| Some(count > 0))
                 .sync_create()
                 .build();
         }

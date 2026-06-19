@@ -27,8 +27,8 @@ impl Provider for ApplicationProvider {
         "Applications"
     }
 
-    fn update_model(&self, query: &str) {
-        self.base.update_model(query);
+    fn update_model(&self, query: &str, provider_changed: bool) {
+        self.base.update_model(query, provider_changed);
     }
 
     fn select_below(&self) {}

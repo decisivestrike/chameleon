@@ -2,7 +2,7 @@ use crate::config::LauncherConfig;
 use crate::launcher::content::LauncherContent;
 use gtk::gdk::Key;
 use gtk::glib::subclass::types::ObjectSubclassIsExt;
-use gtk::glib::{Object, clone};
+use gtk::glib::{Object, Propagation, clone};
 use gtk::prelude::*;
 use gtk::{EventControllerKey, PropagationPhase, glib};
 use layer_shell::{KeyboardMode, Layer, LayerShell};
@@ -41,7 +41,7 @@ mod imp {
             window.init_layer_shell();
             window.set_namespace(Some("chameleon-launcher"));
             window.set_layer(Layer::Top);
-            window.set_keyboard_mode(KeyboardMode::Exclusive);
+            window.set_keyboard_mode(KeyboardMode::OnDemand);
         }
     }
 
@@ -65,30 +65,7 @@ impl Launcher {
         root_controller.connect_key_pressed(clone!(
             #[strong]
             launcher,
-            move |_, key, _, _| {
-                match key {
-                    Key::Left => glib::Propagation::Stop,
-                    // Key::Down => {
-                    //     if let Some(provider) = launcher.active_provider() {
-                    //         provider.select_below();
-                    //     }
-                    //     glib::Propagation::Stop
-                    // }
-                    Key::Tab => {
-                        launcher.next_provider();
-                        glib::Propagation::Stop
-                    }
-                    Key::Return => {
-                        launcher.invoke_action();
-                        glib::Propagation::Stop
-                    }
-                    Key::Escape => {
-                        launcher.toggle_visibility();
-                        glib::Propagation::Stop
-                    }
-                    _ => glib::Propagation::Proceed,
-                }
-            }
+            move |_, key, _, _| launcher.handle_keypress(&key)
         ));
         root_controller.set_propagation_phase(PropagationPhase::Capture);
         launcher.add_controller(root_controller);
@@ -107,6 +84,28 @@ impl Launcher {
         }
     }
 
+    fn handle_keypress(&self, key: &Key) -> Propagation {
+        match *key {
+            Key::Up | Key::Right | Key::Down | Key::Left => {
+                self.move_selection();
+                Propagation::Stop
+            }
+            Key::Tab => {
+                self.next_provider();
+                Propagation::Stop
+            }
+            Key::Return => {
+                self.invoke_action();
+                Propagation::Stop
+            }
+            Key::Escape => {
+                self.toggle_visibility();
+                Propagation::Stop
+            }
+            _ => Propagation::Proceed,
+        }
+    }
+
     fn init(&self, config: LauncherConfig) {
         let content = LauncherContent::new(config);
         self.set_child(Some(&content));
@@ -120,15 +119,17 @@ impl Launcher {
         self.imp().root.get().expect("must be initialized")
     }
 
+    fn move_selection(&self) {}
+
+    fn next_provider(&self) {
+        self.root().imp().switcher.next_page();
+    }
+
     fn invoke_action(&self) {
         let invoked = self.root().invoke_provider_action();
 
         if invoked {
             self.toggle_visibility()
         }
-    }
-
-    fn next_provider(&self) {
-        self.root().imp().switcher.next_provider();
     }
 }
