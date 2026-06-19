@@ -1,5 +1,6 @@
 use crate::config::LauncherConfig;
 use crate::launcher::content::LauncherContent;
+use crate::providers::Direction;
 use gtk::gdk::Key;
 use gtk::glib::subclass::types::ObjectSubclassIsExt;
 use gtk::glib::{Object, Propagation, clone};
@@ -86,8 +87,9 @@ impl Launcher {
 
     fn handle_keypress(&self, key: &Key) -> Propagation {
         match *key {
-            Key::Up | Key::Right | Key::Down | Key::Left => {
-                self.move_selection();
+            key @ (Key::Up | Key::Right | Key::Down | Key::Left) => {
+                let direction = key.try_into().expect("already checked");
+                self.move_selection(direction);
                 Propagation::Stop
             }
             Key::Tab => {
@@ -119,7 +121,9 @@ impl Launcher {
         self.imp().root.get().expect("must be initialized")
     }
 
-    fn move_selection(&self) {}
+    fn move_selection(&self, direction: Direction) {
+        self.root().move_selection(direction)
+    }
 
     fn next_provider(&self) {
         self.root().imp().switcher.next_page();

@@ -1,14 +1,15 @@
 use crate::config::WallpapersProviderConfig;
-use crate::providers::Provider;
 use crate::providers::base::ProviderBase;
 use crate::providers::factory::Factory;
 use crate::providers::view::View;
 use crate::providers::wallpapers::cache::cache_filename;
 use crate::providers::wallpapers::image_cell::ImageCell;
 use crate::providers::wallpapers::wallpaper::Wallpaper;
+use crate::providers::{Direction, Provider};
 use gtk::gio::ListStore;
 use gtk::glib::clone;
 use gtk::glib::object::CastNone;
+use gtk::prelude::SelectionModelExt;
 use gtk::{Align, GridView, gio, glib};
 use std::env::home_dir;
 use std::path::{Path, PathBuf};
@@ -129,8 +130,6 @@ impl Provider for WallpapersProvider {
         self.base.update_model(query, provider_changed);
     }
 
-    fn select_below(&self) {}
-
     fn len(&self) -> usize {
         self.base.len()
     }
@@ -164,5 +163,21 @@ impl Provider for WallpapersProvider {
 
     fn reset_selection(&self) {
         self.base.reset_selection();
+    }
+
+    fn move_selection(&self, direction: Direction) {
+        let model = &self.base.selection_model;
+        let i = model.selected();
+        let len = self.len() as u32;
+
+        let new_i = match direction {
+            Direction::Up if i >= 5 => i - 5,
+            Direction::Right if i + 1 < len => i + 1,
+            Direction::Down if i + 5 < len => i + 5,
+            Direction::Left if i > 0 => i - 1,
+            _ => i,
+        };
+
+        self.base.select(new_i);
     }
 }

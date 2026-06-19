@@ -7,6 +7,7 @@ pub mod wallpapers;
 
 pub use wallpapers::WallpapersProvider;
 
+use gtk::gdk::Key;
 use gtk::glib::object::IsA;
 use gtk::glib::{self};
 
@@ -29,7 +30,7 @@ pub trait Provider {
 
     fn update_model(&self, query: &str, provider_changed: bool);
 
-    fn select_below(&self);
+    fn move_selection(&self, direction: Direction);
 
     fn len(&self) -> usize;
 
@@ -38,4 +39,32 @@ pub trait Provider {
     fn invoke_action(&self) -> bool;
 
     fn reset_selection(&self);
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Direction {
+    Up,
+    Right,
+    Down,
+    Left,
+}
+
+impl TryFrom<Key> for Direction {
+    type Error = ();
+
+    fn try_from(key: Key) -> Result<Self, Self::Error> {
+        if !matches!(key, Key::Up | Key::Right | Key::Down | Key::Left) {
+            return Err(());
+        }
+
+        let direction = match key {
+            Key::Up => Direction::Up,
+            Key::Right => Direction::Right,
+            Key::Down => Direction::Down,
+            Key::Left => Direction::Left,
+            _ => unreachable!("already checked"),
+        };
+
+        Ok(direction)
+    }
 }

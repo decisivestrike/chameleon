@@ -4,11 +4,11 @@ mod row;
 pub use row::ApplicationRow;
 
 use crate::config::ApplicationProviderConfig;
-use crate::providers::Provider;
 use crate::providers::applications::entry::ApplicationEntry;
 use crate::providers::base::ProviderBase;
 use crate::providers::factory::Factory;
 use crate::providers::view::View;
+use crate::providers::{Direction, Provider};
 use freedesktop_desktop_entry::desktop_entries;
 use gtk::glib::object::CastNone;
 use gtk::{ListView, gio};
@@ -31,7 +31,19 @@ impl Provider for ApplicationProvider {
         self.base.update_model(query, provider_changed);
     }
 
-    fn select_below(&self) {}
+    fn move_selection(&self, direction: Direction) {
+        let model = &self.base.selection_model;
+        let i = model.selected();
+        let len = self.len() as u32;
+
+        let new_i = match direction {
+            Direction::Up if i > 0 => i - 1,
+            Direction::Down if i + 1 < len => i + 1,
+            _ => i,
+        };
+
+        self.base.select(new_i);
+    }
 
     fn len(&self) -> usize {
         self.base.len()

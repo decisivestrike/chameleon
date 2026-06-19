@@ -87,10 +87,13 @@ where
         self.view.upcast()
     }
 
+    pub fn select(&self, index: u32) {
+        self.view.scroll_to(index, ListScrollFlags::SELECT, None);
+    }
+
     pub fn reset_selection(&self) {
         if self.len() > 0 {
-            self.selection_model.set_selected(0);
-            self.view.scroll_to(0, ListScrollFlags::SELECT, None);
+            self.select(0);
         }
     }
 
