@@ -1,3 +1,5 @@
+mod player_window;
+
 use crate::services::mpris::{CLIENT, MusicClient, PlayerUpdate};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
@@ -5,45 +7,34 @@ use gtk::{glib, pango};
 use gtkio::RUNTIME;
 use tokio::sync::mpsc;
 
+#[derive(Debug)]
+pub struct PlayerData {
+    pub title: String,
+    pub artist: String,
+    pub album: Option<String>,
+    pub cover_path: Option<String>,
+    pub is_playing: bool,
+}
+
 mod imp {
     use super::*;
-    use gtk::ContentFit;
+    use crate::modules::mpris::player_window::PlayerWindow;
+    use crate::services::mpris::PlayerState;
     use gtk::gdk::Texture;
     use gtk::gdk_pixbuf::Pixbuf;
-    use tracing::{error, info};
+    use tracing::info;
 
     pub struct MprisImp {
         label: gtk::Label,
-        cover: gtk::Picture,
-        popover: gtk::Popover,
-        popover_content: gtk::Box,
+        window: PlayerWindow,
     }
 
     impl Default for MprisImp {
         fn default() -> Self {
-            let cover = gtk::Picture::builder()
-                .content_fit(ContentFit::ScaleDown)
-                .width_request(128)
-                .height_request(128)
-                .build();
-
             let label = gtk::Label::new(None);
+            let window = PlayerWindow::new();
 
-            let popover_content = gtk::Box::new(gtk::Orientation::Vertical, 10);
-            popover_content.append(&cover);
-
-            let popover = gtk::Popover::builder().has_arrow(false).build();
-
-            popover.set_child(Some(&popover_content));
-            popover.unparent();
-            popover.set_parent(&label);
-
-            Self {
-                label,
-                cover,
-                popover,
-                popover_content,
-            }
+            Self { label, window }
         }
     }
 
@@ -66,44 +57,47 @@ mod imp {
             self.label.set_ellipsize(pango::EllipsizeMode::End);
             self.label.set_halign(gtk::Align::Center);
 
-            let lmb_play_pause = gtk::GestureClick::new();
-            lmb_play_pause.set_button(1);
-            lmb_play_pause.connect_pressed(|_gesture, _n_press, _x, _y| {
-                if let Err(e) = CLIENT.toggle_play_pause() {
-                    error!("Toggle play/pause error: {}", e);
-                }
-            });
-            self.label.add_controller(lmb_play_pause);
-
-            let mmb_toggle_popover = gtk::GestureClick::new();
-            mmb_toggle_popover.set_button(2);
-            mmb_toggle_popover.connect_pressed({
-                let popover_clone = self.popover.clone();
+            let toggle_controller = gtk::GestureClick::new();
+            toggle_controller.set_button(1);
+            toggle_controller.connect_pressed({
+                let player_window = self.window.clone();
                 move |_gesture, _n_press, _x, _y| {
-                    popover_clone.popup();
+                    player_window.toggle_visibility();
                 }
             });
-            self.label.add_controller(mmb_toggle_popover);
+            self.label.add_controller(toggle_controller);
 
-            let rmb_next_track = gtk::GestureClick::new();
-            rmb_next_track.set_button(3);
-            rmb_next_track.connect_pressed(|_gesture, _n_press, _x, _y| {
-                if let Err(e) = CLIENT.next() {
-                    error!("Next track error: {}", e);
-                }
-            });
-            self.label.add_controller(rmb_next_track);
-
-            let (sender, mut receiver) =
-                mpsc::channel::<(String, Option<String>)>(1);
-            let tray = self.obj().clone();
+            let (sender, mut receiver) = mpsc::channel::<PlayerData>(2);
+            let mpris = self.obj().clone();
 
             glib::spawn_future_local(async move {
                 loop {
-                    if let Some((title, cover_path)) = receiver.recv().await {
-                        tray.imp().label.set_label(&title);
+                    if let Some(data) = receiver.recv().await {
+                        mpris.imp().label.set_label(&format!(
+                            "{} - {}",
+                            data.title, data.artist
+                        ));
 
-                        if let Some(path) = cover_path
+                        let window = &mpris.imp().window.imp();
+                        window.title.set_label(&data.title);
+                        window.artist.set_label(&data.artist);
+                        window
+                            .album
+                            .set_label(&data.album.unwrap_or(String::new()));
+
+                        let child = if data.is_playing {
+                            mpris.imp().window.imp().pause_icon.clone()
+                        } else {
+                            mpris.imp().window.imp().play_icon.clone()
+                        };
+                        mpris
+                            .imp()
+                            .window
+                            .imp()
+                            .play_pause
+                            .set_child(Some(&child));
+
+                        if let Some(path) = data.cover_path
                             && let Ok(pixbuf) =
                                 Pixbuf::from_file_at_scale(path, 128, 128, true)
                         {
@@ -112,7 +106,7 @@ mod imp {
                             let bytes = glib::Bytes::from_owned(buffer);
                             let texture = Texture::from_bytes(&bytes).unwrap();
 
-                            tray.imp().cover.set_paintable(Some(&texture));
+                            window.cover.set_paintable(Some(&texture));
                         }
                     }
                 }
@@ -124,38 +118,38 @@ mod imp {
                 loop {
                     if let Ok(update) = receiver.recv().await {
                         match update {
-                            PlayerUpdate::Update(boxed_track, _status) => {
+                            PlayerUpdate::Update(boxed_track, status) => {
+                                info!("{:#?}", boxed_track);
                                 let maybe_track = *boxed_track;
 
-                                if let Some(track) = maybe_track {
-                                    let title_text =
-                                        if let Some(title) = track.title {
-                                            let artist =
-                                                track.artist.unwrap_or_else(
-                                                    || "Unknown".to_string(),
-                                                );
-
-                                            format!("{} - {}", title, artist)
-                                        } else {
-                                            String::new()
-                                        };
-
-                                    let cover_path = {
-                                        if let Some(mut path) = track.cover_path
+                                if let Some(track) = maybe_track
+                                    && let Some(title) = track.title
+                                {
+                                    let data = PlayerData {
+                                        title,
+                                        artist: track.artist.unwrap_or_else(
+                                            || "Unknown".to_string(),
+                                        ),
+                                        album: track.album,
+                                        cover_path: if let Some(mut path) =
+                                            track.cover_path
                                         {
                                             path.drain(..7);
-
                                             Some(path)
                                         } else {
                                             None
-                                        }
+                                        },
+                                        is_playing:
+                                            if let PlayerState::Playing =
+                                                status.state
+                                            {
+                                                true
+                                            } else {
+                                                false
+                                            },
                                     };
 
-                                    let message = (title_text, cover_path);
-
-                                    info!("{:#?}", message);
-
-                                    sender.send(message).await.unwrap();
+                                    sender.send(data).await.unwrap();
                                 }
                             }
                             _ => (),
