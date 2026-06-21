@@ -18,6 +18,10 @@ pub static HOME: LazyLock<PathBuf> =
     LazyLock::new(|| home_dir().expect("Can't get home directory"));
 
 /// Config root directory
+pub static CHAMELEON_ROOT: LazyLock<PathBuf> =
+    LazyLock::new(|| HOME.join(".chameleon"));
+
+/// Config root directory
 pub static CHAMELEON_CONFIG_ROOT: LazyLock<PathBuf> =
     LazyLock::new(|| HOME.join(".config/chameleon"));
 

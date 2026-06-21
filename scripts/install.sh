@@ -19,4 +19,6 @@ for module in "chameleon" "chameleon-launcher" "chameleon-notifications" "chamel
     install "./$module"
 done
 
+cp -r ../assets "$CHAMELEON_ROOT"
+
 echo "Done"

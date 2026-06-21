@@ -1,7 +1,17 @@
+use chameleon_shared::CHAMELEON_ROOT;
 use gtk::glib;
 use gtk::glib::Object;
 use gtk::prelude::*;
 use layer_shell::{KeyboardMode, Layer, LayerShell};
+use std::sync::LazyLock;
+
+static ASSETS_ROOT_SVG: LazyLock<String> = LazyLock::new(|| {
+    CHAMELEON_ROOT
+        .join("assets")
+        .join("svg")
+        .to_string_lossy()
+        .to_string()
+});
 
 mod imp {
     use super::*;
@@ -9,7 +19,6 @@ mod imp {
     use gtk::subclass::prelude::*;
     use gtk::{Align, ContentFit, Orientation, glib};
     use layer_shell::Edge;
-    use std::cell::Cell;
     use tracing::error;
 
     pub struct PlayerWindowImp {
@@ -82,10 +91,10 @@ mod imp {
                     error!("{}", e);
                 }
             });
-            let skip_previous_icon = gtk::Image::builder()
-                .file("../../assets/svg/skip_previous.svg")
-                .pixel_size(24)
-                .build();
+            let p = String::new() + &*ASSETS_ROOT_SVG + "/skip_previous.svg";
+            println!("{}", p);
+            let skip_previous_icon =
+                gtk::Image::builder().file(p).pixel_size(24).build();
             previous.set_child(Some(&skip_previous_icon));
             buttons.append(&previous);
 
@@ -96,12 +105,12 @@ mod imp {
                 }
             });
             let pause_icon = gtk::Image::builder()
-                .file("../../assets/svg/pause.svg")
+                .file(String::new() + &*ASSETS_ROOT_SVG + "/pause.svg")
                 .pixel_size(24)
                 .build();
 
             let play_icon = gtk::Image::builder()
-                .file("../../assets/svg/play.svg")
+                .file(String::new() + &*ASSETS_ROOT_SVG + "/play.svg")
                 .pixel_size(24)
                 .build();
 
@@ -115,7 +124,7 @@ mod imp {
                 }
             });
             let skip_next_icon = gtk::Image::builder()
-                .file("../../assets/svg/skip_next.svg")
+                .file(String::new() + &*ASSETS_ROOT_SVG + "/skip_next.svg")
                 .pixel_size(24)
                 .build();
             next.set_child(Some(&skip_next_icon));

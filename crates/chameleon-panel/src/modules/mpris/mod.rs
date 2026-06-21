@@ -162,7 +162,7 @@ mod imp {
                                     let cover_path: Option<String> =
                                         if previous_track_title != title {
                                             tokio::time::sleep(
-                                                Duration::from_millis(100),
+                                                Duration::from_millis(200),
                                             )
                                             .await;
 
