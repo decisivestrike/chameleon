@@ -159,7 +159,7 @@ mod imp {
             window.init_layer_shell();
             window.set_namespace(Some("chameleon-player"));
             window.set_anchor(Edge::Top, true);
-            window.set_margin(Edge::Top, 24);
+            window.set_margin(Edge::Top, 16);
             window.set_layer(Layer::Top);
             window.set_keyboard_mode(KeyboardMode::None);
         }

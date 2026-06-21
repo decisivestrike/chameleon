@@ -17,12 +17,14 @@ pub struct PlayerData {
 }
 
 mod imp {
+    use std::time::Duration;
+
     use super::*;
     use crate::modules::mpris::player_window::PlayerWindow;
     use crate::services::mpris::PlayerState;
-    use gtk::gdk::Texture;
+    use gtk::gdk::{MemoryTexture, Texture};
     use gtk::gdk_pixbuf::Pixbuf;
-    use tracing::info;
+    use tracing::{error, info, warn};
 
     pub struct MprisImp {
         label: gtk::Label,
@@ -67,46 +69,68 @@ mod imp {
             });
             self.label.add_controller(toggle_controller);
 
-            let (sender, mut receiver) = mpsc::channel::<PlayerData>(2);
+            let (sender, mut receiver) = mpsc::channel::<Option<PlayerData>>(2);
             let mpris = self.obj().clone();
 
             glib::spawn_future_local(async move {
                 loop {
-                    if let Some(data) = receiver.recv().await {
-                        mpris.imp().label.set_label(&format!(
-                            "{} - {}",
-                            data.title, data.artist
-                        ));
+                    if let Some(maybe_data) = receiver.recv().await {
+                        if let Some(data) = maybe_data {
+                            mpris.imp().label.set_label(&format!(
+                                "{} - {}",
+                                data.title, data.artist
+                            ));
 
-                        let window = &mpris.imp().window.imp();
-                        window.title.set_label(&data.title);
-                        window.artist.set_label(&data.artist);
-                        window
-                            .album
-                            .set_label(&data.album.unwrap_or(String::new()));
+                            let window = &mpris.imp().window.imp();
+                            window.title.set_label(&data.title);
+                            window.artist.set_label(&data.artist);
+                            window.album.set_label(
+                                &data.album.unwrap_or(String::new()),
+                            );
 
-                        let child = if data.is_playing {
-                            mpris.imp().window.imp().pause_icon.clone()
+                            let child = if data.is_playing {
+                                mpris.imp().window.imp().pause_icon.clone()
+                            } else {
+                                mpris.imp().window.imp().play_icon.clone()
+                            };
+
+                            mpris
+                                .imp()
+                                .window
+                                .imp()
+                                .play_pause
+                                .set_child(Some(&child));
+
+                            if let Some(path) = data.cover_path
+                                && let Ok(pixbuf) = Pixbuf::from_file_at_scale(
+                                    path, 128, 128, true,
+                                )
+                            {
+                                let buffer =
+                                    pixbuf.save_to_bufferv("png", &[]).unwrap();
+                                let bytes = glib::Bytes::from_owned(buffer);
+                                let texture =
+                                    Texture::from_bytes(&bytes).unwrap();
+
+                                window.cover.set_paintable(Some(&texture));
+                            }
                         } else {
-                            mpris.imp().window.imp().play_icon.clone()
-                        };
-                        mpris
-                            .imp()
-                            .window
-                            .imp()
-                            .play_pause
-                            .set_child(Some(&child));
+                            mpris.imp().label.set_label("");
 
-                        if let Some(path) = data.cover_path
-                            && let Ok(pixbuf) =
-                                Pixbuf::from_file_at_scale(path, 128, 128, true)
-                        {
-                            let buffer =
-                                pixbuf.save_to_bufferv("png", &[]).unwrap();
-                            let bytes = glib::Bytes::from_owned(buffer);
-                            let texture = Texture::from_bytes(&bytes).unwrap();
+                            let window = &mpris.imp().window.imp();
+                            window.title.set_label("");
+                            window.artist.set_label("");
+                            window.album.set_label("");
 
-                            window.cover.set_paintable(Some(&texture));
+                            let child = &mpris.imp().window.imp().play_icon;
+                            mpris
+                                .imp()
+                                .window
+                                .imp()
+                                .play_pause
+                                .set_child(Some(child));
+
+                            window.cover.set_paintable(None::<&MemoryTexture>);
                         }
                     }
                 }
@@ -114,31 +138,86 @@ mod imp {
 
             RUNTIME.spawn(async move {
                 let mut receiver = CLIENT.subscribe_change();
+                let mut previous_track_title = String::new();
 
                 loop {
                     if let Ok(update) = receiver.recv().await {
                         match update {
                             PlayerUpdate::Update(boxed_track, status) => {
-                                info!("{:#?}", boxed_track);
+                                info!("{:#?}\n{:#?}", boxed_track, status);
                                 let maybe_track = *boxed_track;
 
+                                if matches!(status.state, PlayerState::Stopped)
+                                {
+                                    sender.send(None).await.unwrap();
+                                }
+
                                 if let Some(track) = maybe_track
+                                    && !matches!(
+                                        status.state,
+                                        PlayerState::Stopped
+                                    )
                                     && let Some(title) = track.title
                                 {
+                                    let cover_path: Option<String> =
+                                        if previous_track_title != title {
+                                            tokio::time::sleep(
+                                                Duration::from_millis(100),
+                                            )
+                                            .await;
+
+                                            let player = CLIENT.get_player();
+                                            if player.is_none() {
+                                                error!("player is none");
+                                                continue;
+                                            }
+                                            let player = player.unwrap();
+
+                                            let metadata =
+                                                player.get_metadata();
+                                            if let Err(e) = metadata {
+                                                error!("{}", e);
+                                                continue;
+                                            }
+                                            let metadata = metadata.unwrap();
+
+                                            let art_url = metadata.art_url();
+                                            if art_url.is_none() {
+                                                warn!("no art url");
+                                                continue;
+                                            }
+
+                                            previous_track_title =
+                                                title.clone();
+
+                                            Some({
+                                                let mut u = art_url
+                                                    .unwrap()
+                                                    .to_string();
+                                                u.drain(..7);
+                                                u
+                                            })
+                                        } else {
+                                            previous_track_title =
+                                                title.clone();
+                                            None
+                                        }
+                                        .or_else(|| {
+                                            track.cover_path.map(|mut path| {
+                                                path.drain(..7);
+                                                path
+                                            })
+                                        });
+
+                                    info!("{:?}", cover_path);
+
                                     let data = PlayerData {
                                         title,
                                         artist: track.artist.unwrap_or_else(
                                             || "Unknown".to_string(),
                                         ),
                                         album: track.album,
-                                        cover_path: if let Some(mut path) =
-                                            track.cover_path
-                                        {
-                                            path.drain(..7);
-                                            Some(path)
-                                        } else {
-                                            None
-                                        },
+                                        cover_path,
                                         is_playing:
                                             if let PlayerState::Playing =
                                                 status.state
@@ -149,7 +228,7 @@ mod imp {
                                             },
                                     };
 
-                                    sender.send(data).await.unwrap();
+                                    sender.send(Some(data)).await.unwrap();
                                 }
                             }
                             _ => (),
