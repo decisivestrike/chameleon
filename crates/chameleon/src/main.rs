@@ -2,7 +2,7 @@
 mod cli;
 mod config;
 
-use crate::cli::Args;
+use crate::cli::{Args, CliCommand};
 use crate::config::Config;
 use anyhow::Result;
 use chameleon_shared::utils::resolve_path;
@@ -37,7 +37,11 @@ async fn main() -> Result<()> {
 async fn run(args: Args) -> Result<()> {
     match args.cmd {
         None => start_parent_process().await?,
-        Some(_cmd) => (),
+        Some(cmd) => match cmd {
+            CliCommand::HealthCheck(_) => {
+                println!("healthcheck");
+            }
+        },
     }
 
     Ok(())
@@ -120,22 +124,22 @@ async fn run_process_manager<I, S>(
     mut rx: mpsc::Receiver<()>,
 ) -> Result<()>
 where
-    I: IntoIterator<Item = S>,
+    I: IntoIterator<Item = S> + Copy,
     S: AsRef<OsStr>,
 {
     info!("Starting process: {:?}", path);
-    let mut child =
+    let mut maybe_child =
         Some(Command::new(&path).args(args).kill_on_drop(true).spawn()?);
 
     loop {
         tokio::select! {
             _ = rx.recv() => {
-                if let Some(c) = child.as_mut() {
+                if let Some(child) = maybe_child.as_mut() {
                     info!("Killing existing process");
-                    let _ = c.kill().await;
+                    let _ = child.kill().await;
 
-                    while let Some(c) = child.as_mut() {
-                        match c.try_wait() {
+                    while let Some(child) = maybe_child.as_mut() {
+                        match child.try_wait() {
                             Ok(Some(status)) => {
                                info!("Process exited with status: {:?}", status);
                                 break;
@@ -152,7 +156,7 @@ where
                 }
 
                 info!("Restart");
-                child = Some(Command::new(&path).spawn()?);
+                maybe_child = Some(Command::new(&path).args(args).spawn()?);
             }
         }
     }
