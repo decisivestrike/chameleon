@@ -103,7 +103,7 @@ mod imp {
 
                             if let Some(path) = data.cover_path
                                 && let Ok(pixbuf) = Pixbuf::from_file_at_scale(
-                                    path, 128, 128, true,
+                                    path, 128, 128, false,
                                 )
                             {
                                 let buffer =
@@ -260,8 +260,8 @@ impl super::PanelModule for Mpris {
     type Rules = ();
 
     fn create(
-        rules: Self::Rules,
-        meta: std::rc::Rc<super::Metadata>,
+        _rules: Self::Rules,
+        _meta: std::rc::Rc<super::Metadata>,
     ) -> anyhow::Result<gtk::Widget> {
         let mpris = Mpris::new();
 

@@ -28,10 +28,7 @@ mod imp {
         pub cover: gtk::Picture,
         root: gtk::Box,
 
-        previous: gtk::Button,
         pub play_pause: gtk::Button,
-        next: gtk::Button,
-        buttons: gtk::Box,
 
         pub pause_icon: gtk::Image,
         pub play_icon: gtk::Image,
@@ -43,7 +40,7 @@ mod imp {
                 .name("player-cover")
                 .halign(Align::Center)
                 .valign(Align::Center)
-                .content_fit(ContentFit::ScaleDown)
+                .content_fit(ContentFit::Fill)
                 .width_request(128)
                 .height_request(128)
                 .build();
@@ -136,10 +133,7 @@ mod imp {
                 artist,
                 album,
                 root,
-                previous,
                 play_pause,
-                next,
-                buttons,
                 pause_icon,
                 play_icon,
             }

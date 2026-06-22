@@ -63,8 +63,8 @@ impl PanelModule for Tray {
     type Rules = ();
 
     fn create(
-        rules: Self::Rules,
-        meta: std::rc::Rc<super::Metadata>,
+        _rules: Self::Rules,
+        _meta: std::rc::Rc<super::Metadata>,
     ) -> anyhow::Result<gtk::Widget> {
         let tray = Tray::new();
 

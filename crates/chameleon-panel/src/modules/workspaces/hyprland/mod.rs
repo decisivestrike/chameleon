@@ -94,7 +94,7 @@ impl PanelModule for HyprlandWorkspaces {
 
 impl HyprlandWorkspaces {
     pub fn new(
-        config: &WorkspacesRules,
+        _config: &WorkspacesRules,
         meta: &Metadata,
         receiver: mpsc::Receiver<WorkspaceEvent>,
         hyprland: &'static Hyprland,

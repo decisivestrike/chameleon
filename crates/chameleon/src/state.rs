@@ -62,6 +62,12 @@ impl State {
         }
     }
 
+    pub async fn restart_module(module: Module) {
+        if let Some(sender) = State::read().await.ps.get(&module) {
+            sender.send(()).await.unwrap();
+        }
+    }
+
     async fn handle_module(&mut self, fw: &mut FilesWatcher, module: Module) {
         let (sender, receiver) = mpsc::channel::<()>(1);
 

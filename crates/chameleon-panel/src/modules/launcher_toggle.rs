@@ -14,7 +14,7 @@ pub struct LauncherToggle;
 impl PanelModule for LauncherToggle {
     type Rules = ();
 
-    fn create(rules: (), _meta: Rc<Metadata>) -> Result<Widget> {
+    fn create(_rules: (), _meta: Rc<Metadata>) -> Result<Widget> {
         let toggler = gtk::Image::builder()
             .file("../../assets/svg/launcher-icon.svg")
             .pixel_size(16)

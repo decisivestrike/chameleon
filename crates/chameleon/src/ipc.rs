@@ -19,6 +19,7 @@ static SOCKET_PATH: LazyLock<PathBuf> =
 #[derive(Debug, Clone, Copy)]
 pub enum Command {
     Health,
+    #[allow(dead_code)]
     Restart(Module),
     RestartAll,
 }
@@ -55,6 +56,9 @@ pub async fn wait_command() {
                     match command {
                         Command::RestartAll => {
                             State::load_config_and_recreate().await
+                        }
+                        Command::Restart(module) => {
+                            State::restart_module(module).await;
                         }
                         _ => (),
                     }
