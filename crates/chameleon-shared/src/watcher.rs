@@ -7,11 +7,19 @@ use inotify::{Inotify, WatchDescriptor, WatchMask};
 use std::collections::HashMap;
 use std::io;
 use std::path::PathBuf;
+use tokio_util::sync::CancellationToken;
 use tracing::info;
 
 pub struct FilesWatcher {
     inotify: Inotify,
     actions: HashMap<WatchDescriptor, FileAction>,
+    token: CancellationToken,
+}
+
+impl Default for FilesWatcher {
+    fn default() -> Self {
+        Self::new().unwrap()
+    }
 }
 
 impl FilesWatcher {
@@ -19,9 +27,20 @@ impl FilesWatcher {
         let watcher = Self {
             inotify: Inotify::init()?,
             actions: Default::default(),
+            token: CancellationToken::new(),
         };
 
         Ok(watcher)
+    }
+
+    /// Add without move
+    pub fn add2(&mut self, path: PathBuf, f: FileActionFn) -> io::Result<()> {
+        let wd = self.inotify.watches().add(&path, WatchMask::CLOSE_WRITE)?;
+
+        let action = FileAction::new(path, f);
+        self.actions.insert(wd, action);
+
+        Ok(())
     }
 
     pub fn add(mut self, path: PathBuf, f: FileActionFn) -> io::Result<Self> {
@@ -49,28 +68,40 @@ impl FilesWatcher {
         )
     }
 
-    pub fn run(self) {
+    pub fn run(self) -> CancellationToken {
+        let token = self.token.clone();
         spawn(self.watcher());
+
+        token
     }
 
     async fn watcher(self) {
-        let Self { inotify, actions } = self;
+        let Self {
+            inotify,
+            actions,
+            token,
+        } = self;
 
         let mut buffer = [0; 1024];
         let mut stream = inotify.into_event_stream(&mut buffer).unwrap();
 
         loop {
-            if let Some(maybe_event) = stream.next().await
-                && let Ok(event) = maybe_event
-                && let Some(file_action) = actions.get(&event.wd)
-            {
-                file_action.call();
+            tokio::select! {
+                Some(maybe_event) = stream.next() => {
+                    if let Ok(event) = maybe_event &&
+                        let Some(file_action) = actions.get(&event.wd) {
+                        file_action.call();
+                    }
+                }
+                _ = token.cancelled() => {
+                    break
+                }
             }
         }
     }
 }
 
-type FileActionFn = Box<dyn Fn(&PathBuf) + Send + 'static>;
+type FileActionFn = Box<dyn Fn(&PathBuf) + Send + Sync + 'static>;
 
 struct FileAction {
     path: PathBuf,

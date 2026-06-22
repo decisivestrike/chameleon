@@ -1,4 +1,4 @@
-use chameleon_shared::utils::read_config;
+use chameleon_shared::utils::{read_config, resolve_path};
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::path::Path;
@@ -22,6 +22,21 @@ impl Config {
                 error!("{}", e);
                 exit(1)
             }
+        }
+    }
+
+    pub fn args(&self) -> Vec<String> {
+        if let Some(theme) = &self.theme {
+            let theme_path = resolve_path(&format!(
+                "~/.config/chameleon/themes/{theme}.css"
+            ))
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+
+            vec!["-s".to_string(), theme_path]
+        } else {
+            vec![]
         }
     }
 }

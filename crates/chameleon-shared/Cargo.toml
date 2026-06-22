@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+tokio.workspace = true
 gtk.workspace = true
 gtkio.workspace = true
 serde = { workspace = true, features = ["derive", "rc"] }
@@ -14,3 +15,4 @@ tracing.workspace = true
 futures = "0.3.32"
 tracing-subscriber.workspace = true
 resolve-path = "0.1.0"
+tokio-util.workspace = true
