@@ -6,6 +6,12 @@ edition = "2024"
 [dependencies]
 chameleon_shared.workspace = true
 
+freedesktop-desktop-entry.workspace = true
+argh.workspace = true
 gtk.workspace = true
 gtkio.workspace = true
 layer_shell.workspace = true
+tracing.workspace = true
+serde.workspace = true
+libc.workspace = true
+thiserror.workspace = true

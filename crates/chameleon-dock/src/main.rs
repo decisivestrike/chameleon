@@ -1,23 +1,36 @@
-use std::collections::HashSet;
-use std::env::home_dir;
-use std::fs;
+mod cli;
+mod config;
+mod entry;
 
+use crate::cli::Args;
+use crate::config::Config;
+use crate::entry::ApplicationEntry;
 use chameleon_shared::css::{Css, StylePriority};
 use chameleon_shared::styles_watcher;
-use gtk::glib::Object;
+use chameleon_shared::utils::read_config;
+use freedesktop_desktop_entry::desktop_entries;
+use gtk::glib;
+use gtk::glib::{Object, clone};
 use gtk::prelude::*;
 use gtk::subclass::prelude::*;
-use gtk::{gio, glib};
 use gtkio::future::spawn;
 use layer_shell::{Edge, Layer, LayerShell};
+use std::collections::HashSet;
+use std::env::home_dir;
+use std::os::unix::process::CommandExt;
+use std::process::{Command, Stdio, exit};
+use tracing::{debug, error, info};
 
 mod imp {
     use super::*;
-    use std::cell::RefCell;
+    use std::cell::{Cell, RefCell};
 
     #[derive(Default)]
     pub struct Dock {
-        pub apps_box: RefCell<gtk::Box>, // горизонтальный контейнер для иконок
+        pub apps_box: RefCell<gtk::Box>,
+        pub apps: RefCell<HashSet<String>>,
+        pub terminal_cmd: RefCell<Option<String>>,
+        pub detach: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -32,23 +45,16 @@ mod imp {
             self.parent_constructed();
             let win = self.obj();
 
-            // Настройка окна как панели в нижней части экрана
             win.set_decorated(false);
             win.set_resizable(false);
             win.set_widget_name("dock-window");
 
-            // Layer shell
             win.init_layer_shell();
             win.set_namespace(Some("chameleon-dock"));
             win.set_layer(Layer::Bottom);
             win.set_anchor(Edge::Bottom, true);
             win.set_margin(Edge::Bottom, 40);
-            // win.set_anchor(Edge::Left, true);
-            // win.set_anchor(Edge::Right, true);
-            // Минимальная высота (будет подстраиваться под содержимое)
-            // win.set_default_size(1, 60);
 
-            // Основной контейнер для иконок
             let apps_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
             apps_box.set_halign(gtk::Align::Center);
             apps_box.set_valign(gtk::Align::Center);
@@ -70,51 +76,136 @@ glib::wrapper! {
 }
 
 impl Dock {
-    pub fn new() -> Self {
-        Object::builder().build()
+    pub fn new(config: Config) -> Self {
+        let dock: Self = Object::builder().build();
+        let Config {
+            apps,
+            terminal_cmd,
+            detach,
+        } = config;
+
+        dock.imp().apps.replace(apps);
+        dock.imp().terminal_cmd.replace(terminal_cmd);
+        dock.imp().detach.replace(detach);
+
+        dock
     }
 
-    /// Загружает список desktop-приложений и добавляет их иконки в док
+    fn find_apps() -> Vec<ApplicationEntry> {
+        desktop_entries(&["en".to_string(), "ru".to_string()])
+            .into_iter()
+            .filter_map(|desktop_entry| {
+                ApplicationEntry::try_from(desktop_entry).ok()
+            })
+            .collect()
+    }
+
     pub fn populate_apps(&self) {
         let imp = self.imp();
         let apps_box = imp.apps_box.borrow();
+        let pinned_app_names = self.imp().apps.borrow();
 
-        // Получаем список всех desktop-приложений
-        let app_infos = gio::AppInfo::all();
-
-        let f = fs::read_to_string("/tmp/chameleon/dockapps").unwrap();
-        let pinned_app_names: HashSet<&str> = f.split('\n').collect();
-
-        for info in app_infos.iter() {
-            println!("{}", info.name().as_str());
-
-            if let Some(icon) = info.icon()
-                && pinned_app_names.contains(info.name().as_str())
-            {
-                let image = gtk::Image::from_gicon(&icon);
+        for info in Self::find_apps().into_iter() {
+            if pinned_app_names.contains(info.name().as_str()) {
+                let image = gtk::Image::from_icon_name(&info.icon());
                 image.set_pixel_size(64);
                 image.add_css_class("dock-icon");
 
+                let controller = gtk::GestureClick::new();
+                let name = info.exec();
+                let is_terminal = info.terminal();
+
+                controller.connect_pressed(clone!(
+                    #[strong(rename_to=dock)]
+                    self,
+                    move |_, _, _, _| {
+                        dock.open_app(&name, is_terminal);
+                    }
+                ));
+
+                image.add_controller(controller);
                 apps_box.append(&image);
             }
         }
+    }
+
+    fn open_app(&self, name: &String, is_terminal: bool) {
+        let mut command = if is_terminal
+            && let Some(cmd) = self.imp().terminal_cmd.borrow().as_ref()
+        {
+            let mut command = Command::new(&cmd);
+            command.arg(&name);
+
+            command
+        } else {
+            let mut command = Command::new("sh");
+            command.arg("-c").arg(&name);
+
+            command
+        };
+
+        let command = command
+            .current_dir(home_dir().expect("can get $HOME"))
+            .env_remove("RUST_LOG")
+            .env_remove("RUST_BACKTRACE")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+
+        if self.imp().detach.get() {
+            unsafe {
+                command.pre_exec(|| {
+                    if libc::setsid() == -1 {
+                        error!("setsid")
+                    }
+
+                    Ok(())
+                });
+            }
+        }
+
+        match command.spawn() {
+            Ok(_) => info!("App '{name}' spawned"),
+            Err(e) => error!("Can't spawn '{name}'. Error: {e}"),
+        }
+    }
+
+    pub fn run(&self) {
+        self.populate_apps();
+        self.present();
     }
 }
 
 fn main() {
     gtk::init().unwrap();
 
-    let dock = Dock::new();
+    if let Err(e) = gtk::init() {
+        error!("Не удалось инициализировать GTK: {e}");
+        exit(1);
+    };
 
-    let home = home_dir().unwrap();
+    let Args {
+        styles_path,
+        config_path,
+    } = argh::from_env();
 
-    let css_path = format!("{}/.config/chameleon/styles.css", home.display());
-    Css::load(&css_path).apply(StylePriority::User);
+    let config: Config = match read_config(&config_path) {
+        Ok(config) => {
+            debug!("{:#?}", config);
+            config
+        }
+        Err(e) => {
+            error!("{e}");
+            exit(1)
+        }
+    };
 
-    spawn(styles_watcher(css_path.into()));
+    Css::load(&styles_path).apply(StylePriority::User);
 
-    dock.populate_apps();
-    dock.present();
+    let dock = Dock::new(config);
+    spawn(styles_watcher(styles_path.into()));
+
+    dock.run();
 
     glib::MainLoop::new(None, false).run();
 }

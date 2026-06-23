@@ -413,10 +413,16 @@ dependencies = [
 name = "chameleon-dock"
 version = "0.1.0"
 dependencies = [
+ "argh",
  "chameleon_shared",
+ "freedesktop-desktop-entry",
  "gtk4",
  "gtk4-layer-shell",
  "gtkio",
+ "libc",
+ "serde",
+ "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]
