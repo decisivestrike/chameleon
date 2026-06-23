@@ -8,6 +8,7 @@ use gtk::{Orientation, pango};
 
 mod imp {
     use super::*;
+    use gtk::Align;
     use std::cell::RefCell;
 
     #[derive(Default)]
@@ -16,6 +17,7 @@ mod imp {
         pub title: RefCell<gtk::Label>,
         pub body: RefCell<Option<gtk::Label>>,
         pub text_container: RefCell<gtk::Box>,
+        pub close_button: gtk::Button,
     }
 
     #[glib::object_subclass]
@@ -25,7 +27,26 @@ mod imp {
         type ParentType = gtk::Box;
     }
 
-    impl ObjectImpl for NotificationContentImp {}
+    impl ObjectImpl for NotificationContentImp {
+        fn constructed(&self) {
+            self.parent_constructed();
+
+            self.close_button.set_valign(Align::Start);
+            self.close_button.set_halign(Align::End);
+            self.close_button.set_label("x");
+            self.close_button
+                .set_widget_name("notification-close-button");
+            self.close_button.connect_clicked({
+                let content = self.obj().clone();
+                move |_| {
+                    content
+                        .parent()
+                        .and_then(|p| p.downcast::<gtk::Window>().ok())
+                        .map(|w| w.set_visible(false));
+                }
+            });
+        }
+    }
 
     impl WidgetImpl for NotificationContentImp {}
 
@@ -129,5 +150,7 @@ impl NotificationContent {
             };
 
         imp.icon.replace(icon);
+
+        self.append(&imp.close_button);
     }
 }

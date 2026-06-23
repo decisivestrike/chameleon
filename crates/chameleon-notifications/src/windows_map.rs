@@ -169,6 +169,7 @@ impl Drop for Entry {
     fn drop(&mut self) {
         self.abort_timer();
         self.window().destroy();
+
         debug!("Drop entry with id = {}", self.id);
     }
 }

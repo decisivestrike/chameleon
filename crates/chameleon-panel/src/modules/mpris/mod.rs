@@ -17,13 +17,12 @@ pub struct PlayerData {
 }
 
 mod imp {
-    use std::time::Duration;
-
     use super::*;
     use crate::modules::mpris::player_window::PlayerWindow;
     use crate::services::mpris::PlayerState;
     use gtk::gdk::{MemoryTexture, Texture};
     use gtk::gdk_pixbuf::Pixbuf;
+    use std::time::Duration;
     use tracing::{error, info, warn};
 
     pub struct MprisImp {
@@ -58,6 +57,7 @@ mod imp {
 
             self.label.set_ellipsize(pango::EllipsizeMode::End);
             self.label.set_halign(gtk::Align::Center);
+            self.label.set_label("Idle");
 
             let toggle_controller = gtk::GestureClick::new();
             toggle_controller.set_button(1);
@@ -115,7 +115,7 @@ mod imp {
                                 window.cover.set_paintable(Some(&texture));
                             }
                         } else {
-                            mpris.imp().label.set_label("");
+                            mpris.imp().label.set_label("Idle");
 
                             let window = &mpris.imp().window.imp();
                             window.title.set_label("");
