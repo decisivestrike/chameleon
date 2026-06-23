@@ -19,6 +19,8 @@ pub struct WallpapersProvider {
     pub(super) base: ProviderBase<Wallpaper>,
     pub wallpapers_path: String,
     pub change_wallpapers_cmd: String,
+    pub matugen_enabled: bool,
+    pub matugen_flags: Vec<String>,
 }
 
 impl WallpapersProvider {
@@ -63,6 +65,8 @@ impl WallpapersProvider {
             base,
             wallpapers_path,
             change_wallpapers_cmd: config.change_command,
+            matugen_enabled: config.matugen,
+            matugen_flags: config.matugen_flags,
         }
     }
 
@@ -83,20 +87,13 @@ impl WallpapersProvider {
 
     pub fn call_matugen(&self, full_wp_path: &str) {
         Command::new("matugen")
-            .args([
-                "image",
-                "--source-color-index",
-                "0",
-                "--type",
-                "scheme-fidelity",
-                "--fallback-color",
-                "#808080",
-                &format!(
-                    "{}/.cache/chameleon/thumbnails/{}",
-                    home_dir().unwrap().to_string_lossy(),
-                    cache_filename(Path::new(&full_wp_path), 160, 90)
-                ),
-            ])
+            .arg("image")
+            .args(&self.matugen_flags)
+            .arg(&format!(
+                "{}/.cache/chameleon/thumbnails/{}",
+                home_dir().unwrap().to_string_lossy(),
+                cache_filename(Path::new(&full_wp_path), 160, 90)
+            ))
             .spawn()
             .expect("command failed to start");
     }
@@ -150,7 +147,7 @@ impl Provider for WallpapersProvider {
 
             self.call_change_wallpaper_cmd(&full_wp_path);
 
-            if true {
+            if self.matugen_enabled {
                 self.call_matugen(&full_wp_path);
             }
 

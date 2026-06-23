@@ -20,6 +20,12 @@ pub struct WallpapersProviderConfig {
 
     #[serde(default = "default_change_command")]
     pub change_command: String,
+
+    #[serde(default)]
+    pub matugen: bool,
+
+    #[serde(default)]
+    pub matugen_flags: Vec<String>,
 }
 
 fn default_wallpapers_path() -> PathBuf {
