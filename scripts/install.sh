@@ -14,7 +14,7 @@ echo "Installing modules to $CHAMELEON_ROOT/bin"
 cd "$SCRIPT_DIR"
 cd ../crates
 
-for module in "chameleon" "chameleon-launcher" "chameleon-notifications" "chameleon-panel"; do
+for module in "chameleon" "chameleon-launcher" "chameleon-notifications" "chameleon-panel" "chameleon-dock"; do
     echo "Installing $module..."
     install "./$module"
 done
