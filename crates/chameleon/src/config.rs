@@ -49,6 +49,7 @@ pub enum Module {
     Panel,
     Watcher,
     Widgets,
+    Dock,
 }
 
 impl AsRef<str> for Module {
@@ -59,6 +60,7 @@ impl AsRef<str> for Module {
             Module::Panel => "chameleon-panel",
             Module::Watcher => "chameleon-watcher",
             Module::Widgets => "chameleon-widgets",
+            Module::Dock => "chameleon-dock",
         }
     }
 }
