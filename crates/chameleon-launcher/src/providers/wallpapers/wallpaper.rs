@@ -58,11 +58,10 @@ impl Wallpaper {
         let (sender, receiver) = oneshot::channel();
 
         RUNTIME.spawn_blocking(move || {
-            // 1. Пытаемся загрузить из кэша
-            let preview_img = match load_from_cache(&path, width, height) {
+            // Пытаемся загрузить из кэша
+            let preview_img = match load_from_cache(&path) {
                 Some(img) => img,
                 None => {
-                    // 2. Нет в кэше — генерируем из оригинала
                     info!("Нет в кэше, генерируем для: {}", path.display());
 
                     let img = match ImageReader::open(&path).unwrap().decode() {
@@ -80,9 +79,7 @@ impl Wallpaper {
                         FilterType::Triangle,
                     );
 
-                    if let Err(e) =
-                        save_to_cache(&preview, &path, width, height)
-                    {
+                    if let Err(e) = save_to_cache(&preview, &path) {
                         error!(
                             "Не удалось сохранить кэш для {}: {}",
                             path.display(),
@@ -94,10 +91,8 @@ impl Wallpaper {
                 }
             };
 
-            // 3. Преобразуем DynamicImage в MemoryTexture
             let texture = Self::img_to_texture(&preview_img);
 
-            // 4. Отправляем в канал
             sender.send(texture).unwrap();
         });
 

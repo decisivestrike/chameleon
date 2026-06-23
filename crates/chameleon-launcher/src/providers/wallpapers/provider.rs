@@ -2,7 +2,7 @@ use crate::config::WallpapersProviderConfig;
 use crate::providers::base::ProviderBase;
 use crate::providers::factory::Factory;
 use crate::providers::view::View;
-use crate::providers::wallpapers::cache::cache_filename;
+use crate::providers::wallpapers::cache::hash_filename;
 use crate::providers::wallpapers::image_cell::ImageCell;
 use crate::providers::wallpapers::wallpaper::Wallpaper;
 use crate::providers::{Direction, Provider};
@@ -92,7 +92,7 @@ impl WallpapersProvider {
             .arg(&format!(
                 "{}/.cache/chameleon/thumbnails/{}",
                 home_dir().unwrap().to_string_lossy(),
-                cache_filename(Path::new(&full_wp_path), 160, 90)
+                hash_filename(Path::new(&full_wp_path))
             ))
             .spawn()
             .expect("command failed to start");
