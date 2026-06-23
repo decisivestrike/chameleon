@@ -85,8 +85,8 @@ impl NotificationContent {
 
         let text_container = gtk::Box::builder()
             .orientation(Orientation::Vertical)
-            .halign(gtk::Align::Center)
-            .valign(gtk::Align::Center)
+            .halign(gtk::Align::Fill)
+            .valign(gtk::Align::Fill)
             .hexpand(true)
             .vexpand(true)
             .baseline_position(gtk::BaselinePosition::Center)
@@ -95,6 +95,10 @@ impl NotificationContent {
 
         let title = gtk::Label::builder()
             .label(&data.title)
+            .halign(gtk::Align::Center)
+            .valign(gtk::Align::Center)
+            .hexpand(true)
+            .vexpand(true)
             .name("summary")
             .build();
         text_container.append(&title);
@@ -102,8 +106,12 @@ impl NotificationContent {
         let body = if !data.body.is_empty() {
             let body_label = gtk::Label::builder()
                 .label(&data.body)
+                .halign(gtk::Align::Center)
+                .valign(gtk::Align::Center)
                 .name("body")
                 .wrap(true)
+                .hexpand(true)
+                .vexpand(true)
                 .wrap_mode(pango::WrapMode::Word)
                 .build();
             text_container.append(&body_label);
