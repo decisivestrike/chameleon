@@ -40,7 +40,7 @@ mod imp {
                 .name("player-cover")
                 .halign(Align::Center)
                 .valign(Align::Center)
-                .content_fit(ContentFit::Fill)
+                .content_fit(ContentFit::Contain)
                 .width_request(128)
                 .height_request(128)
                 .build();

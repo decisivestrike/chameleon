@@ -103,7 +103,7 @@ mod imp {
 
                             if let Some(path) = data.cover_path
                                 && let Ok(pixbuf) = Pixbuf::from_file_at_scale(
-                                    path, 128, 128, false,
+                                    path, 128, 128, true,
                                 )
                             {
                                 let buffer =
