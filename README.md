@@ -2,15 +2,11 @@
 
 The project is under development. Nothing (almost) is working yet
 
-Installation:
-
-```bash
-bash -c "$(curl -L https://raw.githubusercontent.com/decisivestrike/chameleon/main/scripts/install.sh)" install
-```
-
 ## Launcher
 
 Just launcher with fuzzy search
+
+![launcher](img/launcher.png)
 
 ```toml
 # launcher.toml
@@ -27,13 +23,10 @@ detach = true
 
 To use it in hyprland:
 
-```bash
-# Add to autostart
-exec-once = chameleon
-
-# Create alias
-$launcher = chameleon -t
-
-# Bind keyboard shortcut
-bind = $mainMod, RETURN, exec, $launcher
+```lua
+bind(main_mod .. "+ RETURN", hl.dsp.exec_raw("~/.chameleon/bin/chameleon-launcher -t"))
 ```
+
+## Panel
+
+![panel](img/panel.png)
