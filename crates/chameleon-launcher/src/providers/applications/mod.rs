@@ -105,8 +105,11 @@ impl ApplicationProvider {
     fn open_app(&self, name: &String, is_terminal: bool) {
         let mut command =
             if is_terminal && let Some(cmd) = &self.config.terminal_cmd {
-                let mut command = Command::new(&cmd);
-                command.arg(&name);
+                let mut parts: Vec<&str> = cmd.split_whitespace().collect();
+                parts.push(name);
+
+                let mut command = Command::new(parts[0]);
+                command.args(&parts[1..]);
 
                 command
             } else {
@@ -115,6 +118,8 @@ impl ApplicationProvider {
 
                 command
             };
+
+        info!("{:?}", command);
 
         let command = command
             .current_dir(home_dir().expect("can get $HOME"))
