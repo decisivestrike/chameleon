@@ -2,7 +2,10 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Workspace {
+    pub address: String,
     pub id: i32,
+    #[serde(rename = "type")]
+    pub _type: String,
     pub name: String,
     /// Monitor's connector
     pub monitor: String,

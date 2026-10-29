@@ -31,7 +31,7 @@ pub struct Hyprland {
     /// `$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock`
     sender_sock: Arc<PathBuf>,
 
-    el: RwLock<Option<EventListener>>,
+    event_listener: RwLock<Option<EventListener>>,
 }
 
 impl Hyprland {
@@ -46,7 +46,7 @@ impl Hyprland {
         Self {
             recv_sock,
             sender_sock,
-            el: Default::default(),
+            event_listener: Default::default(),
         }
     }
 
@@ -55,17 +55,22 @@ impl Hyprland {
     }
 
     pub fn subscribe(&self) -> BroadcastReceiver<HyprEvent> {
-        if self.el.read().unwrap().is_none() {
-            let mut el = self.el.write().unwrap();
+        if self.event_listener.read().unwrap().is_none() {
+            let mut el = self.event_listener.write().unwrap();
             *el = Some(EventListener::new(self.sender_sock.clone()));
         }
 
-        self.el.read().unwrap().as_ref().unwrap().subscribe()
+        self.event_listener
+            .read()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .subscribe()
     }
 
     /// Issue a lua string to execute dynamically.
     pub async fn eval(&self, lua: &str) -> Result<()> {
-        let command = format!("eval {}\0", lua);
+        let command = format!("eval {}", lua);
 
         self.command(command.as_bytes()).await
     }
@@ -74,7 +79,7 @@ impl Hyprland {
     ///
     /// Example: `hl.dsp.focus({ workspace = "2" })`
     pub async fn dispatch(&self, dsp: &str) -> Result<()> {
-        let command = format!("dispatch {}\0", dsp);
+        let command = format!("dispatch {}", dsp);
 
         self.command(command.as_bytes()).await
     }
@@ -100,17 +105,17 @@ impl Hyprland {
 /// Info
 impl Hyprland {
     pub async fn workspaces(&self) -> Result<Vec<Workspace>> {
-        let json_str = self.query(b"j/workspaces\0").await?;
+        let json_str = self.query(b"j/workspaces").await?;
         Ok(serde_json::from_str(&json_str)?)
     }
 
     pub async fn active_workspace(&self) -> Result<Workspace> {
-        let json_str = self.query(b"j/activeworkspace\0").await?;
+        let json_str = self.query(b"j/activeworkspace").await?;
         Ok(serde_json::from_str(&json_str)?)
     }
 
     pub async fn devices(&self) -> Result<Devices> {
-        let json_str = self.query(b"j/devices\0").await?;
+        let json_str = self.query(b"j/devices").await?;
         Ok(serde_json::from_str(&json_str)?)
     }
 }
@@ -150,5 +155,32 @@ impl EventListener {
 
     pub fn subscribe(&self) -> BroadcastReceiver<HyprEvent> {
         self.sender.subscribe()
+    }
+}
+
+// Works inside hyprland only
+#[cfg(test)]
+mod tests {
+    use crate::Hyprland;
+    use std::env::var;
+
+    #[tokio::test]
+    async fn test_info_active_workspace() {
+        let his = var("HYPRLAND_INSTANCE_SIGNATURE").unwrap();
+        let hyprland = Hyprland::new(his);
+
+        let active_workspace = hyprland.active_workspace().await;
+
+        assert!(active_workspace.is_ok())
+    }
+
+    #[tokio::test]
+    async fn test_info_workspaces() {
+        let his = var("HYPRLAND_INSTANCE_SIGNATURE").unwrap();
+        let hyprland = Hyprland::new(his);
+
+        let workspaces = hyprland.workspaces().await;
+
+        assert!(workspaces.is_ok())
     }
 }
