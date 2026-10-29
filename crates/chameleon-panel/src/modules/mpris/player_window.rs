@@ -41,8 +41,8 @@ mod imp {
                 .halign(Align::Center)
                 .valign(Align::Center)
                 .content_fit(ContentFit::Contain)
-                .width_request(128)
-                .height_request(128)
+                .width_request(-1)
+                .height_request(-1)
                 .build();
 
             let content = gtk::Box::builder()

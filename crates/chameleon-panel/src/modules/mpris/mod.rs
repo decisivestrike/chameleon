@@ -19,15 +19,185 @@ pub struct PlayerData {
 mod imp {
     use super::*;
     use crate::modules::mpris::player_window::PlayerWindow;
-    use crate::services::mpris::PlayerState;
+    use crate::services::mpris::{PlayerState, Status, Track};
     use gtk::gdk::{MemoryTexture, Texture};
     use gtk::gdk_pixbuf::Pixbuf;
     use std::time::Duration;
+    use tokio::sync::broadcast;
+    use tokio::sync::mpsc::{Receiver, Sender};
     use tracing::{error, info, warn};
 
     pub struct MprisImp {
         label: gtk::Label,
         window: PlayerWindow,
+    }
+
+    impl MprisImp {
+        fn update_player_ui(mpris: &Mpris, data: PlayerData) {
+            mpris
+                .imp()
+                .label
+                .set_label(&format!("{} - {}", data.title, data.artist));
+
+            let window = &mpris.imp().window.imp();
+            window.title.set_label(&data.title);
+            window.artist.set_label(&data.artist);
+            window.album.set_label(&data.album.unwrap_or(String::new()));
+
+            let child = if data.is_playing {
+                mpris.imp().window.imp().pause_icon.clone()
+            } else {
+                mpris.imp().window.imp().play_icon.clone()
+            };
+
+            mpris.imp().window.imp().play_pause.set_child(Some(&child));
+
+            if let Some(path) = data.cover_path
+                && let Ok(pixbuf) =
+                    Pixbuf::from_file_at_scale(path, -1, -1, true)
+            {
+                let buffer = pixbuf.save_to_bufferv("png", &[]).unwrap();
+                let bytes = glib::Bytes::from_owned(buffer);
+                let texture = Texture::from_bytes(&bytes).unwrap();
+
+                window.cover.set_paintable(Some(&texture));
+            }
+        }
+
+        fn reset_player_ui(mpris: &Mpris) {
+            mpris.imp().label.set_label("Idle");
+
+            let window = mpris.imp().window.imp();
+            window.title.set_label("");
+            window.artist.set_label("");
+            window.album.set_label("");
+
+            let child = &mpris.imp().window.imp().play_icon;
+            mpris.imp().window.imp().play_pause.set_child(Some(child));
+
+            window.cover.set_paintable(None::<&MemoryTexture>);
+        }
+
+        async fn listen_player_events_local(
+            mpris: Mpris,
+            mut receiver: Receiver<Option<PlayerData>>,
+        ) {
+            loop {
+                if let Some(maybe_data) = receiver.recv().await {
+                    if let Some(data) = maybe_data {
+                        Self::update_player_ui(&mpris, data);
+                    } else {
+                        Self::reset_player_ui(&mpris);
+                    }
+                }
+            }
+        }
+
+        async fn handle_player_update(
+            sender: &Sender<Option<PlayerData>>,
+            boxed_track: Box<Option<Track>>,
+            status: Status,
+            previous_track_title: &mut String,
+        ) {
+            info!("{:#?}\n{:#?}", boxed_track, status);
+            let maybe_track = *boxed_track;
+
+            if matches!(status.state, PlayerState::Stopped) {
+                sender.send(None).await.unwrap();
+            }
+
+            if let Some(track) = maybe_track
+                && !matches!(status.state, PlayerState::Stopped)
+                && let Some(title) = track.title
+            {
+                let cover_path: Option<String> =
+                    if *previous_track_title != title {
+                        tokio::time::sleep(Duration::from_millis(200)).await;
+
+                        let player = CLIENT.get_player();
+                        if player.is_none() {
+                            error!("player is none");
+                            return;
+                        }
+                        let player = player.unwrap();
+
+                        let metadata = player.get_metadata();
+
+                        if let Err(e) = metadata {
+                            error!("{}", e);
+                            return;
+                        }
+
+                        let metadata = metadata.unwrap();
+
+                        let art_url = metadata.art_url();
+
+                        if art_url.is_none() {
+                            warn!("no art url");
+                            return;
+                        }
+
+                        *previous_track_title = title.clone();
+
+                        Some({
+                            let mut u = art_url.unwrap().to_string();
+                            u.drain(..7);
+                            u
+                        })
+                    } else {
+                        *previous_track_title = title.clone();
+                        None
+                    }
+                    .or_else(|| {
+                        track.cover_path.map(|mut path| {
+                            path.drain(..7);
+                            path
+                        })
+                    });
+
+                info!("{:?}", cover_path);
+
+                let data = PlayerData {
+                    title,
+                    artist: track
+                        .artist
+                        .unwrap_or_else(|| "Unknown".to_string()),
+                    album: track.album,
+                    cover_path,
+                    is_playing: if let PlayerState::Playing = status.state {
+                        true
+                    } else {
+                        false
+                    },
+                };
+
+                sender.send(Some(data)).await.unwrap();
+            }
+        }
+
+        async fn listen_player_updates(
+            sender: Sender<Option<PlayerData>>,
+            mut receiver: broadcast::Receiver<PlayerUpdate>,
+        ) {
+            let mut previous_track_title = String::new();
+
+            loop {
+                if let Ok(update) = receiver.recv().await {
+                    match update {
+                        PlayerUpdate::Update(boxed_track, status) => {
+                            Self::handle_player_update(
+                                &sender,
+                                boxed_track,
+                                status,
+                                &mut previous_track_title,
+                            )
+                            .await;
+                        }
+                        _ => (),
+                    };
+                }
+            }
+        }
     }
 
     impl Default for MprisImp {
@@ -69,172 +239,17 @@ mod imp {
             });
             self.label.add_controller(toggle_controller);
 
-            let (sender, mut receiver) = mpsc::channel::<Option<PlayerData>>(2);
+            let (sender, receiver) = mpsc::channel::<Option<PlayerData>>(2);
             let mpris = self.obj().clone();
 
             glib::spawn_future_local(async move {
-                loop {
-                    if let Some(maybe_data) = receiver.recv().await {
-                        if let Some(data) = maybe_data {
-                            mpris.imp().label.set_label(&format!(
-                                "{} - {}",
-                                data.title, data.artist
-                            ));
-
-                            let window = &mpris.imp().window.imp();
-                            window.title.set_label(&data.title);
-                            window.artist.set_label(&data.artist);
-                            window.album.set_label(
-                                &data.album.unwrap_or(String::new()),
-                            );
-
-                            let child = if data.is_playing {
-                                mpris.imp().window.imp().pause_icon.clone()
-                            } else {
-                                mpris.imp().window.imp().play_icon.clone()
-                            };
-
-                            mpris
-                                .imp()
-                                .window
-                                .imp()
-                                .play_pause
-                                .set_child(Some(&child));
-
-                            if let Some(path) = data.cover_path
-                                && let Ok(pixbuf) = Pixbuf::from_file_at_scale(
-                                    path, 128, 128, true,
-                                )
-                            {
-                                let buffer =
-                                    pixbuf.save_to_bufferv("png", &[]).unwrap();
-                                let bytes = glib::Bytes::from_owned(buffer);
-                                let texture =
-                                    Texture::from_bytes(&bytes).unwrap();
-
-                                window.cover.set_paintable(Some(&texture));
-                            }
-                        } else {
-                            mpris.imp().label.set_label("Idle");
-
-                            let window = &mpris.imp().window.imp();
-                            window.title.set_label("");
-                            window.artist.set_label("");
-                            window.album.set_label("");
-
-                            let child = &mpris.imp().window.imp().play_icon;
-                            mpris
-                                .imp()
-                                .window
-                                .imp()
-                                .play_pause
-                                .set_child(Some(child));
-
-                            window.cover.set_paintable(None::<&MemoryTexture>);
-                        }
-                    }
-                }
+                Self::listen_player_events_local(mpris, receiver).await;
             });
 
             RUNTIME.spawn(async move {
-                let mut receiver = CLIENT.subscribe_change();
-                let mut previous_track_title = String::new();
+                let receiver = CLIENT.subscribe_change();
 
-                loop {
-                    if let Ok(update) = receiver.recv().await {
-                        match update {
-                            PlayerUpdate::Update(boxed_track, status) => {
-                                info!("{:#?}\n{:#?}", boxed_track, status);
-                                let maybe_track = *boxed_track;
-
-                                if matches!(status.state, PlayerState::Stopped)
-                                {
-                                    sender.send(None).await.unwrap();
-                                }
-
-                                if let Some(track) = maybe_track
-                                    && !matches!(
-                                        status.state,
-                                        PlayerState::Stopped
-                                    )
-                                    && let Some(title) = track.title
-                                {
-                                    let cover_path: Option<String> =
-                                        if previous_track_title != title {
-                                            tokio::time::sleep(
-                                                Duration::from_millis(200),
-                                            )
-                                            .await;
-
-                                            let player = CLIENT.get_player();
-                                            if player.is_none() {
-                                                error!("player is none");
-                                                continue;
-                                            }
-                                            let player = player.unwrap();
-
-                                            let metadata =
-                                                player.get_metadata();
-                                            if let Err(e) = metadata {
-                                                error!("{}", e);
-                                                continue;
-                                            }
-                                            let metadata = metadata.unwrap();
-
-                                            let art_url = metadata.art_url();
-                                            if art_url.is_none() {
-                                                warn!("no art url");
-                                                continue;
-                                            }
-
-                                            previous_track_title =
-                                                title.clone();
-
-                                            Some({
-                                                let mut u = art_url
-                                                    .unwrap()
-                                                    .to_string();
-                                                u.drain(..7);
-                                                u
-                                            })
-                                        } else {
-                                            previous_track_title =
-                                                title.clone();
-                                            None
-                                        }
-                                        .or_else(|| {
-                                            track.cover_path.map(|mut path| {
-                                                path.drain(..7);
-                                                path
-                                            })
-                                        });
-
-                                    info!("{:?}", cover_path);
-
-                                    let data = PlayerData {
-                                        title,
-                                        artist: track.artist.unwrap_or_else(
-                                            || "Unknown".to_string(),
-                                        ),
-                                        album: track.album,
-                                        cover_path,
-                                        is_playing:
-                                            if let PlayerState::Playing =
-                                                status.state
-                                            {
-                                                true
-                                            } else {
-                                                false
-                                            },
-                                    };
-
-                                    sender.send(Some(data)).await.unwrap();
-                                }
-                            }
-                            _ => (),
-                        };
-                    }
-                }
+                Self::listen_player_updates(sender, receiver).await;
             });
         }
     }
