@@ -10,7 +10,7 @@ chameleon-ipc = { path = "crates/chameleon-ipc" }
 gtkio = { path = "crates/gtkio" }
 
 argh = "0.1.19"
-anyhow = "1.0.102"
+anyhow = "1.0.104"
 inotify = "0.11.0"
 log = "0.4.28"
 serde = "1.0.228"
@@ -22,15 +22,15 @@ libc = "0.2.186"
 nucleo = "0.5.0"
 chrono = "0.4.44"
 dashmap = "6.1.0"
-gtk = { version = "0.11.3", package = "gtk4", features = ["v4_20"] }
-layer_shell = { version = "0.8.0", package = "gtk4-layer-shell" }
+gtk = { version = "0.11.5", package = "gtk4", features = ["v4_20"] }
+layer_shell = { version = "0.8.1", package = "gtk4-layer-shell" }
 env_logger = "0.11.8"
 futures-util = "0.3.31"
 zbus = { version = "5.14.0", default-features = false, features = ["tokio"] }
 
 # Tokio stuff
-tokio = "1.52.3"
-tokio-util = "0.7.18"
+tokio = "1.54.1"
+tokio-util = "0.7.20"
 console-subscriber = "0.5.0"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
